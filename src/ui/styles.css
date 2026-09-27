@@ -809,3 +809,7 @@ body[data-device="pad"] .btn:hover:not(.pad-focus), body[data-device="pad"] .men
   font-size: 11px; letter-spacing: 0.1em; color: var(--warn);
   background: rgba(0, 0, 0, 0.6); border: 1px solid var(--edge); padding: 5px 9px;
 }
+
+.title-credits { width: min(640px, 92vw); padding: 16px 18px 12px; display: flex; flex-direction: column; gap: 12px; }
+.credits-list { display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.45; }
+.credits-block { display: flex; flex-direction: column; gap: 1px; }

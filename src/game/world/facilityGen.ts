@@ -637,14 +637,14 @@ function furnishRoom(
   }
 
   // --- Lights, in fixtures on the back wall.
-  const lit = r.role === 'standard' ? rng.chance(0.55) : r.role === 'loot' ? rng.chance(0.5) : true;
+  const lit = r.role === 'standard' ? rng.chance(0.62) : r.role === 'loot' ? rng.chance(0.5) : true;
   if (!lit) {
     // Mains are out: a battery emergency lamp throbs over the back wall, barely enough.
     const spots = backWallX().filter(standsOnBackWall);
     if (spots.length) {
       map.lights.push({
         x: px(spots[0]) + TILE / 2, y: r.y * TILE + 6, color: rng.chance(0.7) ? 0xff4a32 : 0xffa030,
-        radius: 110, intensity: 0.42, flicker: false, style: 'pulse', fixture: true,
+        radius: 150, intensity: 0.5, flicker: false, style: 'pulse', fixture: true,
       });
     }
   }
@@ -661,6 +661,12 @@ function furnishRoom(
         fixture: map.get(Math.floor(lx / TILE), r.y - 1) === Tile.Wall,
       });
     }
+    // The lamps light the room, not just the wall under them: a soft wash over the floor,
+    // so a lit room reads as a place (and anyone standing in it can be seen).
+    map.lights.push({
+      x: (r.x + r.w / 2) * TILE, y: (r.y + r.h * 0.55) * TILE, color,
+      radius: Math.min(300, Math.hypot(r.w, r.h) * TILE * 0.6), intensity: r.role === 'start' ? 0.5 : 0.42, flicker: false,
+    });
   }
   const pad = r.role === 'extraction' ? map.extraction : null;
   if (pad) {

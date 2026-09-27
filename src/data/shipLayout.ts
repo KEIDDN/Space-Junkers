@@ -98,6 +98,18 @@ export function buildShip(upgrades: readonly string[] = [], story: readonly stri
   carve(27, 21, 34, 26); // engine room
   carve(30, 20, 31, 20);
 
+  // Named compartments (for the stencilled plates on their walls).
+  const room = (kind: string, x0: number, y0: number, x1: number, y1: number) =>
+    map.rooms.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, role: 'standard', depth: 0, kind });
+  room('ship_common', 14, 8, 25, 13);
+  room('ship_cargo', 14, 15, 25, 21);
+  room('ship_tech', 5, 8, 12, 12);
+  room('ship_med', 5, 15, 12, 19);
+  room('ship_quarters', 5, 21, 12, 25);
+  room('ship_nook', 27, 8, 33, 12);
+  room('ship_armory', 27, 15, 34, 19);
+  room('ship_engine', 27, 21, 34, 26);
+
   // Walls around everything walkable.
   for (let y = 0; y < SHIP_H; y++) {
     for (let x = 0; x < SHIP_W; x++) {

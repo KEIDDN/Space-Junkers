@@ -2,6 +2,7 @@ import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { tex } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import { Tile, type TileMap } from '../world/tilemap';
+import { ROOM_SIGNS, SIGN_STYLES, signTexture } from './signs';
 
 /** Weighted floor plates (each covers 2×2 tiles): mostly plain deck, some plates and grates. */
 export type FloorStyle = [string, number][];
@@ -53,7 +54,11 @@ function isOpen(t: Tile): boolean {
  * other walls show a dark cap, trimmed in rust where it meets open space.
  * Props are returned separately because they must depth-sort with actors.
  */
-export function buildMapView(map: TileMap, look: MapLook = DEFAULT_LOOK): { ground: Container; props: Sprite[] } {
+export function buildMapView(
+  map: TileMap, look: MapLook = DEFAULT_LOOK,
+  /** Wall hangings and furniture that aren't map props (the ship's), for signs to keep clear of. */
+  wallThings: { x: number; y: number; w: number }[] = [],
+): { ground: Container; props: Sprite[] } {
   const ground = new Container();
   const floors = new Container();
   const shade = new Graphics();
@@ -123,6 +128,38 @@ export function buildMapView(map: TileMap, look: MapLook = DEFAULT_LOOK): { grou
     lamps.rect(x - 6, y - 11, 12, 2).fill({ color: lighten(lighten(l.color)) });
   }
   wallDecor.addChild(lamps);
+
+  // A stencilled plate on each room's back wall, clear of lamps and posters.
+  for (const r of map.rooms) {
+    const sign = r.kind ? ROOM_SIGNS[r.kind] : undefined;
+    if (!sign) continue;
+    const t = signTexture(sign.ru, sign.en, SIGN_STYLES[sign.style]);
+    const half = t.width / 2;
+    const busy = [
+      ...map.lights.filter((l) => l.fixture && Math.floor(l.y / TILE) === r.y).map((l) => ({ x: l.x, w: 12 })),
+      ...map.props.filter((p) => p.layer === 'wall' && Math.abs(p.y - r.y * TILE) < 16).map((p) => ({ x: p.x, w: 16 })),
+      // Tall things standing against the back wall would hide a plate.
+      ...map.props.filter((p) => p.layer !== 'floor' && p.y - r.y * TILE > 0 && p.y - r.y * TILE < 44)
+        .map((p) => ({ x: p.x, w: tex(p.sprite).width / 2 + 2 })),
+      ...wallThings.filter((p) => p.y - r.y * TILE > -24 && p.y - r.y * TILE < 64).map((p) => ({ x: p.x, w: p.w / 2 + 2 })),
+    ];
+    const faceAt = (x: number) => {
+      const tx = Math.floor(x / TILE);
+      return map.get(tx, r.y - 1) === Tile.Wall && isOpen(map.get(tx, r.y));
+    };
+    const fits = (cx: number) => faceAt(cx - half) && faceAt(cx + half)
+      && busy.every((b) => Math.abs(b.x - cx) > half + b.w);
+    // Prefer the left third of the wall, like a plate by the door; else anywhere it fits.
+    const xs: number[] = [];
+    for (let x = r.x * TILE + half + 6; x <= (r.x + r.w) * TILE - half - 6; x += 4) xs.push(x);
+    xs.sort((a, b) => Math.abs(a - (r.x + r.w * 0.3) * TILE) - Math.abs(b - (r.x + r.w * 0.3) * TILE));
+    const cx = xs.find(fits);
+    if (cx === undefined) continue;
+    const s = new Sprite(t);
+    s.anchor.set(0.5, 0);
+    s.position.set(Math.round(cx), r.y * TILE - 27);
+    wallDecor.addChild(s);
+  }
 
   const props: Sprite[] = [];
   for (const p of map.props) {

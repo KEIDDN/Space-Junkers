@@ -43,12 +43,43 @@ interface Props {
   onRange: () => void;
 }
 
+const CREDITS: [string, string[]][] = [
+  ['MUSIC', [
+    'Pondering the Cosmos · Ruskerdax',
+    'Sirens in Darkness · The Cynic Project (cynicmusic.com · pixelsphere.org)',
+    'Narrow Corridors · tinyworlds',
+  ]],
+  ['RECORDED SOUND', [
+    'The Free Firearm Sound Library · Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney',
+    'Impact, RPG, Sci-fi and UI Audio · Kenney (kenney.nl)',
+    'Reload and handling recordings · bmaczero, StarNinjas, zer0sol',
+  ]],
+  ['TYPE', ['Share Tech Mono · VT323 · Russo One (SIL Open Font License)']],
+  ['EVERYTHING ELSE', ['Pixel art from the project sheets; synthesized sound, lighting and effects in code.']],
+];
+
+/** Who made what: shown from the title screen. Every external source is CC0 or OFL. */
+function Credits() {
+  return (
+    <div className="credits-list">
+      <div className="nav-title">SPACE JUNKERS <span className="dim">// СКРАПЕРЫ</span></div>
+      {CREDITS.map(([head, lines]) => (
+        <div key={head} className="credits-block">
+          <div className="dim small">{head}</div>
+          {lines.map((l) => <div key={l}>{l}</div>)}
+        </div>
+      ))}
+      <div className="dim small">Full sources and licenses: ASSET_SOURCES.md</div>
+    </div>
+  );
+}
+
 export function TitleScreen({ onContinue, onRange }: Props) {
   const started = useProfile((s) => !!s.flags.started);
   const stats = useProfile((s) => s.stats);
   const credits = useProfile((s) => s.credits);
   const resetProfile = useProfile((s) => s.resetProfile);
-  const [view, setView] = useState<'menu' | 'pick' | 'settings'>('menu');
+  const [view, setView] = useState<'menu' | 'pick' | 'settings' | 'credits'>('menu');
   const [confirmWipe, setConfirmWipe] = useState(false);
 
   const newGame = (op: Operator) => {
@@ -100,6 +131,13 @@ export function TitleScreen({ onContinue, onRange }: Props) {
             </button>
             <button className="menu-btn" onPointerEnter={hover} onClick={() => { audio.ui('click'); onRange(); }}>GUNPLAY RANGE</button>
             <button className="menu-btn" onPointerEnter={hover} onClick={() => open('settings')}>SETTINGS &amp; CONTROLS</button>
+            <button className="menu-btn" onPointerEnter={hover} onClick={() => open('credits')}>CREDITS</button>
+          </div>
+        )}
+        {view === 'credits' && (
+          <div className="title-credits panel">
+            <Credits />
+            <button className="link" onClick={() => open('menu')}>[BACK] <Key a="back" /></button>
           </div>
         )}
         {view === 'settings' && (
