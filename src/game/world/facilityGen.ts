@@ -1,6 +1,7 @@
 import { TILE } from '../../engine/config';
 import { Rng } from '../../engine/rng';
-import { Tile, TileMap, type Room, type RoomRole, type Spawn } from './tilemap';
+import { THEMES, type Theme } from '../../data/themes';
+import { Tile, TileMap, type Room, type Spawn } from './tilemap';
 
 /**
  * Procedural facility generator.
@@ -23,12 +24,13 @@ export interface FacilityOptions {
   danger?: number;
   /** Enemy kinds by weight. */
   enemies?: Record<string, number>;
+  /** Look and room purposes. */
+  theme?: Theme;
 }
 
 const CELL_W = 16;
 const CELL_H = 13;
 const MARGIN = 1;
-const AMBIENT = 0.13;
 
 interface Cell {
   cx: number;
@@ -49,23 +51,16 @@ const COVER_SHAPES: [number, number][][] = [
 const CRATES = ['crate_gray', 'crate_pale', 'crate_green', 'crate_orange'];
 const BARRELS = ['barrel_gray', 'barrel_red', 'barrel_blue'];
 
-const LIGHT_COLORS: Record<RoomRole, number> = {
-  start: 0xcfe0ff,
-  standard: 0xffb46b,
-  loot: 0xffb46b,
-  vault: 0xff3a2a,
-  extraction: 0x7dff9a,
-};
-
 export function generateFacility(seed: number, opts: FacilityOptions = {}): TileMap {
   const rng = new Rng(seed);
   const cellsX = opts.cellsX ?? rng.int(4, 5);
   const cellsY = opts.cellsY ?? rng.int(3, 4);
   const danger = opts.danger ?? 1;
+  const theme = opts.theme ?? THEMES.tikhaya;
 
   const map = new TileMap(cellsX * CELL_W + MARGIN * 2, cellsY * CELL_H + MARGIN * 2);
   map.seed = seed;
-  map.ambient = AMBIENT;
+  map.ambient = theme.ambient;
 
   // --- Rooms
   const cells: Cell[] = [];
@@ -163,13 +158,64 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   const extractionIdx = byDepth[0];
   cells[extractionIdx].room.role = 'extraction';
   const deadEnds = byDepth.filter((i) => i !== extractionIdx && cells[i].links.length === 1);
-  const vaultIdx = deadEnds[0] ?? byDepth[1];
+  // The vault gets sealed, so it must not be a room everyone else has to walk through.
+  const sealable = (v: number) => {
+    const seen = new Set([startIdx, v]);
+    const q = [startIdx];
+    while (q.length) {
+      for (const n of cells[q.pop()!].links) {
+        if (seen.has(n)) continue;
+        seen.add(n);
+        q.push(n);
+      }
+    }
+    return seen.size === cells.length;
+  };
+  const vaultIdx = deadEnds[0] ?? byDepth.find((i) => i !== extractionIdx && sealable(i)) ?? byDepth[1];
+  const vaultLocked = sealable(vaultIdx);
   cells[vaultIdx].room.role = 'vault';
   for (const i of deadEnds.slice(1)) cells[i].room.role = 'loot';
 
+  // --- Purposes
+  for (const c of cells) {
+    const role = c.room.role;
+    c.room.kind = role === 'start' ? 'entry' : role === 'extraction' ? 'exfil' : role === 'vault' ? 'vault' : rng.weighted(theme.rooms as Record<string, number>);
+  }
+
+  // --- The vault is sealed: a red security door on every way in.
+  for (let i = 0; vaultLocked && i + 1 < cells[vaultIdx].openings.length; i += 2) {
+    const a = cells[vaultIdx].openings[i];
+    const b = cells[vaultIdx].openings[i + 1];
+    const vertical = a.tx === b.tx;
+    const existing = map.doors.find((d) => d.tiles.some((t) => t.tx === a.tx && t.ty === a.ty));
+    if (existing) existing.locked = true;
+    else {
+      map.set(a.tx, a.ty, Tile.Door);
+      map.set(b.tx, b.ty, Tile.Door);
+      map.doors.push({ tiles: [{ tx: a.tx, ty: a.ty }, { tx: b.tx, ty: b.ty }], vertical, locked: true });
+    }
+    map.setDoorLocked(a.tx, a.ty, true);
+    map.setDoorLocked(b.tx, b.ty, true);
+  }
+
+  // --- A second way out: a maintenance lift, powered from a breaker somewhere else.
+  const guards = new Map<number, number>();
+  if (vaultLocked) for (const n of cells[vaultIdx].links) guards.set(n, (guards.get(n) ?? 0) + 1);
+  const liftRooms = cells.map((_, i) => i).filter((i) => {
+    const r = cells[i].room;
+    return (r.role === 'standard' || r.role === 'loot') && r.depth >= 2 && r.w >= 5 && !cells[extractionIdx].links.includes(i);
+  });
+  const lift = liftRooms.length && rng.chance(0.75) ? rng.pick(liftRooms) : -1;
+  const breakerRooms = cells.map((_, i) => i).filter((i) => i !== lift && i !== vaultIdx && i !== startIdx && !cells[lift]?.links.includes(i));
+  const plan: RoomPlan = {
+    lift, breaker: lift >= 0 && breakerRooms.length ? rng.pick(breakerRooms) : -1, guards, vaultLocked, breakerAt: null,
+  };
+
   // --- Furnish
   const mix = opts.enemies ?? { scavenger: 1 };
-  for (const c of cells) furnishRoom(map, rng, c, maxDepth, danger, cells, mix);
+  cells.forEach((c, i) => furnishRoom(map, rng, c, i, maxDepth, danger, cells, mix, theme, plan));
+  const liftExit = map.exits.find((e) => e.kind === 'lift');
+  if (liftExit && plan.breakerAt) liftExit.breaker = plan.breakerAt;
 
   for (const c of cells) map.rooms.push(c.room);
   return map;
@@ -249,13 +295,127 @@ function carveCorridor(map: TileMap, rng: Rng, a: Cell, b: Cell): void {
   }
 }
 
+/** A piece of furniture. Footprint is `w`×`h` tiles; the sprite stands on its bottom edge. */
+interface Piece {
+  sprite: string;
+  w: number;
+  h?: number;
+  /** One sprite per footprint tile (rows of server racks). */
+  row?: boolean;
+  /** Something to read on it. */
+  terminal?: boolean;
+  /** Emissive tint and a small light of this colour. */
+  glow?: number;
+}
+
+/** How a room of some purpose is furnished. */
+interface Kit {
+  /** Furniture against the back wall. */
+  wall: Piece[];
+  wallCount: [number, number];
+  /** Free-standing furniture. */
+  center: Piece[];
+  centerCount: [number, number];
+  /** Crate/barrel cover clusters, relative to room size. */
+  cover: number;
+  /** Searchable containers by weight, and how many. */
+  containers: Record<string, number>;
+  containerCount: [number, number];
+  /** Small wall decor (posters, vents). */
+  decor: string[];
+}
+
+const P = (sprite: string, w = 1, extra: Partial<Piece> = {}): Piece => ({ sprite, w, ...extra });
+const POSTERS = ['ship_poster', 'ship_poster2', 'ship_poster3', 'ship_poster4'];
+const VENTS = ['ship_vent', 'ship_vent2'];
+
+const KITS: Record<string, Kit> = {
+  storage: {
+    wall: [P('ship_shelf'), P('ship_rack_a'), P('ship_rack_b'), P('ship_cabinet'), P('ship_crate_w'), P('ship_crate_y')],
+    wallCount: [2, 4], center: [], centerCount: [0, 0], cover: 1.6,
+    containers: { box_dark: 3, box_olive: 3, locker: 1 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster2'],
+  },
+  barracks: {
+    wall: [P('ship_bunk', 3), P('ship_bunk', 3), P('ship_locker_s'), P('ship_suit'), P('ship_tv')],
+    wallCount: [2, 3], center: [P('ship_table', 2)], centerCount: [0, 1], cover: 0.5,
+    containers: { locker: 4, box_dark: 1 }, containerCount: [1, 3], decor: [...POSTERS, 'ship_poster'],
+  },
+  office: {
+    wall: [P('ship_cabinet'), P('ship_terminal', 1, { terminal: true }), P('ship_tv'), P('ship_plant'), P('ship_cab3')],
+    wallCount: [2, 4], center: [P('ship_desk', 3), P('ship_desk_small')], centerCount: [1, 2], cover: 0.3,
+    containers: { filing: 4, locker: 1 }, containerCount: [1, 2], decor: POSTERS,
+  },
+  servers: {
+    wall: [P('ship_server'), P('ship_server2'), P('hack_terminal', 1, { terminal: true }), P('ship_console3', 3)],
+    wallCount: [2, 4], center: [P('hack_server', 3, { row: true }), P('hack_rack', 2, { row: true })], centerCount: [1, 3], cover: 0.2,
+    containers: { server: 4, filing: 1 }, containerCount: [1, 2], decor: VENTS,
+  },
+  workshop: {
+    wall: [P('ship_workbench', 2), P('ship_machine', 2), P('ship_pipe_v'), P('ship_cab2')],
+    wallCount: [2, 3], center: [P('ship_machine', 2), P('ship_robot')], centerCount: [0, 1], cover: 1,
+    containers: { toolbox: 4, box_dark: 2 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster3'],
+  },
+  medbay: {
+    wall: [P('ship_bed', 2), P('med_iv'), P('med_monitor'), P('med_crate')],
+    wallCount: [2, 4], center: [P('med_gurney'), P('ship_bed', 2)], centerCount: [1, 2], cover: 0.3,
+    containers: { medcab: 5, box_olive: 1 }, containerCount: [1, 2], decor: ['ship_poster4', 'ship_vent'],
+  },
+  mess: {
+    wall: [P('ship_cab2'), P('ship_cab3'), P('ship_tv'), P('ship_bin')],
+    wallCount: [1, 3], center: [P('ship_table', 2)], centerCount: [1, 3], cover: 0.3,
+    containers: { box_dark: 2, locker: 1 }, containerCount: [0, 1], decor: [...POSTERS, 'ship_vent'],
+  },
+  reactor: {
+    wall: [P('ship_tank', 2), P('ship_capsule', 2), P('ship_pipe_v'), P('ship_console_b', 3)],
+    wallCount: [2, 3], center: [P('ship_reactor', 1, { glow: 0xff9a40 })], centerCount: [1, 1], cover: 0.6,
+    containers: { toolbox: 2, box_dark: 1 }, containerCount: [0, 1], decor: VENTS,
+  },
+  armory: {
+    wall: [P('ship_gunrack', 2), P('ship_locker'), P('merc_case2')],
+    wallCount: [2, 3], center: [P('merc_tripod')], centerCount: [0, 1], cover: 1.2,
+    containers: { ammocase: 4, box_red: 2, case_green: 1, locker: 1 }, containerCount: [1, 3], decor: ['ship_poster', 'ship_poster3'],
+  },
+  entry: {
+    wall: [P('ship_locker_s'), P('ship_crate_g'), P('ship_suit')],
+    wallCount: [1, 2], center: [], centerCount: [0, 0], cover: 0.6,
+    containers: { box_dark: 1 }, containerCount: [1, 1], decor: VENTS,
+  },
+  exfil: {
+    wall: [P('ship_console_b', 3), P('ship_pipe_v')],
+    wallCount: [1, 2], center: [], centerCount: [0, 0], cover: 0.8,
+    containers: { box_olive: 1 }, containerCount: [0, 1], decor: VENTS,
+  },
+  vault: {
+    wall: [P('ship_cabinet'), P('hack_terminal', 1, { terminal: true }), P('ship_server')],
+    wallCount: [1, 2], center: [], centerCount: [0, 0], cover: 0.3,
+    containers: { case_red: 1 }, containerCount: [0, 0], decor: [],
+  },
+};
+
+/** Tall containers belong against the back wall; boxes can sit anywhere along a wall. */
+const BACK_WALL = new Set(['locker', 'medcab', 'server', 'filing']);
+
+/** Plans that span rooms: which room holds what. */
+interface RoomPlan {
+  lift: number;
+  breaker: number;
+  /** Extra guards per room index (outside a locked vault). */
+  guards: Map<number, number>;
+  vaultLocked: boolean;
+  /** Where the breaker ended up. */
+  breakerAt: { tx: number; ty: number } | null;
+}
+
 function furnishRoom(
-  map: TileMap, rng: Rng, cell: Cell, maxDepth: number, danger: number, cells: Cell[], mix: Record<string, number>,
+  map: TileMap, rng: Rng, cell: Cell, index: number, maxDepth: number, danger: number, cells: Cell[],
+  mix: Record<string, number>, theme: Theme, plan: RoomPlan,
 ): void {
   const r = cell.room;
+  const kit = KITS[r.kind ?? 'storage'] ?? KITS.storage;
   const inRoom = (x: number, y: number) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
   const reserved = new Set<number>();
   const key = (x: number, y: number) => y * map.width + x;
+  const px = (tx: number) => tx * TILE;
 
   // Keep the approach to every opening clear (2 tiles deep).
   for (const o of cell.openings) {
@@ -267,12 +427,20 @@ function furnishRoom(
     }
   }
 
-  // Extraction zone: 3x3 in the middle, kept clear.
+  // Shuttle pad: 3x3 in the middle, kept clear.
   if (r.role === 'extraction') {
     const ex = r.x + Math.floor((r.w - 3) / 2);
     const ey = r.y + Math.floor((r.h - 3) / 2);
-    map.extraction = { x: ex, y: ey, w: 3, h: 3 };
+    map.exits.push({ kind: 'pad', x: ex, y: ey, w: 3, h: 3 });
     for (let y = ey - 1; y < ey + 4; y++) for (let x = ex - 1; x < ex + 4; x++) reserved.add(key(x, y));
+  }
+
+  // Maintenance lift: a 2x2 platform against the back wall.
+  if (index === plan.lift) {
+    const lx = r.x + rng.int(1, r.w - 3);
+    map.exits.push({ kind: 'lift', x: lx, y: r.y, w: 2, h: 2 });
+    for (let y = r.y; y < r.y + 3; y++) for (let x = lx - 1; x < lx + 3; x++) reserved.add(key(x, y));
+    map.props.push({ sprite: 'ship_ladder', x: px(lx + 1), y: px(r.y) - 2, layer: 'wall' });
   }
 
   if (r.role === 'start') {
@@ -282,88 +450,173 @@ function furnishRoom(
     reserved.add(key(sx, sy));
   }
 
-  /** Tiles that must stay reachable from the room floor: openings and every container. */
+  /** Tiles that must stay reachable from the room floor: openings, containers, terminals, the breaker. */
   const mustTouch: { tx: number; ty: number }[] = [...cell.openings];
 
-  /** Place a solid tile only if the room stays fully connected. */
-  const tryBlock = (tiles: [number, number][], place: () => void, isContainer = false): boolean => {
+  // Breaker panel for the lift: on the back wall, worked from the floor tile below it.
+  let breaker: { tx: number; ty: number } | null = null;
+  if (index === plan.breaker) {
+    const spots = rng.shuffle(Array.from({ length: r.w }, (_, i) => r.x + i))
+      .filter((x) => !reserved.has(key(x, r.y)) && map.get(x, r.y - 1) === Tile.Wall);
+    if (spots.length) {
+      breaker = { tx: spots[0], ty: r.y };
+      reserved.add(key(breaker.tx, breaker.ty));
+      reserved.add(key(breaker.tx, breaker.ty + 1));
+      map.props.push({ sprite: 'hack_box', x: px(breaker.tx) + TILE / 2, y: px(r.y) - 6, layer: 'wall' });
+    }
+  }
+
+  /** Place a solid footprint only if the room stays fully connected. */
+  const tryBlock = (tiles: [number, number][], place: () => void, touch = false): boolean => {
     for (const [x, y] of tiles) {
       if (!inRoom(x, y) || reserved.has(key(x, y)) || map.get(x, y) !== Tile.Floor) return false;
     }
     for (const [x, y] of tiles) map.set(x, y, Tile.Prop);
-    const extra = isContainer ? tiles.map(([tx, ty]) => ({ tx, ty })) : [];
+    const extra = touch ? tiles.map(([tx, ty]) => ({ tx, ty })) : [];
     if (!roomConnected(map, r, [...mustTouch, ...extra])) {
       for (const [x, y] of tiles) map.set(x, y, Tile.Floor);
       return false;
     }
     for (const [x, y] of tiles) reserved.add(key(x, y));
+    if (touch) mustTouch.push(...extra);
     place();
     return true;
   };
 
-  // --- Cover
-  const area = r.w * r.h;
-  const clusters = Math.min(4, Math.floor(area / 26) + rng.int(0, 1));
-  for (let k = 0, tries = 0; k < clusters && tries < 30; tries++) {
-    const shape = rng.pick(COVER_SHAPES);
-    const bx = rng.int(r.x + 1, r.x + r.w - 2);
-    const by = rng.int(r.y + 1, r.y + r.h - 2);
-    const tiles = shape.map(([dx, dy]) => [bx + dx, by + dy] as [number, number]);
-    // Stay off the walls so there's always an aisle.
-    if (tiles.some(([x, y]) => x <= r.x || y <= r.y || x >= r.x + r.w - 1 || y >= r.y + r.h - 1)) continue;
-    const barrel = shape.length === 1 && rng.chance(0.4);
+  const risk = Math.min(1, r.depth / Math.max(1, maxDepth) + (r.role === 'vault' ? 0.5 : 0));
+  const backWallX = () => rng.shuffle(Array.from({ length: r.w }, (_, i) => r.x + i));
+  const standsOnBackWall = (x: number) => map.get(x, r.y - 1) === Tile.Wall;
+
+  const placeContainer = (type: string, backOnly: boolean): boolean => {
+    const back = backWallX().filter(standsOnBackWall).map((x) => [x, r.y] as [number, number]);
+    const spots = backOnly ? back : [...back, ...rng.shuffle(wallSpots())];
+    for (const spot of spots) {
+      if (tryBlock([spot], () => map.containers.push({ type, tx: spot[0], ty: spot[1], risk }), true)) return true;
+    }
+    return false;
+  };
+  const wallSpots = (): [number, number][] => {
+    const out: [number, number][] = [];
+    for (let y = r.y + 1; y < r.y + r.h; y++) {
+      for (let x = r.x; x < r.x + r.w; x++) {
+        if (map.get(x - 1, y) === Tile.Wall || map.get(x + 1, y) === Tile.Wall || map.get(x, y + 1) === Tile.Wall) out.push([x, y]);
+      }
+    }
+    return out;
+  };
+
+  // --- Containers first: they matter more than the furniture around them.
+  const containerTypes: string[] = (() => {
+    const n = rng.int(kit.containerCount[0], kit.containerCount[1]);
+    const pick = () => rng.weighted(kit.containers);
+    switch (r.role) {
+      case 'start': return ['box_dark'];
+      case 'vault': return ['case_red', 'case_red', 'case_green'];
+      case 'loot': return [...Array.from({ length: n + 1 }, pick), rng.pick(['box_red', 'case_green', 'box_olive'])];
+      default: return Array.from({ length: n }, pick);
+    }
+  })();
+  for (const type of containerTypes) placeContainer(type, BACK_WALL.has(type));
+
+  // --- Back-wall furniture
+  const wallN = rng.int(kit.wallCount[0], kit.wallCount[1]);
+  for (let k = 0, tries = 0; k < wallN && tries < 16 && kit.wall.length; tries++) {
+    const piece = rng.pick(kit.wall);
+    const x0 = rng.int(r.x, r.x + r.w - piece.w);
+    const tiles = Array.from({ length: piece.w }, (_, i) => [x0 + i, r.y] as [number, number]);
+    if (!tiles.every(([x]) => standsOnBackWall(x))) continue;
     if (tryBlock(tiles, () => {
-      for (const [x, y] of tiles) map.props.push({ sprite: barrel ? rng.pick(BARRELS) : rng.pick(CRATES), tx: x, ty: y });
+      map.props.push({ sprite: piece.sprite, x: px(x0) + (piece.w * TILE) / 2, y: px(r.y + 1) - 2 });
+      if (piece.terminal) map.terminals.push({ tx: x0, ty: r.y, entry: map.terminals.length });
+    }, !!piece.terminal)) k++;
+  }
+
+  // --- Free-standing furniture, off the walls so there's always an aisle.
+  const centerN = kit.center.length ? rng.int(kit.centerCount[0], kit.centerCount[1]) : 0;
+  for (let k = 0, tries = 0; k < centerN && tries < 24; tries++) {
+    const piece = rng.pick(kit.center);
+    const h = piece.h ?? 1;
+    if (r.w - 2 < piece.w || r.h - 3 < h) break;
+    const x0 = rng.int(r.x + 1, r.x + r.w - 1 - piece.w);
+    const y0 = rng.int(r.y + 2, r.y + r.h - 1 - h);
+    const tiles: [number, number][] = [];
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + piece.w; x++) tiles.push([x, y]);
+    if (tryBlock(tiles, () => {
+      if (piece.row) {
+        for (let i = 0; i < piece.w; i++) map.props.push({ sprite: piece.sprite, x: px(x0 + i) + TILE / 2, y: px(y0 + h) - 2 });
+      } else {
+        map.props.push({ sprite: piece.sprite, x: px(x0) + (piece.w * TILE) / 2, y: px(y0 + h) - 2});
+      }
+      if (piece.glow) {
+        map.lights.push({ x: px(x0) + (piece.w * TILE) / 2, y: px(y0 + h) - 20, color: piece.glow, radius: 120, intensity: 0.55, flicker: true });
+      }
     })) k++;
   }
 
-  // --- Containers, against walls
-  const risk = Math.min(1, r.depth / Math.max(1, maxDepth) + (r.role === 'vault' ? 0.5 : 0));
-  const containerTypes: string[] = (() => {
-    switch (r.role) {
-      case 'start': return ['box_dark'];
-      case 'loot': return Array.from({ length: rng.int(2, 3) }, () => rng.pick(['box_olive', 'box_red', 'case_green']));
-      case 'vault': return ['case_red', 'case_red', 'case_green'];
-      case 'extraction': return rng.chance(0.4) ? ['box_olive'] : [];
-      default: return rng.chance(0.65) ? [rng.chance(0.25) ? 'box_red' : rng.pick(['box_dark', 'box_olive'])] : [];
-    }
-  })();
-  const wallSpots: [number, number][] = [];
-  for (let y = r.y; y < r.y + r.h; y++) {
-    for (let x = r.x; x < r.x + r.w; x++) {
-      const touchesWall = map.get(x - 1, y) === Tile.Wall || map.get(x + 1, y) === Tile.Wall
-        || map.get(x, y - 1) === Tile.Wall || map.get(x, y + 1) === Tile.Wall;
-      if (touchesWall) wallSpots.push([x, y]);
-    }
+  // --- Cover
+  const area = r.w * r.h;
+  const clusters = Math.min(5, Math.round((area / 26) * kit.cover + rng.next() * 0.8));
+  for (let k = 0, tries = 0; k < clusters && tries < 30; tries++) {
+    const shape = rng.pick(COVER_SHAPES);
+    const bx = rng.int(r.x + 1, r.x + r.w - 2);
+    const by = rng.int(r.y + 2, r.y + r.h - 2);
+    const tiles = shape.map(([dx, dy]) => [bx + dx, by + dy] as [number, number]);
+    if (tiles.some(([x, y]) => x <= r.x || y <= r.y + 1 || x >= r.x + r.w - 1 || y >= r.y + r.h - 1)) continue;
+    const single = shape.length === 1;
+    if (tryBlock(tiles, () => {
+      for (const [x, y] of tiles) {
+        const sprite = single && rng.chance(0.5) ? rng.pick(theme.clutter) : rng.chance(0.3) ? rng.pick(BARRELS) : rng.pick(CRATES);
+        map.props.push({ sprite, x: px(x) + TILE / 2, y: px(y + 1) });
+      }
+    })) k++;
   }
-  rng.shuffle(wallSpots);
-  for (const type of containerTypes) {
-    for (const spot of wallSpots) {
-      const placed = tryBlock([spot], () => {
-        map.containers.push({ type, tx: spot[0], ty: spot[1], risk });
-        mustTouch.push({ tx: spot[0], ty: spot[1] });
-      }, true);
-      if (placed) break;
+
+  // --- Somebody got here first: old remains, searchable.
+  if (r.role !== 'start' && r.role !== 'vault' && rng.chance(0.22)) {
+    // Off the walls, so the body lies on open floor.
+    const free = floorTiles(map, r).filter(([x, y]) => !reserved.has(key(x, y))
+      && x > r.x && x < r.x + r.w - 1 && y > r.y && y < r.y + r.h - 1);
+    if (free.length) {
+      const [x, y] = rng.pick(free);
+      reserved.add(key(x, y));
+      map.containers.push({ type: 'remains', tx: x, ty: y, risk, flat: true });
+      map.props.push({ sprite: rng.pick(['fx_blood_1', 'fx_blood_2']), x: px(x) + TILE / 2 + rng.int(-6, 6), y: px(y + 1) - 4, layer: 'floor', tint: 0x7a3a30 });
     }
   }
 
-  // --- Lights
+  // --- Stains
+  const stains = r.kind === 'workshop' || r.kind === 'reactor' ? rng.int(1, 3) : rng.chance(0.3) ? 1 : 0;
+  for (let i = 0; i < stains; i++) {
+    const [x, y] = rng.pick(floorTiles(map, r));
+    map.props.push({ sprite: rng.pick(['fx_blood_0', 'fx_blood_1', 'fx_blood_2']), x: px(x) + rng.int(4, 28), y: px(y) + rng.int(8, 30), layer: 'floor', tint: 0x2a2622 });
+  }
+
+  // --- Posters and vents on the back wall, where nothing stands in front of them.
+  const decorN = kit.decor.length ? rng.int(0, 2) : 0;
+  const decorX = backWallX().filter((x) => standsOnBackWall(x) && map.get(x, r.y) === Tile.Floor && !reserved.has(key(x, r.y)));
+  for (let i = 0; i < decorN && i < decorX.length; i++) {
+    map.props.push({ sprite: rng.pick(kit.decor), x: px(decorX[i]) + TILE / 2, y: px(r.y) - 6, layer: 'wall' });
+  }
+
+  // --- Lights, in fixtures on the back wall.
   const lit = r.role === 'standard' ? rng.chance(0.55) : r.role === 'loot' ? rng.chance(0.5) : true;
   if (lit) {
     const radius = Math.min(260, Math.max(150, Math.max(r.w, r.h) * TILE * 0.8));
     const count = r.w >= 10 ? 2 : 1;
+    const color = r.role === 'standard' || r.role === 'loot' ? theme.light.room : theme.light[r.role];
     for (let i = 0; i < count; i++) {
-      const lx = (r.x + (r.w * (i + 1)) / (count + 1)) * TILE;
+      const lx = Math.round((r.x + (r.w * (i + 1)) / (count + 1)) * TILE);
       map.lights.push({
-        x: lx, y: r.y * TILE + 6, color: LIGHT_COLORS[r.role], radius,
+        x: lx, y: r.y * TILE + 6, color, radius,
         intensity: r.role === 'start' ? 0.85 : 0.75,
         flicker: r.role === 'vault' ? rng.chance(0.6) : rng.chance(0.25),
+        fixture: map.get(Math.floor(lx / TILE), r.y - 1) === Tile.Wall,
       });
     }
   }
-  if (r.role === 'extraction' && map.extraction) {
-    const e = map.extraction;
-    map.lights.push({ x: (e.x + 1.5) * TILE, y: (e.y + 1.5) * TILE, color: 0x7dff9a, radius: 110, intensity: 0.6, flicker: false });
+  const pad = r.role === 'extraction' ? map.extraction : null;
+  if (pad) {
+    map.lights.push({ x: (pad.x + 1.5) * TILE, y: (pad.y + 1.5) * TILE, color: theme.light.extraction, radius: 110, intensity: 0.6, flicker: false });
   }
 
   // --- Enemies
@@ -372,18 +625,13 @@ function furnishRoom(
     switch (r.role) {
       case 'start': return 0;
       case 'loot': return rng.chance(0.7) ? 1 : 2;
-      case 'vault': return rng.int(2, 3);
+      case 'vault': return plan.vaultLocked ? 0 : rng.int(2, 3);
       case 'extraction': return 1;
       default: return (rng.chance(0.42) ? 1 : 0) + (r.depth >= 3 && rng.chance(0.25) ? 1 : 0);
     }
-  })();
+  })() + (plan.guards.get(index) ?? 0);
   const count = r.depth === 1 ? Math.min(1, base) : Math.round(base * danger);
-  const free: [number, number][] = [];
-  for (let y = r.y; y < r.y + r.h; y++) {
-    for (let x = r.x; x < r.x + r.w; x++) {
-      if (map.get(x, y) === Tile.Floor && !reserved.has(key(x, y))) free.push([x, y]);
-    }
-  }
+  const free = floorTiles(map, r).filter(([x, y]) => !reserved.has(key(x, y)));
   rng.shuffle(free);
   for (let i = 0; i < count && i < free.length; i++) {
     const [x, y] = free[i];
@@ -400,6 +648,14 @@ function furnishRoom(
     }
     map.spawns.push(spawn);
   }
+
+  if (breaker) plan.breakerAt = breaker;
+}
+
+function floorTiles(map: TileMap, r: Room): [number, number][] {
+  const out: [number, number][] = [];
+  for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) if (map.get(x, y) === Tile.Floor) out.push([x, y]);
+  return out;
 }
 
 /** All room floor is one connected area and every `touch` tile borders it. */

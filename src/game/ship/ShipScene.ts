@@ -129,7 +129,7 @@ export class ShipScene {
       this.starField.push({ x: Math.random() * VIEW_W * 1.6, y: Math.random() * VIEW_H * 1.6, b: Math.random(), tw: Math.random() * 6 });
     }
 
-    const { ground } = buildMapView(map, { floor: FLOOR_DECK, floorTint: 0xf0e4d4, wallTint: 0xffffff, trim: 0x7a2e20 });
+    const { ground } = buildMapView(map, { floor: FLOOR_DECK, floorTint: 0xf0e4d4, wall: 'wall_face_a', wallTint: 0xffffff, trim: 0x7a2e20 });
     // The cockpit is one painted piece over the nose of the ship.
     const cockpit = new Sprite(tex('ship_cockpit'));
     cockpit.anchor.set(0.5, 1);

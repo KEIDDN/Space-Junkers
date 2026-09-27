@@ -3,6 +3,7 @@ import {
   createItem, emptyLoadout, loadoutAdd, loadoutCount, loadoutItems, loadoutTake, loadoutUpdate, newUid,
   type Grid, type ItemInstance, type Loadout,
 } from '../core/inventory';
+import type { LoreEntry } from '../data/lore';
 import {
   loadWeapon, moveItem, quickMove, removeItem, splitStack, unloadWeapon, updateItem,
   type GridKey, type Target, type Workspace,
@@ -68,7 +69,15 @@ export interface RaidState {
   prompt: string | null;
   extractCountdown: number | null;
   extractInZone: boolean;
+  /** Which exit the countdown is for. */
+  extractKind: 'pad' | 'lift' | null;
   flashlight: boolean;
+  /** Terminal being read. */
+  terminal: LoreEntry | null;
+  /** Tactical map overlay [M]. */
+  mapOpen: boolean;
+  /** Lost without a body: the orbit window closed, or the raid was abandoned. */
+  mia: boolean;
 }
 
 let feedId = 0;
@@ -92,7 +101,11 @@ export const useRaid = create<RaidState>(() => ({
   prompt: null,
   extractCountdown: null,
   extractInZone: false,
+  extractKind: null,
   flashlight: true,
+  terminal: null,
+  mapOpen: false,
+  mia: false,
 }));
 
 function workspace(s: RaidState): Workspace {
@@ -116,12 +129,16 @@ export const raid = {
       containers: {}, open: null, inventoryOpen: false, kills: 0,
       log: { kills: [], searched: 0, visited: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
-      extractCountdown: null, extractInZone: false, flashlight: true,
+      extractCountdown: null, extractInZone: false, extractKind: null, flashlight: true,
+      terminal: null, mapOpen: false, mia: false,
     });
   },
 
-  end(status: RaidStatus): void {
-    useRaid.setState({ status, endedAt: performance.now(), prompt: null, extractCountdown: null, open: null, inventoryOpen: false });
+  end(status: RaidStatus, mia = false): void {
+    useRaid.setState({
+      status, mia, endedAt: performance.now(), prompt: null, extractCountdown: null, open: null, inventoryOpen: false,
+      terminal: null, mapOpen: false,
+    });
   },
 
   kill(enemy: string, headshot: boolean): void {
@@ -160,7 +177,7 @@ export const raid = {
   },
 
   openContainer(id: string, label: string): void {
-    useRaid.setState({ open: { id, label }, inventoryOpen: true });
+    useRaid.setState({ open: { id, label }, inventoryOpen: true, mapOpen: false, terminal: null });
   },
 
   closeInventory(): void {
@@ -170,7 +187,26 @@ export const raid = {
   toggleInventory(): void {
     const s = useRaid.getState();
     if (s.inventoryOpen) raid.closeInventory();
-    else useRaid.setState({ inventoryOpen: true });
+    else useRaid.setState({ inventoryOpen: true, mapOpen: false, terminal: null });
+  },
+
+  toggleMap(): void {
+    const s = useRaid.getState();
+    useRaid.setState({ mapOpen: !s.mapOpen, inventoryOpen: false, open: null, terminal: null });
+  },
+
+  /** Any overlay that takes the mouse away from the gun. */
+  overlayOpen(): boolean {
+    const s = useRaid.getState();
+    return s.inventoryOpen || s.mapOpen || s.terminal !== null;
+  },
+
+  /** Close whatever overlay is up. Returns false if none was. */
+  closeOverlay(): boolean {
+    const s = useRaid.getState();
+    if (!s.inventoryOpen && !s.mapOpen && !s.terminal) return false;
+    useRaid.setState({ open: null, inventoryOpen: false, mapOpen: false, terminal: null });
+    return true;
   },
 
   // --- Inventory operations (UI) --------------------------------------------

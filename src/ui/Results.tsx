@@ -6,11 +6,12 @@ import { QUEST } from '../data/quests';
 import { questStatus } from '../core/quests';
 import { useProfile } from '../state/profileStore';
 import { useRaid } from '../state/raidStore';
+import { facilityName } from '../data/themes';
 import { AtlasSprite } from './AtlasSprite';
 
 /** After-action report: what came home, or what was left on the floor. */
 export function Results({ onContinue }: { onContinue: () => void }) {
-  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed } = useRaid();
+  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed, mia, destination } = useRaid();
   const profile = useProfile();
   const extracted = status === 'extracted';
   const secs = Math.max(0, Math.round((endedAt - startedAt) / 1000));
@@ -26,11 +27,14 @@ export function Results({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="screen crt">
       <div className="panel results-panel">
-        <div className={`results-title ${extracted ? 'ok' : 'bad'}`}>{extracted ? 'EXTRACTION SUCCESSFUL' : 'K.I.A. // SIGNAL LOST'}</div>
-        <div className="small dim">
-          FACILITY #{String(seed).padStart(6, '0')} · TIME {time} · HOSTILES NEUTRALISED {kills}
+        <div className={`results-title ${extracted ? 'ok' : 'bad'}`}>
+          {extracted ? 'EXTRACTION SUCCESSFUL' : mia ? 'M.I.A. // LEFT BEHIND' : 'K.I.A. // SIGNAL LOST'}
         </div>
-        <div className="results-sub">{extracted ? 'RECOVERED FROM THE FACILITY' : 'LEFT ON YOUR BODY'}</div>
+        <div className="small dim">
+          {facilityName(destination, seed)} #{String(seed).padStart(6, '0')} · TIME {time} · HOSTILES NEUTRALISED {kills}
+        </div>
+        {mia && !extracted && <div className="small bad">Missing in action. Whatever you carried is gone with you.</div>}
+        <div className="results-sub">{extracted ? 'RECOVERED FROM THE FACILITY' : mia ? 'LOST WITH YOU' : 'LEFT ON YOUR BODY'}</div>
         <div className="loot-list">
           {rows.length === 0 && <div className="dim small">{extracted ? 'NOTHING FOUND. AT LEAST YOU\'RE ALIVE.' : 'NOTHING. YOU WENT IN WITH NOTHING.'}</div>}
           {rows.map((it) => {
@@ -49,7 +53,7 @@ export function Results({ onContinue }: { onContinue: () => void }) {
         <div className="results-total">
           {extracted
             ? <>HAUL: <span className="warn">{haul.toLocaleString()} CR</span> <span className="dim small">· carried home to the ship</span></>
-            : <>LOST WITH YOUR BODY: <span className="bad">{lost.toLocaleString()} CR</span></>}
+            : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{lost.toLocaleString()} CR</span></>}
         </div>
         {progressed.length > 0 && (
           <div className="results-contracts">

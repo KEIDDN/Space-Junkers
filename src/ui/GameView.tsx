@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { audio } from '../engine/audio';
 import { Game } from '../game/Game';
 import { applyRaid } from '../core/quests';
@@ -6,12 +6,16 @@ import { die, extract, foundItems } from '../core/raidResult';
 import { getProfile, useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
 import { useSettings } from '../state/settingsStore';
+import { useHud } from '../state/hudStore';
+import { facilityName } from '../data/themes';
 import { Hud } from './Hud';
+import { TacticalMap } from './TacticalMap';
+import { TerminalView } from './TerminalView';
 import { RaidInventory } from './inventory/InventoryScreen';
 import { Results } from './Results';
 
 /** Bank or lose the loadout. Runs once per raid, from whichever path ends it first. */
-function settleRaid(status: 'extracted' | 'dead'): void {
+export function settleRaid(status: 'extracted' | 'dead'): void {
   const s = useRaid.getState();
   if (s.mode !== 'facility') return;
   const p = getProfile();
@@ -98,8 +102,7 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'Tab') e.preventDefault(); // never let TAB move browser focus mid-raid
       if (e.code !== 'Escape') return;
-      if (useRaid.getState().inventoryOpen) {
-        raid.closeInventory();
+      if (raid.closeOverlay()) {
         audio.ui('close');
         return;
       }
@@ -110,10 +113,14 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  const snapshot = useCallback(() => gameRef.current?.tacticalSnapshot() ?? null, []);
+  const destination = useRaid((s) => s.destination);
+  const timeLeft = useHud((s) => s.timeLeft);
+
   const abandon = () => {
     audio.ui('click');
     if (mode === 'facility') {
-      raid.end('dead');
+      raid.end('dead', true);
       settleRaid('dead');
       setPaused(false);
     } else onExit();
@@ -127,6 +134,8 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
         <div ref={hostRef} className="game-host" />
         <Hud />
         <RaidInventory />
+        <TerminalView />
+        {mode === 'facility' && <TacticalMap snapshot={snapshot} name={facilityName(destination, seed)} timeLeft={timeLeft} />}
         {paused && <PauseMenu facility={mode === 'facility'} onResume={() => setPaused(false)} onAbandon={abandon} />}
       </div>
     </div>

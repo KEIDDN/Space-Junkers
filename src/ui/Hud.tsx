@@ -3,6 +3,8 @@ import { itemDef } from '../data/items';
 import { liveTracker } from '../core/quests';
 import { haulValue } from '../core/raidResult';
 import { useProfile } from '../state/profileStore';
+import { facilityName } from '../data/themes';
+import { fmt } from './TacticalMap';
 import { useRaid, type FeedEntry } from '../state/raidStore';
 import { useHud } from '../state/hudStore';
 import { AtlasSprite } from './AtlasSprite';
@@ -174,7 +176,10 @@ export function Hud() {
   const countdown = useRaid((s) => s.extractCountdown);
   const inZone = useRaid((s) => s.extractInZone);
   const flashlight = useRaid((s) => s.flashlight);
-  const inventoryOpen = useRaid((s) => s.inventoryOpen);
+  const inventoryOpen = useRaid((s) => s.inventoryOpen || s.mapOpen || s.terminal !== null);
+  const extractKind = useRaid((s) => s.extractKind);
+  const destination = useRaid((s) => s.destination);
+  const timeLeft = useHud((s) => s.timeLeft);
   const facility = mode === 'facility';
   const haul = facility ? haulValue(loadout, brought) : 0;
 
@@ -183,8 +188,13 @@ export function Hud() {
       <div className="hud-tl crt-text">
         {facility ? (
           <>
-            <div>FACILITY #{String(seed).padStart(6, '0')}</div>
-            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} [F]</div>
+            <div>{facilityName(destination, seed)} <span className="dim">#{String(seed).padStart(6, '0')}</span></div>
+            {timeLeft >= 0 && (
+              <div className={timeLeft <= 60 ? 'bad blink' : timeLeft <= 120 ? 'bad' : timeLeft <= 300 ? 'warn' : 'dim'}>
+                ORBIT WINDOW {fmt(timeLeft)}
+              </div>
+            )}
+            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} [F] · <span className="dim">MAP [M]</span></div>
             <Tracker />
           </>
         ) : (
@@ -208,7 +218,9 @@ export function Hud() {
 
       {countdown !== null && !dead && (
         <div className="hud-extract crt-text">
-          <div className={inZone ? 'ok' : 'bad blink'}>{inZone ? 'EXTRACTION INBOUND. HOLD THE ZONE' : 'RETURN TO THE EXTRACTION ZONE'}</div>
+          <div className={inZone ? 'ok' : 'bad blink'}>
+            {extractKind === 'lift' ? 'LIFT RISING. STAY ON THE PLATFORM' : inZone ? 'EXTRACTION INBOUND. HOLD THE ZONE' : 'RETURN TO THE EXTRACTION ZONE'}
+          </div>
           <div className="big ok">{countdown.toFixed(1)}</div>
         </div>
       )}

@@ -49,6 +49,41 @@ export const CONTAINERS: Record<string, ContainerDef> = {
     rarity: { common: 6, uncommon: 32, rare: 44, epic: 16, legendary: 2 },
     categories: { valuables: 5, technology: 4, documents: 3, minerals: 2, alien: 1 },
   },
+  locker: {
+    id: 'locker', label: 'LOCKER', sprite: 'ship_tall_locker', searchTime: 1.6, grid: [3, 4], rolls: [1, 3],
+    rarity: { common: 52, uncommon: 36, rare: 10, epic: 1.5, legendary: 0.1 },
+    categories: { valuables: 2, food: 2, documents: 1.5, medical: 1.2, ammo: 1.2, gear: 1, tools: 1 },
+  },
+  medcab: {
+    id: 'medcab', label: 'MEDICAL CABINET', sprite: 'med_cabinet', searchTime: 1.5, grid: [3, 3], rolls: [1, 3],
+    rarity: { common: 50, uncommon: 38, rare: 10, epic: 2, legendary: 0 },
+    categories: { medical: 9, alien: 1 },
+  },
+  server: {
+    id: 'server', label: 'SERVER RACK', sprite: 'hack_rack', searchTime: 2, grid: [3, 4], rolls: [1, 2],
+    rarity: { common: 30, uncommon: 44, rare: 22, epic: 4, legendary: 0 },
+    categories: { technology: 5, electronics: 4, documents: 3 },
+  },
+  filing: {
+    id: 'filing', label: 'FILING CABINET', sprite: 'ship_cabinet_s', searchTime: 1.4, grid: [3, 3], rolls: [1, 2],
+    rarity: { common: 45, uncommon: 40, rare: 13, epic: 2, legendary: 0.2 },
+    categories: { documents: 5, valuables: 1.5, electronics: 2, food: 1 },
+  },
+  toolbox: {
+    id: 'toolbox', label: 'TOOLBOX', sprite: 'ship_toolbox', searchTime: 1.1, grid: [4, 2], rolls: [1, 3],
+    rarity: { common: 62, uncommon: 32, rare: 6, epic: 0.5, legendary: 0 },
+    categories: { tools: 5, scrap: 4, electronics: 2 },
+  },
+  ammocase: {
+    id: 'ammocase', label: 'AMMO CASE', sprite: 'merc_case', searchTime: 1.6, grid: [4, 3], rolls: [1, 3],
+    rarity: { common: 45, uncommon: 38, rare: 15, epic: 2, legendary: 0 },
+    categories: { ammo: 8, gear: 2, weapons: 0.5 },
+  },
+  remains: {
+    id: 'remains', label: 'REMAINS', sprite: 'scav_dead_0', searchTime: 1.3, grid: [4, 3], rolls: [1, 3],
+    rarity: { common: 50, uncommon: 38, rare: 10, epic: 2, legendary: 0.1 },
+    categories: { food: 2, medical: 2, ammo: 2, valuables: 1.5, documents: 1.5, weapons: 0.6 },
+  },
 };
 
 /** Grids for corpses and dropped piles. */

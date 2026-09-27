@@ -6,6 +6,8 @@ import { GUN_HEIGHT, MAX_DT, VIEW_H, VIEW_W } from '../engine/config';
 import { Input } from '../engine/input';
 import { Rng } from '../engine/rng';
 import { DESTINATION } from '../data/destinations';
+import { loreEntry } from '../data/lore';
+import { themeFor, type Theme } from '../data/themes';
 import { ENEMIES } from '../data/enemies';
 import { ITEMS, type ArmorDef, type WeaponItemDef } from '../data/items';
 import { BODY_GRID, BODY_POCKETS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
@@ -24,12 +26,13 @@ import { Player } from './entities/Player';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
 import { Lighting } from './render/lighting';
-import { buildMapView } from './render/mapView';
+import { DEFAULT_LOOK, buildMapView } from './render/mapView';
 import { ScreenOverlay } from './render/screenOverlay';
+import type { TacticalSnapshot } from './tactical';
 import { hasLineOfSight, type RayHit } from './world/collision';
 import { Doors } from './world/doors';
 import { generateFacility } from './world/facilityGen';
-import { mapFromAscii, type TileMap } from './world/tilemap';
+import { Tile, mapFromAscii, type TileMap } from './world/tilemap';
 
 export interface GameOptions {
   mode: 'range' | 'facility';
@@ -42,6 +45,12 @@ export interface GameOptions {
 
 /** Seconds the K.I.A. screen shows before a facility run ends. */
 const DEATH_LINGER = 2.4;
+/** Seconds into a raid when another crew lands. */
+const SQUAD_TIMES = [330, 640, 930];
+/** Orbit window warnings, in seconds left. */
+const WARNINGS = [300, 120, 60, 30];
+/** How far the operator's map fills in around them (tiles). */
+const SURVEY_RADIUS = 9;
 
 /**
  * Owns the Pixi application and the game loop for one play session.
@@ -84,6 +93,17 @@ export class Game {
   private hitstopTime = 0;
   private deadTime = 0;
   private ended = false;
+  private theme: Theme = themeFor(undefined);
+  /** Raid clock (seconds) and the orbit window. */
+  private elapsed = 0;
+  private window = Infinity;
+  private warned = 0;
+  private squads = 0;
+  private alarmSquad = false;
+  /** Tiles the operator has seen, for the tactical map. */
+  private explored = new Uint8Array(0);
+  private surveyTimer = 0;
+  private terminalAt: { x: number; y: number } | null = null;
   paused = false;
 
   constructor(private opts: GameOptions) {}
@@ -201,9 +221,19 @@ export class Game {
     this.ended = false;
 
     const dest = DESTINATION[useRaid.getState().destination];
-    this.map = this.opts.mode === 'facility'
-      ? generateFacility(this.opts.seed, { danger: dest?.dangerMul ?? 1, enemies: dest?.enemies })
+    const facility = this.opts.mode === 'facility';
+    this.theme = themeFor(dest?.id);
+    this.map = facility
+      ? generateFacility(this.opts.seed, { danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme })
       : mapFromAscii(TEST_RANGE);
+    this.elapsed = 0;
+    this.window = facility ? (dest?.minutes ?? 18) * 60 : Infinity;
+    this.warned = 0;
+    this.squads = 0;
+    this.alarmSquad = false;
+    this.explored = new Uint8Array(this.map.width * this.map.height);
+    this.surveyTimer = 0;
+    this.terminalAt = null;
     this.camera = new Camera(this.map.pixelWidth, this.map.pixelHeight);
     const map = this.map;
     this.audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
@@ -232,13 +262,18 @@ export class Game {
       onExplode: (x, y, r, dmg, faction) => this.onExplode(x, y, r, dmg, faction),
     });
 
-    const { ground, props } = buildMapView(this.map);
+    const t = this.theme;
+    const look = facility ? { floor: t.floor, floorTint: t.floorTint, wall: t.wall, wallTint: t.wallTint, trim: t.trim } : DEFAULT_LOOK;
+    const { ground, props } = buildMapView(this.map, look);
     this.doors = this.map.doors.length ? new Doors(this.map, this.audio, this.ctx.emitNoise) : null;
     this.interactions = new Interactions(this.map, this.audio, {
       onNoise: this.ctx.emitNoise,
       onLight: this.ctx.lightFlash,
       onExtracted: () => this.endRun('extracted'),
-    }, this.actorLayer);
+      onSignal: (x, y) => this.onSignal(x, y),
+      onUnlock: (door) => this.doors?.unlock(door),
+      onTerminal: (n) => this.openTerminal(n),
+    }, this.actorLayer, facility ? t.loot : {});
 
     this.worldLit.addChild(ground);
     if (this.doors) this.worldLit.addChild(this.doors.container);
@@ -271,10 +306,10 @@ export class Game {
     this.camera.snapTo(this.player.x, this.player.y);
   }
 
-  private endRun(status: 'extracted' | 'dead'): void {
+  private endRun(status: 'extracted' | 'dead', mia = false): void {
     if (this.ended) return;
     this.ended = true;
-    raid.end(status);
+    raid.end(status, mia);
     this.opts.onEnd?.(status);
   }
 
@@ -298,6 +333,10 @@ export class Game {
     }
 
     if (this.input.wasPressed('Tab') && this.player.alive) raid.toggleInventory();
+    if (this.input.wasPressed('KeyM') && this.player.alive && this.opts.mode === 'facility') {
+      raid.toggleMap();
+      this.audio.ui(useRaid.getState().mapOpen ? 'open' : 'close');
+    }
 
     if (this.hitstopTime > 0) {
       this.hitstopTime -= dt;
@@ -310,7 +349,17 @@ export class Game {
 
   private simulate(dt: number): void {
     const p = this.player;
-    const menuOpen = useRaid.getState().inventoryOpen;
+    // Reading a terminal ends with E or by walking away. That E press doesn't also reopen it.
+    let closedTerminal = false;
+    if (this.terminalAt && useRaid.getState().terminal) {
+      if (this.input.wasPressed('KeyE') || Math.hypot(p.x - this.terminalAt.x, p.y - this.terminalAt.y) > 36) {
+        raid.closeOverlay();
+        this.audio.ui('close');
+        this.terminalAt = null;
+        closedTerminal = true;
+      }
+    }
+    const menuOpen = raid.overlayOpen() || closedTerminal;
     this.runCommands();
 
     const aim = this.camera.toWorld(this.input.mouseX, this.input.mouseY);
@@ -333,14 +382,158 @@ export class Game {
     this.effects.update(dt);
 
     this.trackRooms(dt);
+    this.survey(dt);
+    this.raidClock(dt);
     const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25, menuOpen);
-    if (menuOpen && this.input.wasPressed('KeyE')) raid.closeInventory();
+    if (menuOpen && this.input.wasPressed('KeyE')) raid.closeOverlay();
+    const zone = this.map.exitAt(p.x, p.y);
     raid.patch({
       prompt: view.prompt,
       extractCountdown: view.countdown === null ? null : Math.ceil(view.countdown * 10) / 10,
       extractInZone: view.inZone,
+      extractKind: view.countdown === null ? null : zone?.kind === 'lift' ? 'lift' : 'pad',
       flashlight: p.flashlight,
     });
+  }
+
+  /** Fill in the operator's map: everything in line of sight nearby. */
+  private survey(dt: number): void {
+    if (this.opts.mode !== 'facility') return;
+    this.surveyTimer -= dt;
+    if (this.surveyTimer > 0) return;
+    this.surveyTimer = 0.25;
+    const map = this.map;
+    const ptx = Math.floor(this.player.x / 32);
+    const pty = Math.floor(this.player.y / 32);
+    const R = SURVEY_RADIUS;
+    for (let ty = pty - R; ty <= pty + R; ty++) {
+      for (let tx = ptx - R; tx <= ptx + R; tx++) {
+        if (tx < 0 || ty < 0 || tx >= map.width || ty >= map.height) continue;
+        const i = ty * map.width + tx;
+        if (this.explored[i] || (tx - ptx) ** 2 + (ty - pty) ** 2 > R * R) continue;
+        const t = map.get(tx, ty);
+        if (t === Tile.Void || t === Tile.Wall) continue;
+        if (hasLineOfSight(map, this.player.x, this.player.y - 6, tx * 32 + 16, ty * 32 + 16)) this.explored[i] = 1;
+      }
+    }
+  }
+
+  /**
+   * Raid pressure: the Lastochka can only hold orbit so long, and other crews keep landing.
+   */
+  private raidClock(dt: number): void {
+    if (this.opts.mode !== 'facility' || !this.player.alive) return;
+    this.elapsed += dt;
+    const left = this.window - this.elapsed;
+    while (this.warned < WARNINGS.length && left <= WARNINGS[this.warned]) {
+      const w = WARNINGS[this.warned++];
+      const text = w >= 60 ? `${w / 60} MIN` : `${w} SEC`;
+      raid.notice(`FEDYA: orbit window closes in ${text}. I can't wait for you.`, w <= 60 ? 'bad' : 'warn');
+      this.audio.ui('error');
+    }
+    if (left <= 0) {
+      raid.notice('The Lastochka broke orbit without you.', 'bad');
+      this.endRun('dead', true);
+      return;
+    }
+    if (this.squads < SQUAD_TIMES.length && this.elapsed >= SQUAD_TIMES[this.squads]) {
+      this.squads++;
+      if (this.spawnSquad(null)) raid.notice('RADIO: fresh voices on the channel. Another crew just landed.', 'warn');
+    }
+  }
+
+  /** Seconds left in the orbit window (Infinity on the range). */
+  get timeLeft(): number {
+    return this.window - this.elapsed;
+  }
+
+  /** The pad alarm pulls in a squad from elsewhere in the facility. */
+  private onSignal(x: number, y: number): void {
+    if (this.alarmSquad) return;
+    this.alarmSquad = true;
+    const squad = this.spawnSquad({ x, y });
+    if (squad) raid.notice('The alarm carries. Hostiles moving toward the pad.', 'bad');
+  }
+
+  /**
+   * Bring in a fresh squad in a room well away from the player.
+   * @param rush where they head straight for (the alarm), or null to sweep toward the player.
+   */
+  private spawnSquad(rush: { x: number; y: number } | null): boolean {
+    const map = this.map;
+    const dest = DESTINATION[useRaid.getState().destination];
+    const mix = dest?.enemies ?? { scavenger: 1 };
+    const p = this.player;
+    const center = (r: { x: number; y: number; w: number; h: number }) => ({ x: (r.x + r.w / 2) * 32, y: (r.y + r.h / 2) * 32 });
+    const rooms = map.rooms
+      .filter((r) => r.role !== 'vault')
+      .map((r) => ({ r, d: Math.hypot(center(r).x - p.x, center(r).y - p.y) }))
+      .filter((q) => q.d > 32 * 14)
+      .sort((a, b) => b.d - a.d);
+    if (!rooms.length) return false;
+    const pick = rooms[Math.floor(Math.random() * Math.min(3, rooms.length))].r;
+    const free: [number, number][] = [];
+    for (let y = pick.y; y < pick.y + pick.h; y++) {
+      for (let x = pick.x; x < pick.x + pick.w; x++) if (map.get(x, y) === Tile.Floor) free.push([x, y]);
+    }
+    if (!free.length) return false;
+    const size = (dest?.danger ?? 1) >= 3 ? 3 : 2;
+    const here = map.rooms.find((r) => p.x / 32 >= r.x && p.x / 32 < r.x + r.w && p.y / 32 >= r.y && p.y / 32 < r.y + r.h);
+    const goal = rush ?? (here ? center(here) : { x: p.x, y: p.y });
+    for (let i = 0; i < size; i++) {
+      const [tx, ty] = free[Math.floor(Math.random() * free.length)];
+      const kinds = Object.keys(mix);
+      const weights = Object.values(mix);
+      let roll = Math.random() * weights.reduce((a, b) => a + b, 0);
+      let kind = kinds[0];
+      for (let k = 0; k < kinds.length; k++) {
+        roll -= weights[k];
+        if (roll <= 0) {
+          kind = kinds[k];
+          break;
+        }
+      }
+      const x = tx * 32 + 16;
+      const y = ty * 32 + 16;
+      const e = new Enemy(this.ctx, ENEMIES[kind], x, y, rush ? null : [{ x, y }, goal, { x, y }]);
+      e.allies = this.enemies;
+      this.enemies.push(e);
+      this.targets.push(e);
+      this.actorLayer.addChild(e.view.container);
+      if (this.lighting) e.view.container.alpha = 0;
+      if (rush) e.alertTo(rush.x + (Math.random() - 0.5) * 60, rush.y + (Math.random() - 0.5) * 60, 0.5 + i * 0.6);
+    }
+    return true;
+  }
+
+  private openTerminal(n: number): void {
+    const s = useRaid.getState();
+    this.terminalAt = { x: this.player.x, y: this.player.y };
+    useRaid.setState({ terminal: loreEntry(s.destination, this.opts.seed, n), inventoryOpen: false, open: null, mapOpen: false });
+  }
+
+  /** The tactical map's view of the facility (for the [M] overlay). */
+  tacticalSnapshot(): TacticalSnapshot | null {
+    if (this.opts.mode !== 'facility' || !this.map) return null;
+    const map = this.map;
+    const scanner = useProfile.getState().upgrades.includes('scanner');
+    return {
+      width: map.width,
+      height: map.height,
+      tiles: map.tiles,
+      explored: this.explored,
+      doors: map.doors.map((d) => ({ tiles: d.tiles, locked: !!d.locked })),
+      exits: map.exits.map((e) => ({
+        kind: e.kind, x: e.x, y: e.y, w: e.w, h: e.h,
+        powered: this.interactions.isPowered(e),
+        breaker: e.breaker ?? null,
+        breakerKnown: !!e.breaker && (this.explored[e.breaker.ty * map.width + e.breaker.tx] === 1 || this.interactions.breakerThrown(e)),
+      })),
+      rooms: map.rooms.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h, role: r.role, kind: r.kind ?? '' })),
+      containers: this.interactions.containerStates(),
+      player: { x: this.player.x / 32, y: this.player.y / 32, aim: this.player.aim },
+      scanner,
+    };
   }
 
   private roomTimer = 0;
@@ -400,7 +593,7 @@ export class Game {
     const dist = Math.hypot(this.input.mouseX - psx, this.input.mouseY - psy);
     const moveFactor = Math.min(1, p.speed / 112);
     const spreadPx = w ? Math.tan((w.spread(moveFactor) * Math.PI) / 180) * dist : 6;
-    const menuOpen = useRaid.getState().inventoryOpen;
+    const menuOpen = raid.overlayOpen();
     const st = p.status;
     this.overlay.update(dt, this.input.mouseX, this.input.mouseY, spreadPx,
       w?.reloading ? w.reloadProgress : st.using >= 0 ? st.using : -1, psx, psy, p.hp / p.maxHp, !menuOpen && p.alive, st.bleeding);
@@ -443,6 +636,7 @@ export class Game {
       quick,
       weight: Math.round(loadoutWeight(lo)),
       exfil,
+      timeLeft: Number.isFinite(this.window) ? Math.max(0, Math.ceil(this.window - this.elapsed)) : -1,
       hostiles,
       dead: !p.alive,
       cleared: hostiles === 0,
@@ -570,6 +764,9 @@ export class Game {
       const id = rollItemId(rng, BODY_POCKETS, 0.2);
       if (id) grid = addToGrid(grid, foundInstance(rng, id)).grid;
     }
+    // Security and garrison officers sometimes carry a worn vault card.
+    const card = e.def.id === 'security' ? 0.12 : e.def.id === 'soldier' ? 0.05 : 0;
+    if (rng.chance(card)) grid = addToGrid(grid, createItem('keycard', { dur: rng.int(1, 2) })).grid;
     this.interactions.addBody(`body${i}`, () => ({ x: e.x, y: e.y }), grid);
   }
 

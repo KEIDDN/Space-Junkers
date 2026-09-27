@@ -304,6 +304,52 @@ def tint(img: Image.Image, mul: tuple[float, float, float], desat: float) -> Ima
     return Image.fromarray(arr.astype(np.uint8), "RGBA")
 
 
+def recolor_trim(img: Image.Image, hue: float, sat_mul: float, body: tuple[float, float, float], desat: float) -> Image.Image:
+    """Repaint the rust-red trim of a wall in another hue and grade the rest (facility themes)."""
+    arr = np.array(img).astype(np.float32)
+    rgb = arr[:, :, :3] / 255.0
+    mx = rgb.max(axis=2)
+    mn = rgb.min(axis=2)
+    delta = mx - mn
+    sat = np.where(mx > 0, delta / np.maximum(mx, 1e-6), 0)
+    r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+    h = np.zeros_like(mx)
+    m = delta > 1e-6
+    rm = m & (mx == r)
+    gm = m & (mx == g) & ~rm
+    bm = m & ~rm & ~gm
+    h[rm] = ((g - b)[rm] / delta[rm]) % 6
+    h[gm] = (b - r)[gm] / delta[gm] + 2
+    h[bm] = (r - g)[bm] / delta[bm] + 4
+    h *= 60
+    reddish = ((h < 28) | (h > 335)) & (sat > 0.28)
+    # Other pixels: desaturate and grade.
+    grey = rgb.mean(axis=2, keepdims=True)
+    graded = (rgb * (1 - desat) + grey * desat) * np.array(body, dtype=np.float32)
+    # Trim pixels: same value, new hue.
+    v = mx
+    s2 = np.clip(sat * sat_mul, 0, 1)
+    hh = (hue / 60.0) % 6
+    c = v * s2
+    x = c * (1 - np.abs(hh % 2 - 1))
+    z = np.zeros_like(v)
+    sector = int(hh)
+    comps = [(c, x, z), (x, c, z), (z, c, x), (z, x, c), (x, z, c), (c, z, x)][sector]
+    trim_rgb = np.stack([comps[0] + (v - c), comps[1] + (v - c), comps[2] + (v - c)], axis=2)
+    out = np.where(reddish[:, :, None], trim_rgb, graded)
+    arr[:, :, :3] = np.clip(out * 255, 0, 255)
+    return Image.fromarray(arr.astype(np.uint8), "RGBA")
+
+
+# Wall palettes per facility theme: (trim hue, trim saturation, body grade, body desaturation).
+WALL_VARIANTS = {
+    "ice": (205, 0.45, (0.86, 0.94, 1.04), 0.55),
+    "corp": (212, 0.7, (0.92, 0.97, 1.05), 0.7),
+    "alien": (282, 0.8, (0.9, 0.84, 1.0), 0.5),
+    "ochre": (24, 1.0, (1.04, 0.92, 0.82), 0.2),
+}
+
+
 def silhouette(img: Image.Image) -> Image.Image:
     arr = np.array(img)
     arr[:, :, :3] = np.where(arr[:, :, 3:4] > 0, 255, 0)
@@ -445,6 +491,8 @@ def build() -> None:
 
     # Wall faces (taller than a tile) and 2x2-tile floor plates
     frames["wall_face_a"] = to_pixels_fit_w(crop(TILES, WALL_FACE_PLAIN, pad=0), TILE)
+    for key, (hue, sat, body, desat) in WALL_VARIANTS.items():
+        frames[f"wall_face_a_{key}"] = recolor_trim(frames["wall_face_a"], hue, sat, body, desat)
     for key, rect in (("wall_face_r", WALL_FACE_END_R), ("wall_face_l", WALL_FACE_END_L)):
         full = to_pixels_fit_w(crop(TILES, rect, pad=0), round(TILE * (rect[2] - rect[0]) / (WALL_FACE_PLAIN[2] - WALL_FACE_PLAIN[0])))
         frames[key] = full

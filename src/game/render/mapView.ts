@@ -13,13 +13,15 @@ export interface MapLook {
   floor: FloorStyle;
   /** Multiply tint for floor plates (theme colour). */
   floorTint: number;
+  /** Wall face sprite. */
+  wall: string;
   /** Tint for wall faces. */
   wallTint: number;
   /** Colour of the rust trim along wall caps. */
   trim: number;
 }
 
-export const DEFAULT_LOOK: MapLook = { floor: FLOOR_DECK, floorTint: 0xffffff, wallTint: 0xffffff, trim: 0x6e2a1f };
+export const DEFAULT_LOOK: MapLook = { floor: FLOOR_DECK, floorTint: 0xffffff, wall: 'wall_face_a', wallTint: 0xffffff, trim: 0x6e2a1f };
 
 const CAP = 0x16130f;
 const CAP_EDGE = 0x0a0908;
@@ -68,10 +70,10 @@ export function buildMapView(map: TileMap, look: MapLook = DEFAULT_LOOK): { grou
       if (t === Tile.Wall) {
         const face = isOpen(map.get(tx, ty + 1));
         if (face) {
-          const s = new Sprite(tex('wall_face_a'));
+          const s = new Sprite(tex(look.wall));
           s.anchor.set(0, 1);
           s.position.set(x, y + TILE);
-          s.tint = look.wallTint;
+          if (look.wallTint !== 0xffffff) s.tint = look.wallTint;
           faces.addChild(s);
           // Where the face row ends, darken the edge so it reads as a corner.
           if (!isFaceWall(map, tx - 1, ty)) caps.rect(x, y - FACE_RISE, 2, TILE + FACE_RISE).fill({ color: CAP_EDGE, alpha: 0.8 });
@@ -105,15 +107,37 @@ export function buildMapView(map: TileMap, look: MapLook = DEFAULT_LOOK): { grou
       if (map.get(tx + 1, ty) === Tile.Wall) shade.rect(x + TILE - 2, y, 2, TILE).fill({ color: 0x000000, alpha: 0.2 });
     }
   }
-  ground.addChild(floors, shade, caps, faces);
+  const floorDecor = new Container();
+  const wallDecor = new Container();
+  ground.addChild(floors, floorDecor, shade, caps, faces, wallDecor);
 
-  const props = map.props.map((p) => {
+  // Lamp housings on the wall above each fixture light.
+  const lamps = new Graphics();
+  for (const l of map.lights) {
+    if (!l.fixture) continue;
+    const x = Math.round(l.x);
+    const y = Math.floor(l.y / TILE) * TILE;
+    lamps.rect(x - 1, y - 18, 2, 4).fill({ color: 0x0c0b0a });
+    lamps.rect(x - 8, y - 14, 16, 6).fill({ color: 0x1a1612 });
+    lamps.rect(x - 8, y - 14, 16, 1).fill({ color: 0x3a342c });
+    lamps.rect(x - 6, y - 11, 12, 2).fill({ color: lighten(lighten(l.color)) });
+  }
+  wallDecor.addChild(lamps);
+
+  const props: Sprite[] = [];
+  for (const p of map.props) {
     const s = new Sprite(tex(p.sprite));
     s.anchor.set(0.5, 1);
-    s.position.set(p.tx * TILE + TILE / 2, p.ty * TILE + TILE);
-    s.zIndex = s.y;
-    return s;
-  });
+    s.position.set(Math.round(p.x), Math.round(p.y));
+    if (p.flip) s.scale.x = -1;
+    if (p.tint !== undefined) s.tint = p.tint;
+    if (p.layer === 'floor') floorDecor.addChild(s);
+    else if (p.layer === 'wall') wallDecor.addChild(s);
+    else {
+      s.zIndex = s.y;
+      props.push(s);
+    }
+  }
   return { ground, props };
 }
 

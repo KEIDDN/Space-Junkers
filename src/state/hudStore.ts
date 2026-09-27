@@ -37,6 +37,8 @@ export interface HudState {
 
   /** Signal scanner readout toward the extraction zone ('' without the upgrade). */
   exfil: string;
+  /** Seconds left in the orbit window, or -1 without one. */
+  timeLeft: number;
 
   hostiles: number;
   dead: boolean;
@@ -67,6 +69,7 @@ export const useHud = create<HudState>(() => ({
   quick: '',
   weight: 0,
   exfil: '',
+  timeLeft: -1,
   hostiles: 0,
   dead: false,
   cleared: false,
