@@ -1,26 +1,44 @@
 import { useState } from 'react';
 import { deploy as deployProfile } from '../core/raidResult';
 import { getProfile, useProfile } from '../state/profileStore';
-import { raid, rangeLoadout } from '../state/raidStore';
+import { raid, rangeLoadout, useRaid } from '../state/raidStore';
 import { GameView } from '../ui/GameView';
-import { MainMenu } from '../ui/MainMenu';
+import { recentRaid } from '../ui/ship/CrewPanel';
+import { ShipView } from '../ui/ship/ShipView';
+import { TitleScreen } from '../ui/TitleScreen';
 
-export type RunConfig = { mode: 'range' | 'facility'; seed: number; destination?: string };
+type Scene =
+  | { kind: 'title' }
+  | { kind: 'ship' }
+  | { kind: 'raid'; mode: 'range' | 'facility'; seed: number; destination: string; key: number };
 
+/** Scene flow: title → ship ⇄ raid (→ results) → ship. */
 export function App() {
-  const [run, setRun] = useState<(RunConfig & { key: number }) | null>(null);
-  const deploy = (cfg: RunConfig) => {
-    if (cfg.mode === 'facility') {
-      const destination = cfg.destination ?? 'tikhaya';
-      const p = getProfile();
-      // Mark the raid in the save before anything else: from here on, leaving means losing the kit.
-      useProfile.getState().apply(deployProfile(p, destination, cfg.seed));
-      raid.start('facility', cfg.seed, destination, p.loadout);
-    } else {
-      raid.start('range', 0, 'range', rangeLoadout());
-    }
-    setRun({ ...cfg, key: Date.now() });
+  const [scene, setScene] = useState<Scene>({ kind: 'title' });
+
+  const deploy = (destination: string, seed: number) => {
+    const p = getProfile();
+    // Mark the raid in the save before anything else: from here on, leaving means losing the kit.
+    useProfile.getState().apply({ ...deployProfile(p, destination, seed), course: null });
+    raid.start('facility', seed, destination, p.loadout);
+    setScene({ kind: 'raid', mode: 'facility', seed, destination, key: Date.now() });
   };
-  if (!run) return <MainMenu onDeploy={deploy} />;
-  return <GameView key={run.key} mode={run.mode} seed={run.seed} onExit={() => setRun(null)} />;
+
+  const range = () => {
+    raid.start('range', 0, 'range', rangeLoadout());
+    setScene({ kind: 'raid', mode: 'range', seed: 0, destination: 'range', key: Date.now() });
+  };
+
+  const backFromRaid = () => {
+    const s = useRaid.getState();
+    if (s.mode === 'facility') {
+      recentRaid.outcome = s.status === 'extracted' ? 'extracted' : 'dead';
+      recentRaid.greeted.clear();
+      setScene({ kind: 'ship' });
+    } else setScene({ kind: 'title' });
+  };
+
+  if (scene.kind === 'title') return <TitleScreen onContinue={() => setScene({ kind: 'ship' })} onRange={range} />;
+  if (scene.kind === 'ship') return <ShipView onDeploy={deploy} onQuit={() => setScene({ kind: 'title' })} />;
+  return <GameView key={scene.key} mode={scene.mode} seed={scene.seed} onExit={backFromRaid} />;
 }

@@ -36,6 +36,12 @@ export interface RaidMarker {
   startedAt: number;
 }
 
+/** A paid jump: where the ship is now, and which facility the operator will deploy into. */
+export interface Course {
+  destination: string;
+  seed: number;
+}
+
 export interface Stats {
   raids: number;
   extractions: number;
@@ -65,6 +71,8 @@ export interface Profile {
   purchases: Record<string, number>;
   /** Set while a raid is running. If it is still set on load, the raid was abandoned. */
   raid: RaidMarker | null;
+  /** Course laid in at the nav console (fuel already paid). Cleared on deploy. */
+  course: Course | null;
   stats: Stats;
 }
 
@@ -109,6 +117,7 @@ export function newProfile(operator: Operator = 'm'): Profile {
     day: 1,
     purchases: {},
     raid: null,
+    course: null,
     stats: { raids: 0, extractions: 0, deaths: 0, kills: 0, creditsEarned: 0, bestHaul: 0 },
   };
 }
@@ -157,6 +166,7 @@ export function migrate(raw: unknown, fromVersion: number): { profile: Profile; 
       p.credits += credited;
       notes.push(`Stash overflow sold for ${credited} CR.`);
     }
+    p.flags.started = true;
     notes.push('Save upgraded from build 0.2. Your stash was moved to the ship.');
     return { profile: repair(p).profile, notes };
   }
@@ -251,6 +261,8 @@ export function repair(raw: Profile): { profile: Profile; notes: string[] } {
     crew: raw.crew && typeof raw.crew === 'object' ? { ...raw.crew } : {},
     quests: raw.quests && typeof raw.quests === 'object' ? { ...raw.quests } : {},
     raid: raw.raid && typeof raw.raid === 'object' ? raw.raid : null,
+    course: raw.course && typeof raw.course === 'object' && typeof raw.course.destination === 'string'
+      && Number.isFinite(raw.course.seed) ? { destination: raw.course.destination, seed: raw.course.seed } : null,
     stats: { ...base.stats, ...(raw.stats ?? {}) },
   };
   if (!p.destinations.includes('tikhaya')) p.destinations.unshift('tikhaya');

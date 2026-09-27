@@ -79,6 +79,176 @@ export class AudioService {
     this.listenerY = y;
   }
 
+  // ---------------------------------------------------------------------------
+  // Ambience: long loops that make a place feel like a place.
+
+  private amb: { stop(): void; hum: GainNode; events: number } | null = null;
+
+  /**
+   * Start a looping bed of sound. 'ship': engine hum, air handlers, hull creaks.
+   * 'facility': a colder drone, electrical buzz and distant metal groans.
+   */
+  startAmbience(kind: 'ship' | 'facility'): void {
+    this.stopAmbience();
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const bus = ctx.createGain();
+    bus.gain.setValueAtTime(0, ctx.currentTime);
+    bus.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.5);
+    bus.connect(this.master);
+    const stops: (() => void)[] = [];
+
+    // Hum: detuned low oscillators through a lowpass.
+    const hum = ctx.createGain();
+    hum.gain.value = kind === 'ship' ? 0.1 : 0.06;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = kind === 'ship' ? 220 : 160;
+    hum.connect(lp).connect(bus);
+    for (const [f, g] of (kind === 'ship' ? [[47, 0.7], [94.5, 0.35], [141, 0.12]] : [[38, 0.6], [57.3, 0.3], [113, 0.08]]) as [number, number][]) {
+      const o = ctx.createOscillator();
+      o.type = 'triangle';
+      o.frequency.value = f;
+      const og = ctx.createGain();
+      og.gain.value = g;
+      o.connect(og).connect(hum);
+      o.start();
+      stops.push(() => o.stop());
+    }
+
+    // Air: looped noise, band-limited, slowly breathing.
+    const air = ctx.createBufferSource();
+    air.buffer = this.noise;
+    air.loop = true;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = kind === 'ship' ? 520 : 300;
+    bp.Q.value = 0.6;
+    const ag = ctx.createGain();
+    ag.gain.value = kind === 'ship' ? 0.045 : 0.03;
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 0.07;
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.015;
+    lfo.connect(lfoGain).connect(ag.gain);
+    air.connect(bp).connect(ag).connect(bus);
+    air.start();
+    lfo.start();
+    stops.push(() => air.stop(), () => lfo.stop());
+
+    // Occasional events: creaks, clanks, buzzes.
+    const events = window.setInterval(() => {
+      if (!this.ctx || Math.random() < 0.45) return;
+      const t = this.ctx.currentTime;
+      const r = Math.random();
+      if (r < 0.4) {
+        // Hull creak: a slow filtered-noise groan.
+        const n = this.noiseSource(t, 1.4);
+        const f = this.ctx.createBiquadFilter();
+        f.type = 'bandpass';
+        f.Q.value = 8;
+        f.frequency.setValueAtTime(180 + Math.random() * 120, t);
+        f.frequency.linearRampToValueAtTime(90 + Math.random() * 60, t + 1.2);
+        n.connect(f).connect(env(this.ctx, t, 0.5, 0.3, 1)).connect(bus);
+      } else if (r < 0.75) {
+        // Distant clank somewhere in the structure.
+        this.thump(bus, t, 70 + Math.random() * 50, 0.25, 0.35);
+        this.click(bus, t + 0.01, 900 + Math.random() * 600, 0.25);
+      } else if (kind === 'facility') {
+        // Electrical buzz from a dying fixture.
+        const o = this.ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = 100;
+        const f = this.ctx.createBiquadFilter();
+        f.type = 'bandpass';
+        f.frequency.value = 1800;
+        o.connect(f).connect(env(this.ctx, t, 0.06, 0.02, 0.5 + Math.random())).connect(bus);
+        o.start(t);
+        o.stop(t + 1.6);
+      } else {
+        // Radio chatter bleeding through a bulkhead.
+        for (let i = 0; i < 5; i++) this.tone(bus, t + i * 0.09 + Math.random() * 0.05, 700 + Math.random() * 500, 0.06, 0.08);
+      }
+    }, 4000);
+
+    this.amb = {
+      hum,
+      events,
+      stop: () => {
+        window.clearInterval(events);
+        const c = this.ctx;
+        if (c) bus.gain.setTargetAtTime(0, c.currentTime, 0.2);
+        setTimeout(() => {
+          for (const s of stops) {
+            try {
+              s();
+            } catch {
+              // already stopped
+            }
+          }
+          bus.disconnect();
+        }, 900);
+      },
+    };
+  }
+
+  /** 0..1 extra engine loudness (standing next to the reactor). */
+  setAmbienceIntensity(k: number): void {
+    if (!this.amb || !this.ctx) return;
+    this.amb.hum.gain.setTargetAtTime(0.1 + k * 0.25, this.ctx.currentTime, 0.3);
+  }
+
+  stopAmbience(): void {
+    this.amb?.stop();
+    this.amb = null;
+  }
+
+  /** A jump to another world: rising whine, a thump, and a long rumble. */
+  jump(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const out = ctx.createGain();
+    out.gain.value = 0.6;
+    out.connect(this.master);
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(60, t);
+    o.frequency.exponentialRampToValueAtTime(900, t + 1.6);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(300, t);
+    f.frequency.exponentialRampToValueAtTime(3000, t + 1.6);
+    o.connect(f).connect(env(ctx, t, 0.35, 1.2, 0.5)).connect(out);
+    o.start(t);
+    o.stop(t + 2);
+    this.thump(out, t + 1.65, 45, 0.9, 1);
+    const n = this.noiseSource(t + 1.6, 2.5);
+    const nf = ctx.createBiquadFilter();
+    nf.type = 'lowpass';
+    nf.frequency.value = 260;
+    n.connect(nf).connect(env(ctx, t + 1.6, 0.8, 0.05, 2.2)).connect(out);
+  }
+
+  /** One syllable of a character's "voice" while dialogue types out. */
+  blip(freq: number): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const out = ctx.createGain();
+    out.gain.value = 0.12;
+    out.connect(this.master);
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'square';
+    o.frequency.value = freq * (0.92 + Math.random() * 0.16);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 1800;
+    o.connect(f).connect(env(ctx, t, 0.5, 0.004, 0.05)).connect(out);
+    o.start(t);
+    o.stop(t + 0.07);
+  }
+
   /** Non-positional interface sounds (menus, inventory). Short, dry, mechanical. */
   ui(kind: UiSfx): void {
     const ctx = this.ctx;

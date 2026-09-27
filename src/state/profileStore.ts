@@ -32,7 +32,7 @@ function profileOf(s: ProfileStore): Profile {
   return {
     version: s.version, operator: s.operator, credits: s.credits, stash: s.stash, loadout: s.loadout,
     crew: s.crew, quests: s.quests, destinations: s.destinations, upgrades: s.upgrades, flags: s.flags,
-    day: s.day, purchases: s.purchases, raid: s.raid, stats: s.stats,
+    day: s.day, purchases: s.purchases, raid: s.raid, course: s.course, stats: s.stats,
   };
 }
 

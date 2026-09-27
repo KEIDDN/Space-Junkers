@@ -166,6 +166,81 @@ CONTAINER_SCALE = 0.28
 # Double sliding door: the two leaves inside the framed door on the tileset.
 DOOR_LEAVES = (158, 37, 231, 92)
 
+# --- Crew (NPCs.png) --------------------------------------------------------
+NPCS = "NPCs.png"
+# Column x-ranges of each crew member's four animation frames, and the y-range of each animation row.
+CREW_COLUMNS = {
+    "smuggler": [(66, 140), (140, 208), (208, 272), (272, 340)],
+    "medic": [(384, 446), (446, 510), (510, 574), (574, 640)],
+    "merc": [(666, 734), (734, 798), (798, 862), (862, 928)],
+    "trader": [(962, 1034), (1034, 1104), (1104, 1172), (1172, 1242)],
+    "hacker": [(1276, 1340), (1340, 1400), (1400, 1460), (1460, 1520)],
+}
+CREW_ROWS = {"idle": (238, 322), "walk": (320, 408), "run": (404, 496), "talk": (492, 584),
+             "interact": (580, 674), "sit": (670, 768)}
+CREW_PORTRAITS = {
+    "smuggler": (64, 45, 310, 236), "medic": (399, 45, 601, 236), "merc": (670, 45, 925, 236),
+    "trader": (976, 45, 1233, 236), "hacker": (1287, 45, 1490, 236),
+}
+# Station props from the crew sheet (world scale).
+CREW_PROPS = {
+    "smug_crate": (17, 906, 110, 993), "smug_chest": (122, 903, 193, 972), "smug_goods": (179, 950, 278, 1000),
+    "smug_box": (282, 908, 332, 955), "smug_bottles": (293, 958, 339, 1001),
+    "med_cabinet": (384, 915, 434, 1001), "med_crate": (451, 907, 519, 955), "med_kit": (447, 960, 496, 1002),
+    "med_gurney": (508, 964, 588, 1002), "med_monitor": (531, 905, 596, 956), "med_stool": (600, 945, 633, 1002),
+    "med_iv": (612, 845, 645, 938),
+    "merc_case": (673, 889, 749, 942), "merc_case2": (674, 945, 755, 1002), "merc_tripod": (760, 891, 848, 1002),
+    "merc_ammo": (856, 912, 897, 963), "merc_ammo2": (903, 914, 921, 963),
+    "trade_stall": (1144, 791, 1228, 899), "trade_crates": (965, 907, 1040, 999), "trade_table": (1028, 901, 1159, 1001),
+    "trade_box": (1161, 957, 1196, 997), "trade_lamp": (1202, 905, 1236, 990),
+    "hack_antenna": (1270, 776, 1300, 895), "hack_drone": (1401, 789, 1460, 834), "hack_terminal": (1450, 806, 1509, 912),
+    "hack_server": (1394, 840, 1442, 912), "hack_rack": (1320, 916, 1367, 997), "hack_stool": (1378, 917, 1409, 1002),
+    "hack_console": (1421, 930, 1510, 1001), "hack_box": (1265, 956, 1309, 1002),
+}
+
+# --- Ship interior (Tileset spaceship.png), world scale ------------------------
+SHIP_PROPS = {
+    "ship_console3": (768, 9, 968, 112), "ship_server": (981, 6, 1038, 103), "ship_radar": (1049, 6, 1224, 112),
+    "ship_terminal": (1240, 13, 1299, 113), "ship_window": (1318, 6, 1522, 116),
+    "ship_rack_a": (768, 125, 814, 244), "ship_rack_b": (824, 126, 872, 245), "ship_desk": (892, 122, 1082, 252),
+    "ship_cabinet": (1096, 132, 1182, 249), "ship_server2": (1206, 122, 1257, 218), "ship_chair": (1278, 130, 1322, 210),
+    "ship_desk_small": (1264, 218, 1321, 298), "ship_bunk": (1336, 130, 1518, 300), "ship_cabinet_s": (952, 268, 1013, 348),
+    "ship_couch": (1028, 262, 1186, 393), "ship_locker_s": (1194, 234, 1238, 317),
+    "ship_console_b": (766, 258, 934, 350), "ship_locker": (768, 352, 830, 485), "ship_bucket": (985, 358, 1026, 412),
+    "ship_table": (1203, 304, 1355, 434), "ship_banner": (1373, 315, 1462, 424), "ship_poster": (1474, 322, 1518, 380),
+    "ship_bed": (833, 392, 972, 485), "ship_plant": (1481, 397, 1513, 460), "ship_rug": (1040, 400, 1218, 505),
+    "ship_stool": (1228, 442, 1254, 479), "ship_bin": (1266, 447, 1298, 492), "ship_dartboard": (1309, 433, 1352, 476),
+    "ship_plant2": (927, 494, 969, 552), "ship_tall_locker": (1233, 509, 1285, 629),
+    "ship_poster2": (1300, 494, 1320, 538), "ship_poster3": (1332, 494, 1348, 538), "ship_poster4": (1360, 486, 1406, 547),
+    "ship_workbench": (766, 503, 914, 669), "ship_suit": (986, 522, 1032, 626), "ship_gunrack": (1040, 520, 1220, 632),
+    "ship_cab2": (1358, 568, 1407, 618), "ship_cab3": (1422, 582, 1472, 657),
+    "ship_capsule": (418, 589, 514, 771), "ship_reactor": (522, 573, 606, 722), "ship_tank": (613, 576, 708, 717),
+    "ship_pipe_v": (718, 572, 748, 708), "ship_toolbox": (993, 634, 1059, 679),
+    "ship_chair2": (1197, 648, 1230, 718), "ship_armchair": (1252, 643, 1301, 721), "ship_tv": (1324, 634, 1397, 720),
+    "ship_crate_y": (925, 688, 988, 752), "ship_crate_g": (998, 710, 1060, 778), "ship_chair3": (1080, 673, 1118, 729),
+    "ship_chair4": (1130, 651, 1176, 733), "ship_plant3": (1407, 670, 1439, 756), "ship_shelf": (1458, 677, 1518, 736),
+    "ship_cockpit": (11, 577, 406, 1010), "ship_machine": (522, 733, 629, 823), "ship_ladder": (1470, 752, 1508, 857),
+    "ship_vent": (769, 848, 828, 910), "ship_vent2": (768, 928, 828, 992), "ship_robot": (1440, 871, 1522, 961),
+    "ship_crate_w": (912, 780, 986, 854), "ship_crate_o": (997, 788, 1062, 860),
+}
+PLANETS = {
+    "merzlota": (56, 66, 404, 412), "krasnaya": (484, 62, 843, 412), "tikhaya": (915, 63, 1271, 415),
+    "kombinat": (1355, 62, 1714, 416), "otets": (54, 453, 409, 810), "pech": (482, 453, 843, 810),
+    "buran": (910, 453, 1271, 810), "sirin": (1302, 453, 1755, 809),
+}
+
+# Wall faces seen from the front (3/4 view): plain panel, and the two bevelled end pieces.
+WALL_FACE_PLAIN = (445, 12, 506, 92)
+WALL_FACE_END_R = (527, 12, 628, 92)
+WALL_FACE_END_L = (648, 12, 740, 92)
+WALL_FACE_H = 42  # px: taller than a tile, so the wall rises above the floor line
+
+# Unarmed walk (ship): row 2 of the character sheet.
+MALE_WALK_UNARMED = [(118, 125, 173, 208), (201, 125, 255, 209), (285, 125, 340, 209), (374, 125, 428, 208),
+                     (466, 125, 522, 208), (561, 126, 614, 208)]
+FEMALE_WALK_UNARMED = [(915, 128, 968, 210), (1001, 127, 1054, 209), (1085, 128, 1138, 210),
+                       (1171, 128, 1226, 210), (1263, 128, 1316, 210), (1350, 128, 1403, 210)]
+
 CHAR_CELL = (48, 48)
 DEATH_CELL = (56, 32)
 
@@ -256,6 +331,42 @@ def place_in_cell(img: Image.Image, cell: tuple[int, int], align_top_fraction: f
     return out
 
 
+
+def largest_blob(img: Image.Image) -> Image.Image:
+    """Keep only the largest opaque connected region (drops labels and neighbours' edges)."""
+    arr = np.array(img)
+    solid = arr[:, :, 3] >= ALPHA_CUTOFF
+    h, w = solid.shape
+    label = np.zeros((h, w), dtype=np.int32)
+    best, best_n, cur = 0, 0, 0
+    for sy in range(h):
+        for sx in range(w):
+            if not solid[sy, sx] or label[sy, sx]:
+                continue
+            cur += 1
+            stack = [(sy, sx)]
+            label[sy, sx] = cur
+            n = 0
+            while stack:
+                y, x = stack.pop()
+                n += 1
+                for ny, nx in ((y + 1, x), (y - 1, x), (y, x + 1), (y, x - 1)):
+                    if 0 <= ny < h and 0 <= nx < w and solid[ny, nx] and not label[ny, nx]:
+                        label[ny, nx] = cur
+                        stack.append((ny, nx))
+            if n > best_n:
+                best, best_n = cur, n
+    keep = label == best
+    arr[~keep, 3] = 0
+    return Image.fromarray(arr, "RGBA")
+
+
+def to_pixels_fit_w(img: Image.Image, width: int) -> Image.Image:
+    clean = strip_haze(img)
+    h = max(1, round(clean.height * width / clean.width))
+    return resample(clean, (width, h))
+
+
 def hooded(body_rect: tuple[int, int, int, int]) -> Image.Image:
     """Scavenger variant: player body, rag-brown tint, red hood + gas mask head."""
     body = strip_haze(crop(CHAR, body_rect, pad=12))
@@ -293,6 +404,41 @@ def build() -> None:
     for op, walk, death in (("m", MALE_WALK, MALE_DEATH), ("f", FEMALE_WALK, FEMALE_DEATH)):
         add_anim(f"op_{op}_walk", [place_in_cell(to_pixels(crop(CHAR, r)), CHAR_CELL, 0.4) for r in walk])
         add_anim(f"op_{op}_death", [place_in_cell(to_pixels(crop(CHAR, r)), DEATH_CELL, None) for r in death])
+
+
+    # Operators, unarmed (ship)
+    for op, walk in (("m", MALE_WALK_UNARMED), ("f", FEMALE_WALK_UNARMED)):
+        add_anim(f"op_{op}_walk_unarmed", [place_in_cell(to_pixels(crop(CHAR, r)), CHAR_CELL, 0.4) for r in walk])
+
+    # Crew
+    for crew, cols in CREW_COLUMNS.items():
+        for anim_name, (y0, y1) in CREW_ROWS.items():
+            imgs = []
+            for (x0, x1) in cols:
+                cell = largest_blob(sheet(NPCS).crop((x0, y0, x1, y1)))
+                imgs.append(place_in_cell(to_pixels(cell), CHAR_CELL, 0.4))
+            add_anim(f"crew_{crew}_{anim_name}", imgs)
+        frames[f"portrait_{crew}"] = to_pixels(crop(NPCS, CREW_PORTRAITS[crew], pad=0))
+    for key, rect in CREW_PROPS.items():
+        frames[key] = to_pixels(largest_blob(crop(NPCS, rect)))
+
+    # Planets: small for lists, large for the navigation screen.
+    for key, rect in PLANETS.items():
+        frames[f"planet_{key}"] = to_pixels(crop("Planets.png", rect, pad=0), 0.25)
+        frames[f"planet_{key}_big"] = to_pixels(crop("Planets.png", rect, pad=0), 0.5)
+
+    # Ship furniture
+    for key, rect in SHIP_PROPS.items():
+        frames[key] = to_pixels(largest_blob(crop(TILES, rect)))
+
+    # Wall faces (taller than a tile) and 2x2-tile floor plates
+    frames["wall_face_a"] = to_pixels_fit_w(crop(TILES, WALL_FACE_PLAIN, pad=0), TILE)
+    for key, rect in (("wall_face_r", WALL_FACE_END_R), ("wall_face_l", WALL_FACE_END_L)):
+        full = to_pixels_fit_w(crop(TILES, rect, pad=0), round(TILE * (rect[2] - rect[0]) / (WALL_FACE_PLAIN[2] - WALL_FACE_PLAIN[0])))
+        frames[key] = full
+    for key, rect in FLOOR_TILES.items():
+        plate = resample(strip_haze(crop(TILES, rect, pad=0)), (TILE * 2, TILE * 2))
+        frames[f"{key}_2x"] = tint(plate, (0.72, 0.72, 0.74), desat=0.15)
 
     # Scavenger enemy
     scav = [place_in_cell(to_pixels(hooded(r)), CHAR_CELL, 0.4) for r in MALE_WALK]
