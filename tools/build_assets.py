@@ -83,21 +83,74 @@ PROPS = {
 LOOT = "Loot Objects.png"
 OBJECTS = "Guns/Objects.png"
 
-# Loot icons (UI scale). Keys are referenced by src/data/items.ts as `item_<key>`.
-LOOT_ICONS = {
-    "scrap": (25, 32, 102, 118), "gear": (689, 43, 754, 107), "coil": (1266, 33, 1318, 123),
-    "circuit": (1416, 32, 1509, 121), "fan": (1084, 33, 1159, 121), "fuel": (24, 230, 83, 314),
-    "cell": (1313, 235, 1348, 318), "core": (1097, 238, 1149, 321), "gold_ore": (299, 339, 375, 411),
-    "cryo": (492, 334, 555, 415), "ruby": (568, 336, 639, 413), "void": (720, 335, 797, 413),
-    "sapphire": (1238, 339, 1291, 409), "fungus": (390, 430, 450, 516), "egg": (557, 437, 636, 515),
-    "skull": (317, 535, 387, 601), "beast_skull": (131, 528, 208, 603), "rations": (27, 620, 86, 685),
-    "vodka": (549, 611, 580, 694), "medkit": (29, 705, 107, 779), "stim": (336, 708, 399, 780),
-    "pills": (603, 704, 670, 775), "gold_bar": (83, 802, 155, 870), "ring": (271, 800, 317, 870),
-    "watch": (485, 801, 539, 875), "emerald": (751, 800, 799, 864), "idol": (874, 792, 933, 880),
-    "crown": (1436, 799, 1507, 866), "painting": (1361, 792, 1425, 876), "hdd": (20, 881, 107, 968),
-    "datachip": (192, 893, 275, 966), "terminal": (476, 896, 529, 973), "ai_core": (887, 898, 956, 976),
-    "keycard": (1362, 162, 1426, 212),
+# Item icons (UI scale). Keys are item ids from src/data/items.ts; the atlas frame is `item_<id>`.
+# Each entry: (sheet, rect) or (sheet, rect, tint, scale). tint = (r, g, b multipliers, desaturation).
+O = OBJECTS
+L = LOOT
+ITEM_ICONS: dict[str, tuple] = {
+    # Salvage & tools
+    "scrap": (L, (25, 32, 102, 118)), "pipe": (L, (302, 40, 391, 121)), "gear": (L, (689, 43, 754, 107)),
+    "tape": (O, (734, 919, 818, 987)), "wires": (O, (307, 899, 385, 1000)), "ingots": (O, (28, 906, 138, 995)),
+    "wrench": (O, (1426, 642, 1486, 758)), "multitool": (O, (1311, 644, 1399, 745)),
+    "toolcase": (O, (1146, 637, 1290, 752)),
+    # Electronics & tech
+    "coil": (L, (1266, 33, 1318, 123)), "fan": (L, (1084, 33, 1159, 121)), "battery": (O, (1344, 778, 1396, 867)),
+    "cable": (L, (1171, 39, 1249, 122)), "capacitor": (L, (992, 35, 1074, 118)), "circuit": (L, (1416, 32, 1509, 121)),
+    "motor": (O, (514, 903, 608, 984)), "cell": (L, (1313, 235, 1348, 318)), "camera": (L, (1087, 800, 1161, 866)),
+    "seccam": (L, (544, 895, 604, 968)), "pocketpc": (L, (1301, 128, 1346, 217)), "radio": (L, (334, 893, 395, 965)),
+    "tablet": (L, (1132, 885, 1185, 978)), "hdd": (L, (20, 881, 107, 968)), "geiger": (L, (1014, 144, 1084, 217)),
+    "diagpad": (L, (399, 885, 472, 970)), "terminal": (L, (476, 896, 529, 973)), "optic": (L, (729, 888, 797, 975)),
+    "server": (L, (1275, 889, 1350, 981)), "droneeye": (L, (969, 907, 1038, 986)), "core": (L, (1097, 238, 1149, 321)),
+    "ai_core": (L, (887, 898, 956, 976)),
+    # Fuel & chemicals
+    "fuel": (L, (24, 230, 83, 314)), "oxygen": (L, (539, 221, 576, 320)), "coolant": (L, (1426, 238, 1506, 309)),
+    "reagent": (L, (425, 223, 466, 321)),
+    # Minerals
+    "iron_ore": (L, (104, 335, 190, 413)), "copper_ore": (L, (201, 336, 285, 413)), "gold_ore": (L, (299, 339, 375, 411)),
+    "verdite": (L, (651, 337, 708, 411)), "cryo": (L, (492, 334, 555, 415)), "amethyst": (L, (720, 335, 797, 413)),
+    "frost_quartz": (L, (941, 329, 1023, 413)), "ruby": (L, (568, 336, 639, 413)), "sapphire": (L, (1238, 339, 1291, 409)),
+    "fire_opal": (L, (1139, 346, 1218, 409)), "iridium": (L, (1305, 349, 1363, 409)), "void": (L, (810, 329, 929, 416)),
+    # Xenobiology
+    "bone": (L, (25, 524, 118, 599)), "rustcap": (L, (129, 433, 202, 512)), "skull": (L, (317, 535, 387, 601)),
+    "fungus": (L, (390, 430, 450, 516)), "ribcage": (L, (210, 545, 311, 592)), "hide": (L, (858, 524, 948, 607)),
+    "beast_skull": (L, (131, 528, 208, 603)), "scales": (L, (1043, 533, 1147, 601)), "tusk": (L, (726, 533, 843, 600)),
+    "gland": (L, (1430, 527, 1498, 608)), "egg": (L, (557, 437, 636, 515)), "specimen": (L, (1422, 417, 1502, 518)),
+    # Provisions & medical loot
+    "rations": (L, (27, 620, 86, 685)), "stew": (L, (178, 616, 225, 688)), "milk": (L, (488, 619, 527, 690)),
+    "vodka": (L, (549, 611, 580, 694)), "cigs": (L, (1306, 641, 1334, 687)),
+    "antiseptic": (L, (1358, 701, 1402, 781)), "antibiotics": (L, (721, 706, 757, 775)),
+    # Valuables
+    "coin": (L, (29, 805, 79, 851)), "coinroll": (L, (153, 808, 200, 870)), "compass": (L, (559, 792, 609, 873)),
+    "ring": (L, (271, 800, 317, 870)), "watch": (L, (485, 801, 539, 875)), "chain": (L, (328, 795, 397, 873)),
+    "emerald": (L, (751, 800, 799, 864)), "gold_bar": (L, (83, 802, 155, 870)), "jewelbox": (L, (1001, 799, 1080, 873)),
+    "landscape": (L, (1272, 804, 1347, 873)), "painting": (L, (1361, 792, 1425, 876)), "chalice": (L, (819, 798, 858, 875)),
+    "idol": (L, (874, 792, 933, 880)), "crown": (L, (1436, 799, 1507, 866)),
+    # Documents & keys
+    "orders": (L, (104, 892, 198, 969)), "datachip": (L, (192, 893, 275, 966)), "cryptdrive": (L, (264, 910, 326, 970)),
+    "keycard": (L, (1362, 162, 1426, 212)),
+    # Ammunition
+    "ammo_9x18": (O, (1095, 180, 1142, 243)), "ammo_9x18_ap": (O, (1432, 189, 1503, 242)),
+    "ammo_12buck": (O, (889, 167, 956, 242)), "ammo_12slug": (O, (1318, 180, 1401, 242)),
+    "ammo_545": (O, (1175, 168, 1236, 242)), "ammo_545_ap": (O, (1261, 168, 1295, 242)),
+    "ammo_762": (O, (994, 160, 1066, 243)), "ammo_762_ap": (O, (994, 160, 1066, 243), (0.75, 0.8, 0.95, 0.55)),
+    # Armor
+    "respcap": (O, (147, 515, 247, 618)), "k6helmet": (O, (31, 517, 124, 612)), "zaslon": (O, (275, 515, 376, 621)),
+    "vest_ps2": (O, (402, 515, 511, 625), (0.95, 1.0, 0.8, 0.35)), "vest_zhuk": (O, (402, 515, 511, 625)),
+    "vest_granit": (O, (537, 511, 635, 621)),
+    # Backpacks (one painted pack, told apart by size and dye)
+    "sack": (O, (1021, 520, 1112, 625), (1.05, 0.92, 0.72, 0.6), 0.36),
+    "daypack": (O, (1021, 520, 1112, 625), None, 0.5),
+    "turist": (O, (1021, 520, 1112, 625), (1.15, 0.95, 0.72, 0.3), 0.55),
+    "raidpack": (O, (1021, 520, 1112, 625), (0.62, 0.64, 0.66, 0.7), 0.6),
+    # Medical consumables
+    "bandage": (O, (317, 404, 399, 480)), "pills": (O, (732, 404, 770, 478)), "carkit": (O, (189, 398, 277, 483)),
+    "medkit": (O, (31, 397, 146, 490)), "stim": (O, (420, 396, 510, 478)), "surgkit": (O, (1334, 394, 1396, 497)),
+    # Throwables
+    "frag": (O, (40, 274, 111, 369)), "smoke": (O, (489, 274, 547, 374)),
 }
+# Weapons use their gun sprite, trimmed. Item id -> gun sheet number.
+WEAPON_ICONS = {"sp5": 6, "pm9": 1, "kedr": 15, "ppd41": 11, "obrez": 22, "toz12": 23, "skv": 41,
+                "akr74": 36, "vektor": 33, "mosin": 48, "svk": 49}
 ICON_SCALE = 0.5
 
 # Lootable containers (world scale: small objects are drawn smaller than characters' sheet scale).
@@ -275,8 +328,16 @@ def build() -> None:
     for key, rect in PROPS.items():
         frames[key] = to_pixels(crop(TILES, rect))
 
-    for key, rect in LOOT_ICONS.items():
-        frames[f"item_{key}"] = to_pixels(crop(LOOT, rect), ICON_SCALE)
+    for key, spec in ITEM_ICONS.items():
+        sheet_name, rect = spec[0], spec[1]
+        tint_spec = spec[2] if len(spec) > 2 else None
+        scale = spec[3] if len(spec) > 3 else ICON_SCALE
+        icon = to_pixels(crop(sheet_name, rect), scale)
+        if tint_spec:
+            icon = tint(icon, tint_spec[:3], desat=tint_spec[3])
+        frames[f"item_{key}"] = icon
+    for key, n in WEAPON_ICONS.items():
+        frames[f"item_{key}"] = trim(Image.open(SRC / "Guns" / "Guns" / f"{n}.png").convert("RGBA"))
     for key, rect in CONTAINERS.items():
         frames[key] = to_pixels(crop(OBJECTS, rect), CONTAINER_SCALE)
 

@@ -29,7 +29,7 @@ const TIER_RARITY: Record<ContainerTier, Record<Rarity, number>> = {
 };
 
 const BY_RARITY: Record<Rarity, string[]> = { common: [], uncommon: [], rare: [], epic: [], legendary: [] };
-for (const it of Object.values(ITEMS)) BY_RARITY[it.rarity].push(it.id);
+for (const it of Object.values(ITEMS)) if (it.kind === 'loot') BY_RARITY[it.rarity].push(it.id);
 
 /**
  * Roll the contents of a container.

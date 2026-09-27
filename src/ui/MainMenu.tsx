@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { RunConfig } from '../app/App';
-import { ITEMS } from '../data/items';
+import { gridValue } from '../core/inventory';
 import { randomSeed } from '../engine/rng';
 import type { Operator } from '../game/entities/Player';
 import { useProfile } from '../state/profileStore';
@@ -16,15 +16,12 @@ export function MainMenu({ onDeploy }: { onDeploy: (cfg: RunConfig) => void }) {
   const operator = useSettings((s) => s.operator);
   const setOperator = useSettings((s) => s.setOperator);
   const stash = useProfile((s) => s.stash);
-  const extractions = useProfile((s) => s.extractions);
-  const deaths = useProfile((s) => s.deaths);
+  const extractions = useProfile((s) => s.stats.extractions);
+  const deaths = useProfile((s) => s.stats.deaths);
   const [seed, setSeed] = useState(randomSeed);
 
-  const stashCount = Object.values(stash).reduce((n, q) => n + q, 0);
-  const stashValue = useMemo(
-    () => Object.entries(stash).reduce((n, [id, q]) => n + (ITEMS[id]?.value ?? 0) * q, 0),
-    [stash],
-  );
+  const stashCount = stash.items.length;
+  const stashValue = useMemo(() => gridValue(stash), [stash]);
 
   return (
     <div className="screen crt">

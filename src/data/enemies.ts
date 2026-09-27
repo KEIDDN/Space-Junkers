@@ -29,7 +29,7 @@ export interface EnemyDef {
 export const ENEMIES: Record<string, EnemyDef> = {
   scavenger: {
     id: 'scavenger', name: 'Scavenger', anim: 'scav',
-    hp: 60, walkSpeed: 38, runSpeed: 82, weapon: 'scav_revolver',
+    hp: 60, walkSpeed: 38, runSpeed: 82, weapon: 'sp5',
     reactionTime: 0.55, aimError: 4, sightRange: 300, fov: 65, hearing: 1,
     preferredRange: 150, burst: [2, 4], retreatBelow: 0.35,
   },
