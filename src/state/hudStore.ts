@@ -16,6 +16,8 @@ export interface HudState {
   /** Item being used (medkit...) and its progress 0..1, or -1. */
   using: number;
   usingName: string | null;
+  stamina: number;
+  gait: 'sneak' | 'walk' | 'sprint';
 
   armed: boolean;
   weaponName: string;
@@ -51,6 +53,8 @@ export const useHud = create<HudState>(() => ({
   helmet: -1,
   using: -1,
   usingName: null,
+  stamina: 100,
+  gait: 'walk',
   armed: false,
   weaponName: '',
   weaponSlot: 0,

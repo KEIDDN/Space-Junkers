@@ -50,7 +50,7 @@ export class Effects {
   private glowGfx = new Graphics();
   private timed: Timed[] = [];
   private casings: Sprite[] = [];
-  private decalSprites: Sprite[] = [];
+  private decalSprites: Container[] = [];
 
   constructor(private map: TileMap, private audio: AudioService) {
     this.lit.addChild(this.gfx);
@@ -124,6 +124,41 @@ export class Effects {
         size: Math.random() < 0.3 ? 2 : 1, gravity: GRAVITY, drag: 2,
       });
     }
+  }
+
+  /** A frag going off: flash, fire, sparks, debris, smoke, and a scorch mark. */
+  explosion(x: number, y: number): void {
+    const glow = new Sprite(glowTexture());
+    glow.anchor.set(0.5);
+    glow.blendMode = 'add';
+    glow.position.set(Math.round(x), Math.round(y - 6));
+    glow.scale.set(4);
+    glow.alpha = 1;
+    this.overlay.addChild(glow);
+    this.timed.push({ sprite: glow, life: 0.16, maxLife: 0.16, vy: 0 });
+    for (let i = 0; i < 34; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 80 + Math.random() * 260;
+      this.spawn({
+        kind: 'spark', x, y, z: 4 + Math.random() * 10, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.7, vz: 60 + Math.random() * 180,
+        life: 0.2 + Math.random() * 0.45, color: Math.random() < 0.4 ? 0xffe2a0 : Math.random() < 0.5 ? 0xff9a3a : 0xfff4d0, size: Math.random() < 0.3 ? 2 : 1,
+        gravity: GRAVITY * 0.7, drag: 3,
+      });
+    }
+    for (let i = 0; i < 18; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 20 + Math.random() * 70;
+      this.spawn({
+        kind: 'dust', x, y, z: 4, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.7, vz: 20 + Math.random() * 40,
+        life: 0.5 + Math.random() * 0.6, color: Math.random() < 0.5 ? 0x5a524a : 0x3a3530, size: 2, gravity: 40, drag: 2.5,
+      });
+    }
+    this.smoke(x, y - 8, 5);
+    const scorch = new Graphics();
+    scorch.ellipse(0, 0, 18, 9).fill({ color: 0x0a0806, alpha: 0.55 });
+    scorch.ellipse(0, 0, 10, 5).fill({ color: 0x050403, alpha: 0.6 });
+    scorch.position.set(Math.round(x), Math.round(y));
+    this.addDecal(scorch);
   }
 
   bloodPool(x: number, y: number, big: boolean): void {
@@ -266,7 +301,7 @@ export class Effects {
     this.addDecal(s);
   }
 
-  private addDecal(s: Sprite): void {
+  private addDecal(s: Container): void {
     this.decals.addChildAt(s, 0);
     this.decalSprites.push(s);
     if (this.decalSprites.length > MAX_DECALS) this.decalSprites.shift()!.destroy();

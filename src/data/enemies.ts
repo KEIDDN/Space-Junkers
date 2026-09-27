@@ -18,6 +18,8 @@ export interface EnemyDef {
   ammo: [number, number];
   /** Random pocket items [min, max]. */
   pockets: [number, number];
+  /** Frag grenades carried (thrown at players who hide). */
+  grenades?: number;
 
   /** Seconds between first seeing the player and opening fire. */
   reactionTime: number;
@@ -49,7 +51,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   raider: {
     id: 'raider', name: 'Raider', anim: 'raider',
     hp: 80, walkSpeed: 44, runSpeed: 92, weapons: ['kedr', 'ppd41', 'toz12', 'obrez'],
-    armor: 'vest_ps2', helmet: 'respcap', armorChance: 0.5, ammo: [12, 35], pockets: [1, 2],
+    armor: 'vest_ps2', helmet: 'respcap', armorChance: 0.5, ammo: [12, 35], pockets: [1, 2], grenades: 1,
     reactionTime: 0.45, aimError: 3.2, sightRange: 320, fov: 70, hearing: 1.15,
     preferredRange: 110, burst: [3, 6], retreatBelow: 0.25,
   },
@@ -57,7 +59,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   soldier: {
     id: 'soldier', name: 'Garrison Soldier', anim: 'soldier',
     hp: 95, walkSpeed: 40, runSpeed: 88, weapons: ['akr74', 'skv', 'akr74'],
-    armor: 'vest_zhuk', helmet: 'k6helmet', armorChance: 0.85, ammo: [20, 50], pockets: [0, 2],
+    armor: 'vest_zhuk', helmet: 'k6helmet', armorChance: 0.85, ammo: [20, 50], pockets: [0, 2], grenades: 1,
     reactionTime: 0.38, aimError: 2.2, sightRange: 380, fov: 75, hearing: 1.2,
     preferredRange: 200, burst: [2, 5], retreatBelow: 0.3,
   },
@@ -65,7 +67,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   security: {
     id: 'security', name: 'Corporate Security', anim: 'security',
     hp: 100, walkSpeed: 42, runSpeed: 90, weapons: ['vektor', 'vektor', 'svk'],
-    armor: 'vest_granit', helmet: 'zaslon', armorChance: 0.7, ammo: [20, 45], pockets: [1, 2],
+    armor: 'vest_granit', helmet: 'zaslon', armorChance: 0.7, ammo: [20, 45], pockets: [1, 2], grenades: 2,
     reactionTime: 0.32, aimError: 1.6, sightRange: 400, fov: 80, hearing: 1.25,
     preferredRange: 220, burst: [3, 5], retreatBelow: 0.2,
   },

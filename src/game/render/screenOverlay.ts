@@ -42,6 +42,11 @@ export class ScreenOverlay {
     this.hitHead = headshot;
   }
 
+  /** A round snapped past: a brief tightening of the edges. */
+  suppressed(): void {
+    this.pain.alpha = Math.max(this.pain.alpha, 0.07);
+  }
+
   /** Damage came from `angle` (world direction from player toward the attacker). */
   damaged(angle: number): void {
     this.damageDirs.push({ angle, t: DAMAGE_DIR_TIME });

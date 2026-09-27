@@ -34,8 +34,16 @@ export class ActorView {
   private stride = 0;
   private idleTime = Math.random() * 3;
   private deathTime = -1;
+  /** Physical fall (enemies): which way, and whether the body has hit the floor. */
+  private fallDir = 1;
+  private landed = false;
+  private flinchT = 0;
+  private flinchX = 0;
+  private dropped: { vx: number; vy: number; spin: number; t: number } | null = null;
   /** Set true on frames where a foot lands (for footstep sounds). */
   stepped = false;
+  /** Set true on the frame a falling body hits the floor (for the thud). */
+  thudded = false;
 
   constructor(private frames: ActorFrames) {
     const shadow = new Graphics().ellipse(0, 0, 9, 3).fill({ color: 0x000000, alpha: 0.35 });
@@ -63,10 +71,30 @@ export class ActorView {
     this.flashTime = seconds;
   }
 
-  playDeath(): void {
+  /**
+   * Die. Painted death animations play as-is; single-frame corpses topple over physically,
+   * away from the shot, and let go of their gun.
+   */
+  playDeath(dirX = 0, dirY = 0): void {
     this.deathTime = 0;
-    this.gun.visible = false;
-    this.body.texture = this.frames.death[0];
+    if (this.frames.death.length > 1) {
+      this.gun.visible = false;
+      this.body.texture = this.frames.death[0];
+      return;
+    }
+    this.fallDir = dirX > 0.05 ? 1 : dirX < -0.05 ? -1 : Math.random() < 0.5 ? -1 : 1;
+    this.body.texture = this.frames.walk[0];
+    this.body.y = 1;
+    if (this.weapon) {
+      const sp = 60 + Math.random() * 50;
+      this.dropped = { vx: dirX * sp + (Math.random() - 0.5) * 30, vy: dirY * sp * 0.6 + (Math.random() - 0.5) * 20, spin: (Math.random() - 0.5) * 18, t: 0 };
+    }
+  }
+
+  /** Recoil from a hit: a quick shove and tilt away from the bullet. */
+  flinch(dirX: number): void {
+    this.flinchT = 0.13;
+    this.flinchX = dirX;
   }
 
   /**
@@ -78,12 +106,28 @@ export class ActorView {
     this.container.position.set(Math.round(x), Math.round(y));
     this.container.zIndex = y;
     this.stepped = false;
+    this.thudded = false;
 
     if (this.deathTime >= 0) {
       this.deathTime += dt;
-      const f = Math.min(this.frames.death.length - 1, Math.floor(this.deathTime / 0.09));
-      this.body.texture = this.frames.death[f];
+      if (this.frames.death.length > 1) {
+        const f = Math.min(this.frames.death.length - 1, Math.floor(this.deathTime / 0.09));
+        this.body.texture = this.frames.death[f];
+      } else {
+        this.updateFall(dt);
+      }
       return;
+    }
+
+    // Flinch: brief shove and tilt, decaying.
+    if (this.flinchT > 0) {
+      this.flinchT = Math.max(0, this.flinchT - dt);
+      const k = this.flinchT / 0.13;
+      this.body.x = Math.round(this.flinchX * 2 * k);
+      this.body.rotation = this.flinchX * 0.14 * k;
+    } else {
+      this.body.x = 0;
+      this.body.rotation = 0;
     }
 
     this.aim = aim;
@@ -112,6 +156,49 @@ export class ActorView {
     this.body.texture = flashing ? this.frames.flash![this.frame] : this.frames.walk[this.frame];
 
     this.updateGun(dt, raise);
+  }
+
+  /** Topple: a beat of stagger, then gravity, a bounce, and stillness. The gun skids away. */
+  private updateFall(dt: number): void {
+    const t = this.deathTime;
+    const dir = this.fallDir;
+    const full = Math.PI / 2;
+    let rot: number;
+    if (t < 0.07) rot = -dir * 0.12 * (t / 0.07); // knocked back on the heels
+    else if (t < 0.36) {
+      const k = (t - 0.07) / 0.29;
+      rot = dir * (full + 0.14) * k * k; // falls faster and faster
+    } else if (t < 0.5) {
+      const k = (t - 0.36) / 0.14;
+      rot = dir * (full + 0.14 - 0.22 * Math.sin(k * Math.PI)); // bounces off the floor
+    } else rot = dir * full;
+    if (t >= 0.36 && !this.landed) {
+      this.landed = true;
+      this.thudded = true;
+    }
+    this.body.rotation = rot;
+    this.body.x = 0;
+    this.body.y = t > 0.36 ? 3 : 1;
+    // Settle into shadow.
+    const dark = Math.min(1, Math.max(0, (t - 0.5) / 1.5));
+    const c = Math.round(255 - dark * 80);
+    this.body.tint = (c << 16) | (Math.round(c * 0.95) << 8) | Math.round(c * 0.92);
+
+    const d = this.dropped;
+    if (d && this.weapon) {
+      d.t += dt;
+      const f = Math.exp(-5 * dt);
+      d.vx *= f;
+      d.vy *= f;
+      this.gun.visible = true;
+      this.gun.x += d.vx * dt;
+      // Falls from hand height to the floor in the first moments.
+      const fallY = Math.min(1, d.t / 0.25);
+      this.gun.y = this.gun.y + d.vy * dt + (fallY < 1 ? (GUN_HEIGHT - 2) * dt / 0.25 : 0);
+      this.gun.rotation += d.spin * dt;
+      d.spin *= Math.exp(-6 * dt);
+      if (d.t > 1.5) this.dropped = null;
+    }
   }
 
   /** World position of the muzzle tip (visual, i.e. at gun height). */

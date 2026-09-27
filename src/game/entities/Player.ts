@@ -21,6 +21,14 @@ const ACCEL = 1500;
 const DECEL = 1900;
 const BODY_RADIUS = 6;
 const BLEED_DPS = 1.4;
+const SPRINT_MUL = 1.45;
+const SNEAK_MUL = 0.55;
+const STAMINA_DRAIN = 19;
+const STAMINA_REGEN = 15;
+/** After sprinting, a beat before the gun is back up. */
+const SPRINT_OUT = 0.16;
+/** How far enemies hear your footsteps (px) by gait. */
+const STEP_NOISE = { sneak: 0, walk: 64, sprint: 170 };
 /** Movement multiplier while applying a medical item. */
 const USING_SPEED = 0.45;
 
@@ -43,6 +51,8 @@ export interface PlayerStatus {
   /** 0..1 progress of an item being used, or -1. */
   using: number;
   usingName: string | null;
+  stamina: number;
+  gait: 'sneak' | 'walk' | 'sprint';
 }
 
 /**
@@ -81,6 +91,16 @@ export class Player implements Hittable {
   private cycleTimer = -1;
   /** True while the player itself writes to the raid store (not an inventory edit). */
   private selfWrite = false;
+  stamina = 100;
+  private staminaIdle = 0;
+  private exhausted = false;
+  sneaking = false;
+  sprinting = false;
+  private sprintOut = 0;
+  private breathTimer = 0;
+  private aimX = 0;
+  private aimY = 0;
+  private throwCooldown = 0;
   /** Called with a short message for the HUD feed (armor broke, bleeding...). */
   onNotice: ((text: string, tone: 'bad' | 'ok' | 'warn') => void) | null = null;
 
@@ -110,6 +130,8 @@ export class Player implements Hittable {
       boosted: this.boostLeft > 0,
       using: this.using ? Math.min(1, this.using.t / this.using.def.useTime) : -1,
       usingName: this.using?.def.short ?? null,
+      stamina: this.stamina,
+      gait: this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk',
     };
   }
 
@@ -208,7 +230,37 @@ export class Player implements Hittable {
     if (input.isDown('KeyS') || input.isDown('ArrowDown')) iy += 1;
     const len = Math.hypot(ix, iy);
     const w = this.weapon;
-    const max = MAX_SPEED * (w?.def.moveSpeedMul ?? 1) * this.speedMul * this.boostMulNow() * (this.using ? USING_SPEED : 1);
+    if (handsFree && input.wasPressed('KeyC')) {
+      this.sneaking = !this.sneaking;
+      this.ctx.audio.sfx('switch', this.x, this.y, 0.5);
+    }
+    // Sprint: fast and loud, weapon down, burns stamina.
+    const wantSprint = handsFree && (input.isDown('ShiftLeft') || input.isDown('ShiftRight'));
+    this.sprinting = wantSprint && len > 0 && !this.exhausted && !this.using && !(w?.reloading);
+    if (this.sprinting) {
+      this.sneaking = false;
+      this.stamina = Math.max(0, this.stamina - STAMINA_DRAIN * dt);
+      this.staminaIdle = 0;
+      this.sprintOut = SPRINT_OUT;
+      if (this.stamina <= 0) {
+        this.exhausted = true;
+        this.ctx.audio.sfx('breath', this.x, this.y);
+      }
+    } else {
+      this.staminaIdle += dt;
+      this.sprintOut = Math.max(0, this.sprintOut - dt);
+      if (this.staminaIdle > 0.9) this.stamina = Math.min(100, this.stamina + STAMINA_REGEN * dt);
+      if (this.exhausted && this.stamina > 35) this.exhausted = false;
+    }
+    if (this.exhausted) {
+      this.breathTimer -= dt;
+      if (this.breathTimer <= 0) {
+        this.breathTimer = 0.9;
+        this.ctx.audio.sfx('breath', this.x, this.y);
+      }
+    }
+    const gaitMul = this.sprinting ? SPRINT_MUL : this.sneaking ? SNEAK_MUL : 1;
+    const max = MAX_SPEED * gaitMul * (w?.def.moveSpeedMul ?? 1) * this.speedMul * this.boostMulNow() * (this.using ? USING_SPEED : 1);
     const tx = len ? (ix / len) * max : 0;
     const ty = len ? (iy / len) * max : 0;
     const rate = len ? ACCEL : DECEL;
@@ -223,7 +275,12 @@ export class Player implements Hittable {
     const moved = Math.hypot(this.x - ox, this.y - oy);
 
     // --- Aim from the chest (gun height), so the shot passes through the cursor.
-    if (handsFree) this.aim = Math.atan2(aimY - (this.y - GUN_HEIGHT), aimX - this.x);
+    if (handsFree) {
+      this.aim = Math.atan2(aimY - (this.y - GUN_HEIGHT), aimX - this.x);
+      this.aimX = aimX;
+      this.aimY = aimY + GUN_HEIGHT * 0.5;
+    }
+    this.throwCooldown -= dt;
 
     if (handsFree) this.handleHands(dt, input);
     else this.weapon?.update(dt);
@@ -231,10 +288,18 @@ export class Player implements Hittable {
     this.updateCycle(dt);
 
     // --- Visuals
+    // Sprinting: face where you run, gun down.
+    if (this.sprinting && moved > 0.01) this.aim = Math.atan2(this.vy, this.vx);
     const backwards = moved > 0 && (this.vx * Math.cos(this.aim) < -5);
-    const raise = !w || w.busy || this.using ? 0 : 1;
+    const raise = !w || w.busy || this.using || this.sprintOut > 0 ? 0 : 1;
     this.view.update(dt, this.x, this.y, this.aim, moved, backwards, raise);
-    if (this.view.stepped) this.ctx.audio.sfx('step', this.x, this.y);
+    if (this.view.stepped) {
+      const gait = this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk';
+      this.ctx.audio.sfx('step', this.x, this.y, gait === 'sprint' ? 1.8 : gait === 'sneak' ? 0.35 : 1);
+      // Your own footsteps are information for them, too. Heavy loads clatter.
+      const noise = STEP_NOISE[gait] * (this.speedMul < 0.9 ? 1.3 : 1);
+      if (noise > 0) this.ctx.emitNoise(this.x, this.y, noise);
+    }
   }
 
   private handleHands(dt: number, input: Input): void {
@@ -271,6 +336,7 @@ export class Player implements Hittable {
       if (input.wasClicked()) this.cancelUse();
       return;
     }
+    if (this.sprinting || this.sprintOut > 0) return;
     const moveFactor = Math.min(1, this.speed / MAX_SPEED);
     const result = w.tryFire(input.mouseDown, input.wasClicked(), Math.random());
     if (result === 'fired') {
@@ -370,10 +436,19 @@ export class Player implements Hittable {
     this.useItem(it);
   }
 
-  /** Start using a consumable (from a quick slot or the inventory). */
+  /** Start using a consumable (from a quick slot or the inventory). Grenades are thrown at the cursor. */
   useItem(it: ItemInstance): boolean {
     if (!this.alive || this.using) return false;
     const def = itemDef(it.id);
+    if (def.kind === 'grenade') {
+      if (this.throwCooldown > 0) return false;
+      this.throwCooldown = 0.8;
+      this.weapon?.cancelReload();
+      this.ctx.throwGrenade(this.x, this.y - 2, this.aimX, this.aimY, def.effect, 'player');
+      this.sprintOut = 0.45; // arm comes back before the gun does
+      raid.consume(it.uid);
+      return true;
+    }
     if (def.kind !== 'med') return false;
     const missing = this.maxHp - this.hp;
     const useful = (def.stopsBleed && this.bleeding) || (missing > 1 && (def.heal > 0 || def.regen)) || !!def.boost;
@@ -469,6 +544,7 @@ export class Player implements Hittable {
     }
     this.hp = Math.max(0, this.hp - damage);
     this.lastHitAgo = 0;
+    this.view.flinch(dirX);
     this.vx += dirX * 60;
     this.vy += dirY * 60;
     this.ctx.camera.shake(blocked ? 0.25 : 0.35);

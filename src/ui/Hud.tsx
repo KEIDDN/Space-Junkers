@@ -26,6 +26,8 @@ function Vitals() {
   const boosted = useHud((s) => s.boosted);
   const armor = useHud((s) => s.armor);
   const helmet = useHud((s) => s.helmet);
+  const stamina = useHud((s) => s.stamina);
+  const gait = useHud((s) => s.gait);
   const frac = hp / maxHp;
   const tone = frac < 0.35 ? 'bad' : frac < 0.65 ? 'warn' : 'ok';
   return (
@@ -35,6 +37,7 @@ function Vitals() {
         {bleeding && <span className="status bad blink">BLEEDING</span>}
         {regen && <span className="status ok">REGEN</span>}
         {boosted && <span className="status warn">STIM</span>}
+        {gait === 'sneak' && <span className="status dim">SNEAK [C]</span>}
       </div>
       <div className="hp-row">
         <div className="hp-bar">
@@ -43,6 +46,7 @@ function Vitals() {
         </div>
         <span className={`big ${tone}`}>{String(Math.max(0, hp)).padStart(3, '0')}</span>
       </div>
+      <div className="stamina-bar"><div className={stamina < 30 ? 'low' : ''} style={{ width: `${stamina}%` }} /></div>
       <div className="hud-row small">
         <span className="dim">BODY</span> {armor < 0 ? <span className="dim">NONE</span> : <Pips frac={armor} />}
         <span className="dim">HEAD</span> {helmet < 0 ? <span className="dim">NONE</span> : <Pips frac={helmet} />}

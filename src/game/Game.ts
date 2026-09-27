@@ -5,6 +5,7 @@ import { Camera } from '../engine/camera';
 import { GUN_HEIGHT, MAX_DT, VIEW_H, VIEW_W } from '../engine/config';
 import { Input } from '../engine/input';
 import { Rng } from '../engine/rng';
+import { DESTINATION } from '../data/destinations';
 import { ENEMIES } from '../data/enemies';
 import { ITEMS, type ArmorDef, type WeaponItemDef } from '../data/items';
 import { BODY_GRID, BODY_POCKETS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
@@ -16,6 +17,7 @@ import { useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
 import { syncHud } from '../state/hudStore';
 import { Enemy } from './ai/Enemy';
+import { Grenades, fragDamage } from './combat/grenades';
 import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
 import type { GameContext } from './context';
 import { Player } from './entities/Player';
@@ -67,6 +69,7 @@ export class Game {
   private lighting: Lighting | null = null;
   private doors: Doors | null = null;
   private interactions!: Interactions;
+  private grenades!: Grenades;
   private ctx!: GameContext;
   private unsubscribe: (() => void) | null = null;
 
@@ -169,6 +172,8 @@ export class Game {
     window.removeEventListener('pointerdown', this.unlockAudio);
     window.removeEventListener('keydown', this.unlockAudio);
     this.input.destroy();
+    this.audio.setOccluder(null);
+    this.audio.stopAmbience();
     this.audio.destroy();
     this.lighting?.destroy();
     this.app.destroy({ removeView: true }, { children: true });
@@ -190,12 +195,19 @@ export class Game {
     this.actorLayer.sortableChildren = true;
     this.tracers = new Graphics();
     this.projectiles.clear();
+    this.grenades?.clear();
     this.hitstopTime = 0;
     this.deadTime = 0;
     this.ended = false;
 
-    this.map = this.opts.mode === 'facility' ? generateFacility(this.opts.seed) : mapFromAscii(TEST_RANGE);
+    const dest = DESTINATION[useRaid.getState().destination];
+    this.map = this.opts.mode === 'facility'
+      ? generateFacility(this.opts.seed, { danger: dest?.dangerMul ?? 1, enemies: dest?.enemies })
+      : mapFromAscii(TEST_RANGE);
     this.camera = new Camera(this.map.pixelWidth, this.map.pixelHeight);
+    const map = this.map;
+    this.audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
+    this.audio.startAmbience('facility');
     this.effects = new Effects(this.map, this.audio);
     this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map) : null;
 
@@ -212,7 +224,13 @@ export class Game {
         this.hitstopTime = Math.max(this.hitstopTime, s);
       },
       lightFlash: (x, y, r, color, intensity) => this.lighting?.flash(x, y, r, color, intensity),
+      smokeBetween: (x0, y0, x1, y1) => this.grenades.blocks(x0, y0, x1, y1),
+      throwGrenade: (fx, fy, tx, ty, kind, faction) => this.grenades.throw(fx, fy, tx, ty, kind, faction),
     };
+    this.grenades = new Grenades(this.map, this.audio, {
+      onNoise: (x, y, r) => this.ctx.emitNoise(x, y, r),
+      onExplode: (x, y, r, dmg, faction) => this.onExplode(x, y, r, dmg, faction),
+    });
 
     const { ground, props } = buildMapView(this.map);
     this.doors = this.map.doors.length ? new Doors(this.map, this.audio, this.ctx.emitNoise) : null;
@@ -224,7 +242,7 @@ export class Game {
 
     this.worldLit.addChild(ground);
     if (this.doors) this.worldLit.addChild(this.doors.container);
-    this.worldLit.addChild(this.effects.decals, this.actorLayer, this.effects.lit);
+    this.worldLit.addChild(this.effects.decals, this.actorLayer, this.grenades.container, this.effects.lit);
     this.worldGlow.addChild(this.interactions.overlay, this.effects.overlay, this.tracers);
     for (const p of props) this.actorLayer.addChild(p);
 
@@ -236,7 +254,10 @@ export class Game {
     this.enemies = this.map.spawns
       .filter((s) => s.kind in ENEMIES)
       .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null));
-    for (const e of this.enemies) this.actorLayer.addChild(e.view.container);
+    for (const e of this.enemies) {
+      this.actorLayer.addChild(e.view.container);
+      e.allies = this.enemies;
+    }
     this.targets = [this.player, ...this.enemies];
 
     // The inventory UI can change what's equipped at any moment.
@@ -297,14 +318,18 @@ export class Game {
 
     // How visible the player is: flashlight and gunfire give you away.
     const lightHere = this.lighting ? this.lighting.levelAt(p.x, p.y) : 1;
-    p.conspicuity = p.flashlight || p.lastShotAgo < 1.5 ? 1 : lightHere > 0.3 ? 0.75 : 0.42;
+    const base = p.flashlight || p.lastShotAgo < 1.5 ? 1 : lightHere > 0.3 ? 0.75 : 0.42;
+    // Crouched and slow is harder to pick out; a running silhouette catches the eye.
+    p.conspicuity = Math.min(1.2, base * (p.sneaking ? 0.7 : p.sprinting ? 1.2 : 1));
 
     for (const e of this.enemies) e.update(dt, p, this.enemies);
     this.doors?.update(dt, p, this.enemies);
     this.projectiles.update(dt, this.map, this.targets, {
       onWall: this.onBulletWall,
       onActor: this.onBulletActor,
+      onNearMiss: this.onNearMiss,
     });
+    this.grenades.update(dt);
     this.effects.update(dt);
 
     this.trackRooms(dt);
@@ -403,6 +428,8 @@ export class Game {
       armor: Math.round(armor * 20) / 20,
       helmet: Math.round(helmet * 20) / 20,
       using: st.using < 0 ? -1 : Math.round(st.using * 20) / 20,
+      stamina: Math.round(st.stamina / 5) * 5,
+      gait: st.gait,
       usingName: st.usingName,
       armed: !!w,
       weaponName: w?.def.name ?? 'UNARMED',
@@ -432,7 +459,8 @@ export class Game {
     const L = this.lighting!;
     for (const e of this.enemies) {
       const seen = hasLineOfSight(this.map, p.x, p.y - 6, e.x, e.y - 6)
-        && (L.litByPlayer(e.x, e.y) || L.levelAt(e.x, e.y) > 0.22 || e.lastShotAgo < 0.12);
+        && (L.litByPlayer(e.x, e.y) || L.levelAt(e.x, e.y) > 0.22 || e.lastShotAgo < 0.12)
+        && (!this.grenades.blocks(p.x, p.y - 6, e.x, e.y - 6) || e.lastShotAgo < 0.12);
       const c = e.view.container;
       const target = seen ? 1 : 0;
       c.alpha += (target - c.alpha) * Math.min(1, dt * (seen ? 22 : 5));
@@ -466,20 +494,64 @@ export class Game {
       this.audio.sfx('impactFlesh', x, y);
     }
     if (r.killed) {
-      raid.kill(enemy.def.id, headshot);
-      this.overlay.kill(headshot);
-      this.effects.bloodPool(enemy.x, enemy.y, true);
-      this.effects.bloodHit(x, y, b.dx, b.dy, 14);
-      this.audio.sfx(headshot ? 'headshot' : 'kill', x, y);
-      this.hitstopTime = Math.max(this.hitstopTime, headshot ? 0.07 : 0.045);
-      this.camera.shake(0.15);
-      this.addBody(enemy);
+      this.onEnemyKilled(enemy, x, y, b.dx, b.dy, headshot);
     } else {
       if (headshot) this.audio.sfx('headshot', x, y);
       this.overlay.hit(r.blocked, headshot);
       if (!r.blocked && Math.random() < 0.5) this.effects.bloodPool(x + b.dx * 10, y + b.dy * 10, false);
     }
   };
+
+  private onEnemyKilled(enemy: Enemy, x: number, y: number, dx: number, dy: number, headshot: boolean): void {
+    raid.kill(enemy.def.id, headshot);
+    this.overlay.kill(headshot);
+    this.effects.bloodPool(enemy.x, enemy.y, true);
+    this.effects.bloodHit(x, y, dx, dy, 14);
+    this.audio.sfx(headshot ? 'headshot' : 'kill', x, y);
+    this.hitstopTime = Math.max(this.hitstopTime, headshot ? 0.07 : 0.045);
+    this.camera.shake(0.15);
+    this.addBody(enemy);
+    // Friends who see it happen get scared, and angry.
+    for (const e of this.enemies) if (e !== enemy) e.witnessDeath(enemy.x, enemy.y, this.player.x, this.player.y);
+  }
+
+  /** A round snapped past someone: enemies get suppressed, the player hears it by their ear. */
+  private onNearMiss = (b: Bullet, target: Hittable): void => {
+    if (target === this.player) {
+      this.audio.sfx('whiz', this.player.x + b.dx * 10, this.player.y + b.dy * 10);
+      this.camera.shake(0.06);
+      this.overlay.suppressed();
+      return;
+    }
+    (target as Enemy).nearMiss(b.ox, b.oy);
+  };
+
+  /** Fragmentation: everyone in the blast with a clear line takes damage, the shooter included. */
+  private onExplode(x: number, y: number, radius: number, damage: number, faction: 'player' | 'enemy'): void {
+    this.effects.explosion(x, y);
+    this.lighting?.flash(x, y - 6, 280, 0xffb060, 1.4, 0.18);
+    const pd = Math.hypot(this.player.x - x, this.player.y - y);
+    this.camera.shake(Math.max(0.15, 0.9 - pd / 500));
+    this.hitstopTime = Math.max(this.hitstopTime, 0.05);
+    const pdmg = fragDamage(this.map, x, y, this.player.x, this.player.y, radius, damage);
+    if (pdmg > 0 && this.player.alive) {
+      const a = Math.atan2(this.player.y - y, this.player.x - x);
+      this.player.takeHit(pdmg, 3, Math.cos(a), Math.sin(a), false);
+      this.overlay.damaged(a + Math.PI);
+    }
+    for (const e of this.enemies) {
+      if (!e.alive) continue;
+      const dmg = fragDamage(this.map, x, y, e.x, e.y, radius, damage);
+      if (dmg <= 0) continue;
+      const a = Math.atan2(e.y - y, e.x - x);
+      const r = e.takeDamage(dmg, 3, false, Math.cos(a), Math.sin(a), 240, x, y);
+      this.effects.bloodHit(e.x, e.y - 8, Math.cos(a), Math.sin(a), 8);
+      if (r.killed) {
+        if (faction === 'player') this.onEnemyKilled(e, e.x, e.y - 8, Math.cos(a), Math.sin(a), false);
+        else this.addBody(e);
+      }
+    }
+  }
 
   /** A corpse carries its gun, some rounds, whatever armor survived, and pocket junk. */
   private addBody(e: Enemy): void {

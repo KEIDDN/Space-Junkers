@@ -21,6 +21,8 @@ export interface FacilityOptions {
   cellsY?: number;
   /** 0.5 = easy .. 1.5 = hard. Scales enemy counts. */
   danger?: number;
+  /** Enemy kinds by weight. */
+  enemies?: Record<string, number>;
 }
 
 const CELL_W = 16;
@@ -166,7 +168,8 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   for (const i of deadEnds.slice(1)) cells[i].room.role = 'loot';
 
   // --- Furnish
-  for (const c of cells) furnishRoom(map, rng, c, maxDepth, danger, cells);
+  const mix = opts.enemies ?? { scavenger: 1 };
+  for (const c of cells) furnishRoom(map, rng, c, maxDepth, danger, cells, mix);
 
   for (const c of cells) map.rooms.push(c.room);
   return map;
@@ -246,7 +249,9 @@ function carveCorridor(map: TileMap, rng: Rng, a: Cell, b: Cell): void {
   }
 }
 
-function furnishRoom(map: TileMap, rng: Rng, cell: Cell, maxDepth: number, danger: number, cells: Cell[]): void {
+function furnishRoom(
+  map: TileMap, rng: Rng, cell: Cell, maxDepth: number, danger: number, cells: Cell[], mix: Record<string, number>,
+): void {
   const r = cell.room;
   const inRoom = (x: number, y: number) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
   const reserved = new Set<number>();
@@ -362,13 +367,14 @@ function furnishRoom(map: TileMap, rng: Rng, cell: Cell, maxDepth: number, dange
   }
 
   // --- Enemies
+  // Few enough that every contact matters; more where the loot is.
   const base = (() => {
     switch (r.role) {
       case 'start': return 0;
-      case 'loot': return rng.int(1, 2);
-      case 'vault': return rng.int(3, 4);
-      case 'extraction': return rng.int(1, 2);
-      default: return rng.int(0, 1) + (r.depth >= 3 && rng.chance(0.5) ? 1 : 0);
+      case 'loot': return rng.chance(0.7) ? 1 : 2;
+      case 'vault': return rng.int(2, 3);
+      case 'extraction': return 1;
+      default: return (rng.chance(0.42) ? 1 : 0) + (r.depth >= 3 && rng.chance(0.25) ? 1 : 0);
     }
   })();
   const count = r.depth === 1 ? Math.min(1, base) : Math.round(base * danger);
@@ -382,7 +388,7 @@ function furnishRoom(map: TileMap, rng: Rng, cell: Cell, maxDepth: number, dange
   for (let i = 0; i < count && i < free.length; i++) {
     const [x, y] = free[i];
     const spawn: Spawn = {
-      kind: 'scavenger', x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
+      kind: rng.weighted(mix), x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
     };
     // Some guards walk a route between this room and its neighbours.
     if (i === 0 && r.role === 'standard' && rng.chance(0.4)) {

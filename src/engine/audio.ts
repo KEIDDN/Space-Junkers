@@ -22,9 +22,11 @@ export interface GunSound {
 export type Sfx =
   | 'dryfire' | 'switch' | 'step' | 'casing' | 'impactWall' | 'impactFlesh' | 'hurt' | 'kill'
   | 'door' | 'rummage' | 'loot' | 'flashlight' | 'beacon' | 'alarm' | 'extracted'
-  | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop';
+  | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop'
+  | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath';
 
 const HEARING_RANGE = 900;
+const GUNSHOT_RANGE = 1700;
 
 export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab';
 
@@ -72,6 +74,13 @@ export class AudioService {
   setMasterVolume(v: number): void {
     this.volume = v;
     if (this.ctx) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
+  }
+
+  /** Walls between the listener and a sound muffle it. Set by whoever owns the map. */
+  private occluder: ((x0: number, y0: number, x1: number, y1: number) => boolean) | null = null;
+
+  setOccluder(fn: ((x0: number, y0: number, x1: number, y1: number) => boolean) | null): void {
+    this.occluder = fn;
   }
 
   setListener(x: number, y: number): void {
@@ -319,7 +328,8 @@ export class AudioService {
   }
 
   gunshot(s: GunSound, x: number, y: number): void {
-    const bus = this.spatialBus(x, y, s.gain);
+    // Gunfire carries much further than anything else: distant fights are a dull thud.
+    const bus = this.spatialBus(x, y, s.gain, GUNSHOT_RANGE);
     if (!bus) return;
     const { ctx, out, muffle } = bus;
     const t = ctx.currentTime;
@@ -364,15 +374,16 @@ export class AudioService {
     this.click(bus.out, t + duration * 0.95, 3200, 0.5);
   }
 
-  sfx(kind: Sfx, x = this.listenerX, y = this.listenerY): void {
+  sfx(kind: Sfx, x = this.listenerX, y = this.listenerY, gainMul = 1): void {
     const gains: Record<Sfx, number> = {
       dryfire: 0.45, switch: 0.4, step: 0.14, casing: 0.12,
       impactWall: 0.35, impactFlesh: 0.7, hurt: 0.9, kill: 0.6,
       door: 0.45, rummage: 0.3, loot: 0.5, flashlight: 0.4, beacon: 0.35, alarm: 0.55, extracted: 0.7,
       shell: 0.45, cycle: 0.55, jam: 0.6, unjam: 0.55, inject: 0.45, bandage: 0.4, heal: 0.25,
       armor: 0.6, headshot: 0.8, drop: 0.35,
+      bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
     };
-    const bus = this.spatialBus(x, y, gains[kind]);
+    const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
     const { ctx, out, muffle } = bus;
     const t = ctx.currentTime;
@@ -525,26 +536,91 @@ export class AudioService {
         this.thump(out, t, 110, 0.09, 0.8);
         this.noiseBurst(out, t, 0.06, 700, 0.4);
         break;
+      case 'bodyfall':
+        // A body and its gear hitting deck plating.
+        this.thump(out, t, 75, 0.2, 1);
+        this.noiseBurst(out, t, 0.12, 900 * muffle, 0.5);
+        this.click(out, t + 0.05 + Math.random() * 0.05, 1400, 0.4);
+        break;
+      case 'whiz': {
+        // A round passing close to your head: a snap and a tearing hiss.
+        const n = this.noiseSource(t, 0.18);
+        const f = ctx.createBiquadFilter();
+        f.type = 'bandpass';
+        f.Q.value = 2;
+        f.frequency.setValueAtTime(5200, t);
+        f.frequency.exponentialRampToValueAtTime(1800, t + 0.15);
+        n.connect(f).connect(env(ctx, t, 1, 0.003, 0.14)).connect(out);
+        this.click(out, t, 6000, 0.8);
+        break;
+      }
+      case 'shout':
+        // A radio squelch and a harsh burst of voice: they're calling you in.
+        this.noiseBurst(out, t, 0.05, 3500 * muffle, 0.5);
+        for (let i = 0; i < 3; i++) {
+          const o = ctx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.setValueAtTime(170 + Math.random() * 60, t + 0.07 + i * 0.12);
+          o.frequency.linearRampToValueAtTime(130 + Math.random() * 40, t + 0.17 + i * 0.12);
+          const f = ctx.createBiquadFilter();
+          f.type = 'bandpass';
+          f.frequency.value = 900 * muffle;
+          f.Q.value = 1.4;
+          o.connect(f).connect(env(ctx, t + 0.07 + i * 0.12, 0.6, 0.01, 0.1)).connect(out);
+          o.start(t + 0.07 + i * 0.12);
+          o.stop(t + 0.2 + i * 0.12);
+        }
+        this.noiseBurst(out, t + 0.45, 0.04, 3500 * muffle, 0.4);
+        break;
+      case 'clink':
+        // Grenade landing: bright metal skittering.
+        this.tone(out, t, 3100, 0.05, 0.8);
+        this.tone(out, t + 0.11, 2700, 0.04, 0.6);
+        this.tone(out, t + 0.19, 2900, 0.03, 0.4);
+        break;
+      case 'explosion': {
+        this.thump(out, t, 55, 0.9, 1.4);
+        this.thump(out, t, 32, 1.4, 1);
+        const n = this.noiseSource(t, 1.8);
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.setValueAtTime(3200 * muffle, t);
+        f.frequency.exponentialRampToValueAtTime(180, t + 1.5);
+        n.connect(f).connect(env(ctx, t, 1.3, 0.004, 1.6)).connect(out);
+        for (let i = 0; i < 5; i++) this.click(out, t + 0.1 + Math.random() * 0.6, 1500 + Math.random() * 2000, 0.3);
+        break;
+      }
+      case 'smokepop':
+        this.click(out, t, 1200, 0.7);
+        this.noiseBurst(out, t + 0.02, 1.2, 1400 * muffle, 0.45);
+        break;
+      case 'breath':
+        this.noiseBurst(out, t, 0.35, 600, 0.35);
+        break;
     }
   }
 
   // ---------------------------------------------------------------------------
 
-  private spatialBus(x: number, y: number, gain: number) {
+  private spatialBus(x: number, y: number, gain: number, range = HEARING_RANGE) {
     const ctx = this.ctx;
     if (!ctx) return null;
     const dx = x - this.listenerX;
     const dy = y - this.listenerY;
     const d = Math.hypot(dx, dy);
-    if (d > HEARING_RANGE) return null;
-    const falloff = 1 / (1 + d / 220);
+    if (d > range) return null;
+    let falloff = 1 / (1 + d / 220);
+    // Far sounds lose their high end; sounds behind walls lose more, and some volume.
+    let muffle = Math.max(0.1, 1 - d / 700);
+    if (d > 24 && this.occluder?.(this.listenerX, this.listenerY - 8, x, y - 8)) {
+      muffle *= 0.4;
+      falloff *= 0.6;
+    }
     const out = ctx.createGain();
     out.gain.value = gain * falloff;
     const pan = ctx.createStereoPanner();
     pan.pan.value = Math.max(-0.8, Math.min(0.8, dx / 320));
     out.connect(pan).connect(this.master);
-    // Far sounds lose their high end.
-    const muffle = Math.max(0.12, 1 - d / 700);
     return { ctx, out, muffle };
   }
 

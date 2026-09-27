@@ -32,6 +32,8 @@ export interface Bullet {
   knockback: number;
   faction: Faction;
   color: number;
+  /** Last target this bullet whizzed past (reported once). */
+  near: Hittable | null;
 }
 
 export interface ShotSpec {
@@ -51,9 +53,21 @@ export interface ProjectileEvents {
   onWall(b: Bullet, hit: RayHit): void;
   /** `headshot`: the bullet's line passed through the centre of the target. */
   onActor(b: Bullet, target: Hittable, x: number, y: number, headshot: boolean): void;
+  /** The bullet passed close to a target without hitting it. */
+  onNearMiss?(b: Bullet, target: Hittable): void;
 }
 
 const TRACER_TIME = 0.022; // seconds of travel shown as the tracer streak
+/** A round passing this close (px) is a near miss: suppression, and a snap in your ear. */
+const NEAR_MISS = 24;
+
+function segPointDist(x0: number, y0: number, x1: number, y1: number, px: number, py: number): number {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const l2 = dx * dx + dy * dy;
+  const t = l2 ? Math.max(0, Math.min(1, ((px - x0) * dx + (py - y0) * dy) / l2)) : 0;
+  return Math.hypot(x0 + dx * t - px, y0 + dy * t - py);
+}
 const MAX_TRACER = 34;
 
 /**
@@ -82,6 +96,7 @@ export class Projectiles {
     b.knockback = spec.knockback;
     b.faction = spec.faction;
     b.color = spec.color;
+    b.near = null;
   }
 
   update(dt: number, map: TileMap, targets: readonly Hittable[], ev: ProjectileEvents): void {
@@ -118,6 +133,15 @@ export class Projectiles {
         const miss = Math.abs((bestTarget.x - b.x) * b.dy - (bestTarget.y - b.y) * b.dx);
         ev.onActor(b, bestTarget, b.x, b.y, miss < HEADSHOT_RADIUS);
         continue;
+      }
+      if (ev.onNearMiss) {
+        for (const t of targets) {
+          if (!t.alive || t.faction === b.faction || t === b.near) continue;
+          if (segPointDist(b.x, b.y, nx, ny, t.x, t.y) < NEAR_MISS) {
+            b.near = t;
+            ev.onNearMiss(b, t);
+          }
+        }
       }
       b.x = nx;
       b.y = ny;

@@ -12,7 +12,7 @@ import { shipUi, useShip } from '../../state/shipStore';
 import { ActorView } from '../entities/ActorView';
 import { Lighting } from '../render/lighting';
 import { buildMapView, FLOOR_DECK } from '../render/mapView';
-import { moveCircle } from '../world/collision';
+import { hasLineOfSight, moveCircle } from '../world/collision';
 import { Doors } from '../world/doors';
 import { CrewActor } from './CrewActor';
 
@@ -89,6 +89,7 @@ export class ShipScene {
     this.destroyed = true;
     if (!this.initialised) return;
     audio.stopAmbience();
+    audio.setOccluder(null);
     this.app.ticker.remove(this.tick);
     window.removeEventListener('resize', this.fit);
     this.input.destroy();
@@ -180,6 +181,7 @@ export class ShipScene {
     this.py = this.start?.y ?? L.spawn.y;
 
     this.lighting = new Lighting(this.app.renderer, map);
+    audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
     this.lighting.flashlightOn = false;
 
     this.world.addChild(ground, floorProps, this.doors.container, wallProps, this.actors);

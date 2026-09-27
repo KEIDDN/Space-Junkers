@@ -367,12 +367,24 @@ def to_pixels_fit_w(img: Image.Image, width: int) -> Image.Image:
     return resample(clean, (width, h))
 
 
-def hooded(body_rect: tuple[int, int, int, int]) -> Image.Image:
-    """Scavenger variant: player body, rag-brown tint, red hood + gas mask head."""
+# Enemy factions: (head rect, body tint (r, g, b, desat), head tint or None, head scale).
+ENEMY_VARIANTS = {
+    "scav": (HEAD_HOOD, (1.0, 0.86, 0.7, 0.45), None, 0.72),
+    "raider": ((433, 717, 480, 789), (1.02, 0.8, 0.6, 0.35), None, 0.8),
+    "soldier": ((643, 718, 701, 790), (0.78, 0.92, 0.64, 0.55), (0.85, 0.95, 0.8, 0.3), 0.72),
+    "security": ((198, 718, 254, 786), (0.5, 0.56, 0.72, 0.6), (0.82, 0.88, 1.0, 0.2), 0.76),
+}
+
+
+def hooded(body_rect: tuple[int, int, int, int], variant: str = "scav") -> Image.Image:
+    """Enemy variant: the operator body re-dyed, with a faction head pasted over the helmet."""
+    head_rect, body_tint, head_tint, head_scale = ENEMY_VARIANTS[variant]
     body = strip_haze(crop(CHAR, body_rect, pad=12))
-    body = tint(body, (1.0, 0.86, 0.7), desat=0.45)
-    head = strip_haze(crop(CHAR, HEAD_HOOD, pad=0))
-    head = head.resize((round(head.width * 0.72), round(head.height * 0.72)), Image.BOX)
+    body = tint(body, body_tint[:3], desat=body_tint[3])
+    head = strip_haze(crop(CHAR, head_rect, pad=0))
+    if head_tint:
+        head = tint(head, head_tint[:3], desat=head_tint[3])
+    head = head.resize((round(head.width * head_scale), round(head.height * head_scale)), Image.BOX)
     a = np.array(body)[:, :, 3] > 0
     ys, _ = np.where(a)
     top = int(ys.min())
@@ -440,13 +452,14 @@ def build() -> None:
         plate = resample(strip_haze(crop(TILES, rect, pad=0)), (TILE * 2, TILE * 2))
         frames[f"{key}_2x"] = tint(plate, (0.72, 0.72, 0.74), desat=0.15)
 
-    # Scavenger enemy
-    scav = [place_in_cell(to_pixels(hooded(r)), CHAR_CELL, 0.4) for r in MALE_WALK]
-    add_anim("scav_walk", scav)
-    add_anim("scav_walk_flash", [silhouette(im) for im in scav])
-    # Corpse: first walk frame rotated onto its side (exact 90deg keeps pixels crisp).
-    corpse = trim(scav[0]).rotate(90, expand=True)
-    add_anim("scav_dead", [place_in_cell(corpse, DEATH_CELL, None)])
+    # Enemy factions
+    for variant in ENEMY_VARIANTS:
+        walk = [place_in_cell(to_pixels(hooded(r, variant)), CHAR_CELL, 0.4) for r in MALE_WALK]
+        add_anim(f"{variant}_walk", walk)
+        add_anim(f"{variant}_walk_flash", [silhouette(im) for im in walk])
+        # Corpse: first walk frame rotated onto its side (exact 90deg keeps pixels crisp).
+        corpse = trim(walk[0]).rotate(90, expand=True)
+        add_anim(f"{variant}_dead", [place_in_cell(corpse, DEATH_CELL, None)])
 
     frames["portrait_m"] = to_pixels(crop(CHAR, PORTRAIT_MALE))
     frames["portrait_f"] = to_pixels(crop(CHAR, PORTRAIT_FEMALE))

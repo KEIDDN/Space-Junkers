@@ -614,3 +614,7 @@ button { font-family: var(--mono); }
 .hud-tracker { margin-top: 6px; font-size: 12px; display: flex; flex-direction: column; gap: 1px; max-width: 360px; }
 .hud-exfil { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); color: var(--phosphor); font-size: 14px; letter-spacing: 0.12em; }
 .results-contracts { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+
+.stamina-bar { height: 3px; background: #1d1a16; margin: 3px 44px 0 0; }
+.stamina-bar div { height: 100%; background: #b8c4cc; transition: width 150ms linear; }
+.stamina-bar div.low { background: var(--warn); }
