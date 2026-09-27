@@ -7,6 +7,8 @@ export function SettingsRows() {
   const shake = useSettings((s) => s.shake);
   const setVolume = useSettings((s) => s.setVolume);
   const setShake = useSettings((s) => s.setShake);
+  const brightness = useSettings((s) => s.brightness);
+  const setBrightness = useSettings((s) => s.setBrightness);
   return (
     <>
       <label className="setting">
@@ -19,6 +21,11 @@ export function SettingsRows() {
         <span>SCREEN SHAKE</span>
         <input type="range" min={0} max={1} step={0.1} value={shake} onChange={(e) => setShake(Number(e.target.value))} />
         <span className="dim">{Math.round(shake * 100)}</span>
+      </label>
+      <label className="setting">
+        <span>BRIGHTNESS</span>
+        <input type="range" min={0.8} max={1.6} step={0.1} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} />
+        <span className="dim">{Math.round(brightness * 100)}</span>
       </label>
     </>
   );

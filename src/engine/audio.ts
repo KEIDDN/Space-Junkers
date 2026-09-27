@@ -26,7 +26,7 @@ export type Sfx =
   | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
   | 'breaker' | 'keycard' | 'lift'
   | 'magout' | 'magin' | 'rack' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet'
-  | 'heartbeat' | 'mutter' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio';
+  | 'heartbeat' | 'mutter' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio' | 'zap' | 'hiss';
 
 /** What a foot lands on. */
 export type Surface = 'deck' | 'plate' | 'grate';
@@ -645,7 +645,7 @@ export class AudioService {
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
       breaker: 0.7, keycard: 0.45, lift: 0.5,
       magout: 0.2, magin: 0.24, rack: 0.28, breakopen: 0.26, breakclose: 0.3, magdrop: 0.2, draw: 0.14, ricochet: 0.35,
-      heartbeat: 0.35, mutter: 0.75, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12,
+      heartbeat: 0.35, mutter: 0.75, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12, zap: 0.3, hiss: 0.18,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
@@ -861,6 +861,28 @@ export class AudioService {
       case 'breath':
         this.noiseBurst(out, t, 0.35, 600, 0.35);
         break;
+      case 'zap': {
+        // Arcing: a crackle of clicks over a mains buzz.
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = 100;
+        const f = ctx.createBiquadFilter();
+        f.type = 'bandpass';
+        f.frequency.value = 2400 * muffle;
+        o.connect(f).connect(env(ctx, t, 0.35, 0.005, 0.25)).connect(out);
+        o.start(t);
+        o.stop(t + 0.3);
+        for (let i = 0; i < 6; i++) this.click(out, t + Math.random() * 0.22, 3000 + Math.random() * 3000, 0.5);
+        break;
+      }
+      case 'hiss': {
+        const n = this.noiseSource(t, 1.1);
+        const f = ctx.createBiquadFilter();
+        f.type = 'highpass';
+        f.frequency.value = 2500 * muffle;
+        n.connect(f).connect(env(ctx, t, 0.5, 0.08, 0.9)).connect(out);
+        break;
+      }
       case 'heartbeat':
         // Lub-dub, felt in the chest.
         this.thump(out, t, 52, 0.12, 1);

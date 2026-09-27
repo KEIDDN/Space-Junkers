@@ -266,6 +266,34 @@ export class Effects {
     });
   }
 
+  /** A shorting panel spitting sparks that fall and bounce. (x, y) is where they leave, in view space. */
+  sparkBurst(x: number, y: number, n: number): void {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 30 + Math.random() * 90;
+      this.spawn({
+        kind: 'spark', x, y: y + 18, z: 18, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.5, vz: 20 + Math.random() * 60,
+        life: 0.25 + Math.random() * 0.35, color: Math.random() < 0.5 ? 0xd8f0ff : 0xfff4d0, size: 1, gravity: GRAVITY * 0.8, drag: 2,
+      });
+    }
+  }
+
+  /** A breath of steam from a pipe or tank, rising and thinning. */
+  steam(x: number, y: number): void {
+    const frames = anim('fx_smoke');
+    for (let i = 0; i < 4; i++) {
+      const s = new Sprite(frames[(Math.random() * frames.length) | 0]);
+      s.anchor.set(0.5);
+      s.position.set(Math.round(x + (Math.random() - 0.5) * 4), Math.round(y));
+      s.scale.set(0.4 + Math.random() * 0.2);
+      s.tint = 0xeef2f6;
+      s.alpha = 0.3;
+      this.lit.addChild(s);
+      const life = 0.9 + Math.random() * 0.7;
+      this.timed.push({ sprite: s, life, maxLife: life, vx: (Math.random() - 0.5) * 14, vy: -22 - Math.random() * 14 - i * 4, grow: 1.1, fade: 0.3 });
+    }
+  }
+
   /** Treatment took: a few pale green motes rise off the body. */
   healPuff(x: number, y: number): void {
     for (let i = 0; i < 7; i++) {

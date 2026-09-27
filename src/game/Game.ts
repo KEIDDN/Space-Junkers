@@ -24,6 +24,7 @@ import { Grenades, fragDamage } from './combat/grenades';
 import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
 import type { GameContext } from './context';
 import { Player } from './entities/Player';
+import { AmbientFx } from './fx/ambient';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
 import { Lighting } from './render/lighting';
@@ -81,6 +82,7 @@ export class Game {
   private doors: Doors | null = null;
   private interactions!: Interactions;
   private grenades!: Grenades;
+  private ambientFx: AmbientFx | null = null;
   private ctx!: GameContext;
   private unsubscribe: (() => void) | null = null;
 
@@ -182,6 +184,10 @@ export class Game {
     if (e?.alive) this.onBulletActor({ dx: 1, dy: 0, damage: 999, pen: 9, knockback: 50 } as Bullet, e, e.x, e.y, false);
   }
 
+  setBrightness(v: number): void {
+    this.lighting?.setBrightness(v);
+  }
+
   setShake(v: number): void {
     if (this.camera) this.camera.shakeScale = v;
   }
@@ -254,7 +260,7 @@ export class Game {
       ...this.map.containers.map((c) => ({ sprite: CONTAINERS[c.type]?.sprite ?? '', x: c.tx * 32 + 16, y: c.ty * 32 + 16 })),
     ]);
     this.effects = new Effects(this.map, this.audio);
-    this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map) : null;
+    this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map, useSettings.getState().brightness) : null;
 
     this.ctx = {
       map: this.map,
@@ -268,7 +274,7 @@ export class Game {
       hitstop: (s) => {
         this.hitstopTime = Math.max(this.hitstopTime, s);
       },
-      lightFlash: (x, y, r, color, intensity) => this.lighting?.flash(x, y, r, color, intensity),
+      lightFlash: (x, y, r, color, intensity, life) => this.lighting?.flash(x, y, r, color, intensity, life),
       smokeBetween: (x0, y0, x1, y1) => this.grenades.blocks(x0, y0, x1, y1),
       throwGrenade: (fx, fy, tx, ty, kind, faction) => this.grenades.throw(fx, fy, tx, ty, kind, faction),
       surfaceAt: (x, y) => {
@@ -298,6 +304,13 @@ export class Game {
     if (this.doors) this.worldLit.addChild(this.doors.container);
     this.worldLit.addChild(this.effects.decals, this.actorLayer, this.grenades.container, this.effects.lit);
     this.worldGlow.addChild(this.interactions.overlay, this.effects.overlay, this.tracers);
+    // Life in the walls: blinking status lights, sparking machines, steam, dust in the beam.
+    this.ambientFx = new AmbientFx(
+      [...this.map.props, ...this.map.containers.map((c) => ({ sprite: CONTAINERS[c.type]?.sprite ?? '', x: c.tx * 32 + 16, y: c.ty * 32 + 29 }))],
+      this.effects, this.audio, this.ctx.lightFlash, this.opts.seed,
+    );
+    this.worldGlow.addChildAt(this.ambientFx.glow, 0);
+    if (this.lighting) this.worldLit.addChild(this.ambientFx.dust);
     for (const p of props) this.actorLayer.addChild(p);
 
     const spawn = this.map.spawns.find((s) => s.kind === 'player')!;
@@ -629,6 +642,7 @@ export class Game {
 
     this.tracers.clear();
     this.projectiles.render(this.tracers);
+    this.ambientFx?.update(dt, this.camera.left, this.camera.top, VIEW_W, VIEW_H);
 
     // Crosshair spread: cone half-angle projected to the cursor distance.
     const w = p.weapon;

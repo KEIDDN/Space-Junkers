@@ -73,6 +73,8 @@ export interface LightDef {
   flicker: boolean;
   /** Draw a lamp housing on the wall here. */
   fixture?: boolean;
+  /** 'pulse': a slow emergency throb instead of a steady or stuttering tube. */
+  style?: 'pulse';
 }
 
 export interface ContainerPlacement {

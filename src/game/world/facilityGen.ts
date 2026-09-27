@@ -394,6 +394,12 @@ const KITS: Record<string, Kit> = {
   },
 };
 
+/** Screens and status lights that cast a little colour of their own. */
+const TECH_GLOW: Record<string, number> = {
+  ship_terminal: 0x5fe08a, hack_terminal: 0x5fe08a, ship_console3: 0x5fe08a, ship_console_b: 0x5fe08a,
+  ship_server: 0x4aa8ff, ship_server2: 0x4aa8ff, ship_tv: 0x8ab8ff, med_monitor: 0x5fe0c8,
+};
+
 /** Tall containers belong against the back wall; boxes can sit anywhere along a wall. */
 const BACK_WALL = new Set(['locker', 'medcab', 'server', 'filing']);
 
@@ -532,6 +538,8 @@ function furnishRoom(
     if (tryBlock(tiles, () => {
       map.props.push({ sprite: piece.sprite, x: px(x0) + (piece.w * TILE) / 2, y: px(r.y + 1) - 2 });
       if (piece.terminal) map.terminals.push({ tx: x0, ty: r.y, entry: map.terminals.length });
+      const glow = TECH_GLOW[piece.sprite];
+      if (glow) map.lights.push({ x: px(x0) + (piece.w * TILE) / 2, y: px(r.y + 1) + 4, color: glow, radius: 56, intensity: 0.32, flicker: false });
     }, !!piece.terminal)) k++;
   }
 
@@ -604,6 +612,16 @@ function furnishRoom(
 
   // --- Lights, in fixtures on the back wall.
   const lit = r.role === 'standard' ? rng.chance(0.55) : r.role === 'loot' ? rng.chance(0.5) : true;
+  if (!lit) {
+    // Mains are out: a battery emergency lamp throbs over the back wall, barely enough.
+    const spots = backWallX().filter(standsOnBackWall);
+    if (spots.length) {
+      map.lights.push({
+        x: px(spots[0]) + TILE / 2, y: r.y * TILE + 6, color: rng.chance(0.7) ? 0xff4a32 : 0xffa030,
+        radius: 110, intensity: 0.42, flicker: false, style: 'pulse', fixture: true,
+      });
+    }
+  }
   if (lit) {
     const radius = Math.min(260, Math.max(150, Math.max(r.w, r.h) * TILE * 0.8));
     const count = r.w >= 10 ? 2 : 1;

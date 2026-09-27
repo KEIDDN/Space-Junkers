@@ -95,6 +95,11 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
     gameRef.current?.setShake(shake);
   }, [shake]);
 
+  const brightness = useSettings((s) => s.brightness);
+  useEffect(() => {
+    gameRef.current?.setBrightness(brightness);
+  }, [brightness]);
+
   useEffect(() => {
     if (gameRef.current) gameRef.current.paused = paused;
   }, [paused]);

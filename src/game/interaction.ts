@@ -37,7 +37,7 @@ interface Lootable {
 
 export interface InteractionEvents {
   onNoise(x: number, y: number, radius: number): void;
-  onLight(x: number, y: number, radius: number, color: number, intensity: number): void;
+  onLight(x: number, y: number, radius: number, color: number, intensity: number, life?: number): void;
   onExtracted(): void;
   /** The pad alarm started: everyone in the facility knows where you'll be. */
   onSignal?(x: number, y: number): void;
@@ -86,6 +86,8 @@ export class Interactions {
   private powered = new Set<ExitDef>();
   private alarmTimer = 0;
   private beaconTimer = 0;
+  private sweepTimer = 0;
+  private sweepStep = 0;
   private done = false;
   private pileCount = 0;
 
@@ -221,6 +223,15 @@ export class Interactions {
         this.beaconTimer = onPad ? 1 : 0.5;
         this.audio.sfx('beacon', zx, zy);
         this.ev.onLight(zx, zy, 140, 0x7dff9a, 0.7);
+      }
+      // Hazard beacons sweep around the pad: the room turns red and everyone knows why.
+      this.sweepTimer -= dt;
+      if (this.sweepTimer <= 0) {
+        this.sweepTimer = 0.16;
+        const k = this.sweepStep++ % 4;
+        const cx = (e.x + (k === 0 || k === 3 ? -0.5 : e.w + 0.5)) * TILE;
+        const cy = (e.y + (k < 2 ? -0.5 : e.h + 0.5)) * TILE;
+        this.ev.onLight(cx, cy, 130, 0xff3020, 0.55, 0.3);
       }
       if (this.alarmTimer <= 0) {
         // The klaxon quickens and swells as the shuttle closes in.

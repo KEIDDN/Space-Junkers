@@ -232,7 +232,7 @@ export function Hud() {
       )}
 
       {exfil && <div className="hud-exfil crt-text">{exfil}</div>}
-      {facility && !inventoryOpen && countdown === null && <FirstRaidHint />}
+      {facility && !inventoryOpen && !dead && countdown === null && <FirstRaidHint />}
       <Feed />
 
       {countdown !== null && !dead && (
