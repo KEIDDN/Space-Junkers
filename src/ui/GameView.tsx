@@ -14,6 +14,7 @@ import { TerminalView } from './TerminalView';
 import { ControlsList, SettingsRows } from './Settings';
 import { RaidInventory } from './inventory/InventoryScreen';
 import { Results } from './Results';
+import { Key } from './Glyph';
 
 /** Bank or lose the loadout. Runs once per raid, from whichever path ends it first. */
 export function settleRaid(status: 'extracted' | 'dead'): void {
@@ -38,10 +39,10 @@ export function settleRaid(status: 'extracted' | 'dead'): void {
 function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onResume: () => void; onAbandon: () => void }) {
   const [confirm, setConfirm] = useState(false);
   return (
-    <div className="pause-screen">
+    <div className="pause-screen" data-nav-scope="pause">
       <div className="panel pause-panel">
         <div className="panel-title">SIGNAL HOLD <span className="dim">// PAUSED</span></div>
-        <button className="menu-btn" onClick={onResume} onPointerEnter={() => audio.ui('hover')}>RESUME</button>
+        <button className="menu-btn" data-nav-default onClick={onResume} onPointerEnter={() => audio.ui('hover')}>RESUME <Key a="back" /></button>
         <SettingsRows />
         <ControlsList />
         {!confirm ? (
@@ -52,7 +53,7 @@ function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onRes
           <div className="confirm">
             {facility && <div className="bad small">You will be listed missing in action. Everything you carry is lost.</div>}
             <div className="confirm-row">
-              <button className="menu-btn danger" onClick={onAbandon}>CONFIRM</button>
+              <button className="menu-btn danger" data-nav-default onClick={onAbandon}>CONFIRM</button>
               <button className="menu-btn" onClick={() => setConfirm(false)}>CANCEL</button>
             </div>
           </div>

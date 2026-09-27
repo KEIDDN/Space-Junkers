@@ -24,7 +24,9 @@ export function weaponAction(w: WeaponState | null): HandAction | null {
 }
 
 /** Sounds and effects for the key moments the body animation reached this frame. */
-export function playAnimEvents(ctx: GameContext, view: ActorView, x: number, y: number, aim: number, def: WeaponDef | null): void {
+export function playAnimEvents(ctx: GameContext, view: ActorView, x: number, y: number, aim: number, def: WeaponDef | null, own = false): void {
+  // Your own hands you also feel: the magazine seating, the action slamming home.
+  const feel = own ? ctx.haptics : undefined;
   for (const e of view.events) {
     switch (e) {
       case 'magout': {
@@ -36,9 +38,11 @@ export function playAnimEvents(ctx: GameContext, view: ActorView, x: number, y: 
       }
       case 'magin':
         ctx.audio.sfx('magin', x, y);
+        feel?.pulse(0.1, 0.35, 50);
         break;
       case 'rack':
         ctx.audio.sfx('rack', x, y);
+        feel?.pulse(0.3, 0.25, 70);
         break;
       case 'breakopen': {
         ctx.audio.sfx('breakopen', x, y);
@@ -49,6 +53,7 @@ export function playAnimEvents(ctx: GameContext, view: ActorView, x: number, y: 
       }
       case 'breakclose':
         ctx.audio.sfx('breakclose', x, y);
+        feel?.pulse(0.35, 0.3, 70);
         break;
       default:
         break;

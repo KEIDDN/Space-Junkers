@@ -225,17 +225,12 @@ export class ShipScene {
     const busy = !!ship.panel;
 
     // --- Movement (frozen while a panel is open)
-    let ix = 0;
-    let iy = 0;
-    if (!busy) {
-      if (this.input.isDown('KeyA') || this.input.isDown('ArrowLeft')) ix -= 1;
-      if (this.input.isDown('KeyD') || this.input.isDown('ArrowRight')) ix += 1;
-      if (this.input.isDown('KeyW') || this.input.isDown('ArrowUp')) iy -= 1;
-      if (this.input.isDown('KeyS') || this.input.isDown('ArrowDown')) iy += 1;
-    }
-    const len = Math.hypot(ix, iy);
-    const tx = len ? (ix / len) * SPEED : 0;
-    const ty = len ? (iy / len) * SPEED : 0;
+    this.input.poll(dt);
+    const mv = busy ? { x: 0, y: 0 } : this.input.move();
+    const len = Math.hypot(mv.x, mv.y);
+    const push = Math.min(1, len);
+    const tx = len ? (mv.x / len) * SPEED * push : 0;
+    const ty = len ? (mv.y / len) * SPEED * push : 0;
     this.vx = approach(this.vx, tx, ACCEL * dt);
     this.vy = approach(this.vy, ty, ACCEL * dt);
     const pos = { x: this.px, y: this.py };
@@ -277,11 +272,11 @@ export class ShipScene {
     // --- Interaction
     const near = busy ? null : this.nearest();
     shipUi.patch({ prompt: near ? this.promptFor(near) : null });
-    if (near && this.input.wasPressed('KeyE')) {
+    if (near && this.input.pressed('interact')) {
       audio.ui('open');
       if (near.kind === 'crew') shipUi.open({ kind: 'crew', crew: near.crew! });
       else shipUi.open({ kind: near.kind } as never);
-    } else if (!busy && this.input.wasPressed('Tab')) {
+    } else if (!busy && this.input.pressed('inventory')) {
       audio.ui('open');
       shipUi.open({ kind: 'stash' });
     }
@@ -301,7 +296,11 @@ export class ShipScene {
     }
 
     // --- Render
-    this.camera.update(dt, this.px, this.py - 16, this.input.mouseX, this.input.mouseY);
+    // Look around with the mouse, or lean the view with the right stick.
+    const look = this.input.padAiming
+      ? { x: VIEW_W / 2 + this.input.aimStick.x * 150, y: VIEW_H / 2 + this.input.aimStick.y * 110 }
+      : { x: this.input.mouseX, y: this.input.mouseY };
+    this.camera.update(dt, this.px, this.py - 16, look.x, look.y);
     this.world.position.set(-this.camera.left, -this.camera.top);
     this.glowWorld.position.set(-this.camera.left, -this.camera.top);
     this.updateMarkers(dt);
@@ -375,8 +374,8 @@ export class ShipScene {
   }
 
   private promptFor(i: ShipInteractable): string {
-    if (i.kind === 'crew') return `[E] TALK TO ${CREW[i.crew!].callsign}`;
-    return `[E] ${i.label}`;
+    if (i.kind === 'crew') return `{interact} TALK TO ${CREW[i.crew!].callsign}`;
+    return `{interact} ${i.label}`;
   }
 
   /** Slow parallax starfield; streaks during a jump. */

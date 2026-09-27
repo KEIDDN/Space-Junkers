@@ -34,7 +34,7 @@ export function SceneCover({ cover }: { cover: Cover | null }) {
   if (!cover) return null;
   let left = typed;
   return (
-    <div className={`scene-cover ${cover.phase}`}>
+    <div className={`scene-cover ${cover.phase}`} data-nav-scope="cover">
       <div className={`scene-cover-text ${cover.tone ?? 'plain'}`}>
         {cover.lines.map((line, i) => {
           const show = line.slice(0, Math.max(0, left));

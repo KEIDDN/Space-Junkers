@@ -9,6 +9,7 @@ import { useProfile } from '../state/profileStore';
 import { useRaid } from '../state/raidStore';
 import { facilityName } from '../data/themes';
 import { AtlasSprite } from './AtlasSprite';
+import { Key } from './Glyph';
 
 /** Counts a number up over a moment, ticking as it goes: the haul adding itself up. */
 function useCountUp(target: number, delayMs: number, durationMs = 900): number {
@@ -55,7 +56,7 @@ export function Results({ onContinue }: { onContinue: () => void }) {
   }, [extracted]);
 
   return (
-    <div className="screen crt">
+    <div className="screen crt" data-nav-scope="results">
       <div className="panel results-panel">
         <div className={`results-title ${extracted ? 'ok' : 'bad'}`}>
           {extracted ? 'EXTRACTION SUCCESSFUL' : mia ? 'M.I.A. // LEFT BEHIND' : 'K.I.A. // SIGNAL LOST'}
@@ -95,7 +96,7 @@ export function Results({ onContinue }: { onContinue: () => void }) {
             ))}
           </div>
         )}
-        <button className="deploy" onClick={() => { audio.ui('click'); onContinue(); }}>[ RETURN TO SHIP ]</button>
+        <button className="deploy" data-nav-default onClick={() => { audio.ui('click'); onContinue(); }}>[ RETURN TO SHIP ] <Key a="confirm" /></button>
       </div>
     </div>
   );

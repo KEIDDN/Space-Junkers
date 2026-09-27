@@ -26,7 +26,7 @@ export function ContractCard({ p, def, status, onClick, compact, preview }: {
 }) {
   const crew = CREW[def.giver];
   return (
-    <div className={`contract ${status} ${onClick ? 'clickable' : ''}`} onClick={onClick} style={{ ['--crew' as string]: crew.color }}>
+    <div className={`contract ${status} ${onClick ? 'clickable' : ''}`} onClick={onClick} data-nav={onClick ? '' : undefined} style={{ ['--crew' as string]: crew.color }}>
       <div className="contract-head">
         <span className="contract-title">{def.title}</span>
         {!compact && <span className="contract-giver">{crew.callsign}</span>}

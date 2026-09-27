@@ -6,6 +6,10 @@ import { useItemPointer } from './drag';
 import { useDrag } from './dragStore';
 import { ItemTile } from './ItemTile';
 import { CELL, useOps } from './ops';
+import { ByDevice } from '../Glyph';
+
+/** D-pad direction for each quick slot (matches the controller binding). */
+export const QUICK_PAD = ['←', '↑', '→', '↓'];
 
 function Hover({ gridKey }: { gridKey: GridKey }) {
   const target = useDrag((s) => s.target);
@@ -40,6 +44,7 @@ export function GridView({ grid, gridKey }: { grid: Grid; gridKey: GridKey }) {
           <div
             key={p.item.uid}
             data-item={p.item.uid}
+            data-rot={p.rot ? 1 : 0}
             className={`inv-item ${itemTarget === p.item.uid ? 'load-target' : ''}`}
             style={{ left: p.x * CELL, top: p.y * CELL, width: f.w * CELL, height: f.h * CELL }}
             onPointerDown={(e) => onPointer(e, p.item, p.rot)}
@@ -109,6 +114,7 @@ export function QuickBar({ counts }: { counts: (id: string) => number }) {
         <div
           key={i}
           data-quick={i}
+          data-nav={id ? '' : undefined}
           className={`quick-slot ${target === i ? (ok ? 'ok' : 'bad') : ''}`}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -116,7 +122,7 @@ export function QuickBar({ counts }: { counts: (id: string) => number }) {
           }}
           title={id ? 'Right-click to clear' : 'Drag a medical item or grenade here'}
         >
-          <span className="quick-key">{i + 3}</span>
+          <span className="quick-key"><ByDevice kbm={<>{i + 3}</>} pad={<>{QUICK_PAD[i]}</>} /></span>
           {id && (
             <>
               <AtlasSprite name={itemDef(id).icon} fit={{ w: 30, h: 26 }} />

@@ -4,6 +4,7 @@ import { audio, type ROOMS } from '../engine/audio';
 import { Camera } from '../engine/camera';
 import { GUN_HEIGHT, MAX_DT, VIEW_H, VIEW_W } from '../engine/config';
 import { Input } from '../engine/input';
+import { haptics } from '../engine/haptics';
 import { Rng } from '../engine/rng';
 import { DESTINATION } from '../data/destinations';
 import { loreEntry } from '../data/lore';
@@ -23,7 +24,8 @@ import { Enemy } from './ai/Enemy';
 import { Grenades, fragDamage } from './combat/grenades';
 import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
 import type { GameContext } from './context';
-import { Player } from './entities/Player';
+import { Player, STEADY_SPREAD } from './entities/Player';
+import { PadAim, type AimTarget } from './padAim';
 import { AmbientFx } from './fx/ambient';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
@@ -112,6 +114,10 @@ export class Game {
   private emitters: Emitter[] = [];
   private emitterTimer = 0;
   private terminalAt: { x: number; y: number } | null = null;
+  /** Controller aim, and where the reticle is in the world this frame. */
+  private padAim = new PadAim();
+  private aimPoint = { x: 0, y: 0 };
+  private aimTargets: AimTarget[] = [];
   paused = false;
 
   constructor(private opts: GameOptions) {}
@@ -208,6 +214,7 @@ export class Game {
     window.removeEventListener('pointerdown', this.unlockAudio);
     window.removeEventListener('keydown', this.unlockAudio);
     this.input.destroy();
+    haptics.stop();
     this.audio.setOccluder(null);
     this.audio.stopAmbience();
     this.audio.destroy();
@@ -270,6 +277,7 @@ export class Game {
       effects: this.effects,
       audio: this.audio,
       camera: this.camera,
+      haptics,
       emitNoise: (x, y, r) => {
         for (const e of this.enemies) e.hear(x, y, r);
         this.cueSound(x, y, r);
@@ -364,12 +372,16 @@ export class Game {
     if (kind === 'extracted') this.opts.onEnd?.('extracted');
     raid.patch({ ending: kind, prompt: null, extractCountdown: null });
     raid.closeOverlay();
-    if (kind === 'extracted') this.lighting?.flash(this.player.x, this.player.y, 320, 0xd8ffe0, 1.4, 0.4);
+    if (kind === 'extracted') {
+      this.lighting?.flash(this.player.x, this.player.y, 320, 0xd8ffe0, 1.4, 0.4);
+      haptics.rumble(0.55, 0.45, 1000);
+    }
     else this.audio.setMuffled(true);
   }
 
   private tick = (ticker: Ticker): void => {
     let dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
+    this.input.poll(dt);
 
     if (this.paused) {
       this.input.endFrame();
@@ -380,11 +392,12 @@ export class Game {
       if (this.deadTime === 0) {
         // Hearing goes first; the world slows (and the overlay drains its colour).
         this.audio.setMuffled(true);
+        haptics.rumble(1, 0.5, 1300);
         if (this.opts.mode === 'facility') raid.patch({ ending: 'dead' });
       }
       this.deadTime += dt;
       dt *= 0.35 + 0.65 * Math.min(1, this.deadTime / 2);
-      if (this.opts.mode === 'range' && this.input.wasPressed('KeyR')) {
+      if (this.opts.mode === 'range' && this.input.pressed('reload')) {
         raid.start('range', 0, 'range', useRaid.getState().loadout);
         this.audio.setMuffled(false);
         this.startRun();
@@ -400,8 +413,11 @@ export class Game {
       if (this.ending.t > (this.ending.kind === 'extracted' ? 1.6 : 2.4)) this.endRun(this.ending.kind === 'extracted' ? 'extracted' : 'dead', this.ending.kind === 'mia');
     }
 
-    if (this.input.wasPressed('Tab') && this.player.alive && !this.ending) raid.toggleInventory();
-    if (this.input.wasPressed('KeyM') && this.player.alive && !this.ending && this.opts.mode === 'facility') {
+    if (this.input.pressed('inventory') && this.player.alive && !this.ending) {
+      raid.toggleInventory();
+      this.audio.ui(useRaid.getState().inventoryOpen ? 'open' : 'close');
+    }
+    if (this.input.pressed('map') && this.player.alive && !this.ending && this.opts.mode === 'facility') {
       raid.toggleMap();
       this.audio.ui(useRaid.getState().mapOpen ? 'open' : 'close');
     }
@@ -420,7 +436,7 @@ export class Game {
     // Reading a terminal ends with E or by walking away. That E press doesn't also reopen it.
     let closedTerminal = false;
     if (this.terminalAt && useRaid.getState().terminal) {
-      if (this.input.wasPressed('KeyE') || Math.hypot(p.x - this.terminalAt.x, p.y - this.terminalAt.y) > 36) {
+      if (this.input.pressed('interact') || Math.hypot(p.x - this.terminalAt.x, p.y - this.terminalAt.y) > 36) {
         raid.closeOverlay();
         this.audio.ui('close');
         this.terminalAt = null;
@@ -431,7 +447,7 @@ export class Game {
     const menuOpen = raid.overlayOpen() || closedTerminal || !!this.ending;
     this.runCommands();
 
-    const aim = this.camera.toWorld(this.input.mouseX, this.input.mouseY);
+    const aim = this.aimFor(dt, !menuOpen);
     p.update(dt, this.input, aim.x, aim.y, !menuOpen);
 
     // How visible the player is: flashlight and gunfire give you away.
@@ -468,6 +484,40 @@ export class Game {
     });
   }
 
+  /**
+   * Where the player aims this frame: under the mouse, or out along the right stick
+   * (with a light pull toward a hostile you can actually see).
+   */
+  private aimFor(dt: number, handsFree: boolean): { x: number; y: number } {
+    const p = this.player;
+    if (!this.input.padAiming) {
+      const m = this.camera.toWorld(this.input.mouseX, this.input.mouseY);
+      this.aimPoint = m;
+      // Keep the stick aim in step, so picking the controller up doesn't swing the gun.
+      this.padAim.reset(p.aim, Math.hypot(m.x - p.x, m.y - (p.y - GUN_HEIGHT)));
+      return m;
+    }
+    const ox = p.x;
+    const oy = p.y - GUN_HEIGHT;
+    this.aimTargets.length = 0;
+    for (const e of this.enemies) {
+      if (e.alive && e.view.container.alpha > 0.5) this.aimTargets.push({ x: e.x, y: e.y - GUN_HEIGHT, r: e.hitRadius + 3 });
+    }
+    const s = useSettings.getState();
+    const pt = this.padAim.update(dt, {
+      stick: handsFree ? this.input.aimStick : { x: 0, y: 0, mag: 0 },
+      move: this.input.move(),
+      steady: handsFree && this.input.down('steady'),
+      firing: handsFree && this.input.down('fire'),
+      sensitivity: s.aimSpeed,
+      assist: s.aimAssist,
+      targets: this.aimTargets,
+      ox, oy,
+    });
+    this.aimPoint = pt;
+    return pt;
+  }
+
   private heartTimer = 0;
 
   /** Badly hurt: your own heartbeat, faster the closer to the end. */
@@ -478,6 +528,7 @@ export class Game {
     this.heartTimer -= dt;
     if (this.heartTimer > 0) return;
     this.heartTimer = 0.55 + k * 1.4;
+    haptics.heartbeat(1 - k / 0.3);
     this.audio.sfx('heartbeat', p.x, p.y, 0.6 + (0.3 - k) * 2);
   }
 
@@ -691,7 +742,12 @@ export class Game {
 
   private render(dt: number): void {
     const p = this.player;
-    this.camera.update(dt, p.x, p.y - GUN_HEIGHT, this.input.mouseX, this.input.mouseY);
+    // Steadying the aim leans the view further out along it.
+    const steady = p.steady && p.alive;
+    this.camera.lookAhead += ((steady ? 0.5 : 0.28) - this.camera.lookAhead) * Math.min(1, dt * 6);
+    const rx = this.aimPoint.x - this.camera.left;
+    const ry = this.aimPoint.y - this.camera.top;
+    this.camera.update(dt, p.x, p.y - GUN_HEIGHT, rx, ry);
     this.worldLit.position.set(-this.camera.left, -this.camera.top);
     this.worldGlow.position.set(-this.camera.left, -this.camera.top);
     this.audio.setListener(p.x, p.y);
@@ -710,12 +766,14 @@ export class Game {
     const w = p.weapon;
     const psx = p.x - this.camera.left;
     const psy = p.y - GUN_HEIGHT - this.camera.top;
-    const dist = Math.hypot(this.input.mouseX - psx, this.input.mouseY - psy);
+    const csx = this.aimPoint.x - this.camera.left;
+    const csy = this.aimPoint.y - this.camera.top;
+    const dist = Math.hypot(csx - psx, csy - psy);
     const moveFactor = Math.min(1, p.speed / 112);
-    const spreadPx = w ? Math.tan((w.spread(moveFactor) * Math.PI) / 180) * dist : 6;
+    const spreadPx = w ? Math.tan((w.spread(moveFactor) * (steady ? STEADY_SPREAD : 1) * Math.PI) / 180) * dist : 6;
     const menuOpen = raid.overlayOpen();
     const st = p.status;
-    this.overlay.update(dt, this.input.mouseX, this.input.mouseY, spreadPx,
+    this.overlay.update(dt, csx, csy, spreadPx,
       w?.reloading ? w.reloadProgress : st.using >= 0 ? st.using : -1, psx, psy, p.hp / p.maxHp, !menuOpen && p.alive, st.bleeding);
 
     const lo = useRaid.getState().loadout;
@@ -822,6 +880,7 @@ export class Game {
     this.effects.bloodPool(enemy.x, enemy.y, true);
     this.effects.bloodHit(x, y, dx, dy, 14);
     this.audio.sfx(headshot ? 'headshot' : 'kill', x, y);
+    haptics.confirm();
     this.hitstopTime = Math.max(this.hitstopTime, headshot ? 0.07 : 0.045);
     this.camera.shake(0.15);
     this.addBody(enemy);
@@ -834,6 +893,7 @@ export class Game {
     if (target === this.player) {
       this.audio.sfx('whiz', this.player.x + b.dx * 10, this.player.y + b.dy * 10);
       this.camera.shake(0.06);
+      haptics.pulse(0, 0.18, 45);
       this.overlay.suppressed();
       return;
     }
@@ -846,6 +906,7 @@ export class Game {
     this.lighting?.flash(x, y - 6, 280, 0xffb060, 1.4, 0.18);
     const pd = Math.hypot(this.player.x - x, this.player.y - y);
     this.camera.shake(Math.max(0.15, 0.9 - pd / 500));
+    haptics.blast(pd);
     this.hitstopTime = Math.max(this.hitstopTime, 0.05);
     const pdmg = fragDamage(this.map, x, y, this.player.x, this.player.y, radius, damage);
     if (pdmg > 0 && this.player.alive) {

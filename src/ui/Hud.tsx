@@ -8,6 +8,8 @@ import { fmt } from './TacticalMap';
 import { useRaid, type FeedEntry } from '../state/raidStore';
 import { useHud } from '../state/hudStore';
 import { AtlasSprite } from './AtlasSprite';
+import { ByDevice, Key, Prompt } from './Glyph';
+import { QUICK_PAD } from './inventory/GridView';
 
 function Pips({ frac, n = 5 }: { frac: number; n?: number }) {
   const lit = Math.ceil(frac * n);
@@ -40,7 +42,7 @@ function Vitals() {
         {bleeding && <span className="status bad blink">BLEEDING</span>}
         {regen && <span className="status ok">REGEN</span>}
         {boosted && <span className="status warn">STIM</span>}
-        {gait === 'sneak' && <span className="status dim">SNEAK [C]</span>}
+        {gait === 'sneak' && <span className="status dim">SNEAK <Key a="sneak" /></span>}
       </div>
       <div className="hp-row">
         <div className={`hp-bar ${frac < 0.3 && hp > 0 ? 'critical' : ''}`}>
@@ -72,22 +74,22 @@ function WeaponBlock() {
     return (
       <div className="hud-br crt-text">
         <div className="label">NO WEAPON</div>
-        <div className="dim small">[TAB] INVENTORY</div>
+        <div className="dim small"><Key a="inventory" /> INVENTORY</div>
       </div>
     );
   }
   const low = ammo <= Math.ceil(magSize * 0.25);
   return (
     <div className="hud-br crt-text">
-      <div className="label">[{weaponSlot + 1}] {weaponName}</div>
+      <div className="label"><ByDevice kbm={<>[{weaponSlot + 1}]</>} pad={<Key a="switchWeapon" />} /> {weaponName}</div>
       <div className="ammo">
         <span className={`big ${reloading ? 'dim' : low ? 'bad' : ''}`}>{ammo}</span>
         <span className="dim"> / {reserve}</span>
       </div>
       <div className="dim small">{ammoName}</div>
-      {jammed && <div className="bad blink">JAMMED · [R] CLEAR</div>}
+      {jammed && <div className="bad blink">JAMMED · <Key a="reload" /> CLEAR</div>}
       {!jammed && reloading && <div className="warn blink">RELOADING</div>}
-      {!jammed && !reloading && ammo === 0 && <div className="bad blink">{reserve ? 'EMPTY · [R]' : 'NO AMMO'}</div>}
+      {!jammed && !reloading && ammo === 0 && <div className="bad blink">{reserve ? <>EMPTY · <Key a="reload" /></> : 'NO AMMO'}</div>}
     </div>
   );
 }
@@ -110,7 +112,7 @@ function QuickHud() {
           const [id, n] = s.split(':');
           return (
             <div key={i} className={`hq-slot ${id && n === '0' ? 'empty' : ''}`}>
-              <span className="hq-key">{i + 3}</span>
+              <span className="hq-key"><ByDevice kbm={<>{i + 3}</>} pad={<>{QUICK_PAD[i]}</>} /></span>
               {id && <AtlasSprite name={itemDef(id).icon} fit={{ w: 26, h: 22 }} />}
               {id && <span className="hq-count">{n}</span>}
             </div>
@@ -155,7 +157,7 @@ function Feed() {
       {live.map((f) => (
         <div key={f.id} className={`feed-line ${f.tone} crt-text`}>
           {f.itemId && <AtlasSprite name={itemDef(f.itemId).icon} fit={{ w: 20, h: 16 }} />}
-          {f.text}
+          <Prompt text={f.text} />
         </div>
       ))}
     </div>
@@ -173,8 +175,20 @@ function FirstRaidHint() {
   if (!first || !show) return null;
   return (
     <div className="hud-hint crt-text">
-      <div><b>WASD</b> MOVE · <b>SHIFT</b> SPRINT · <b>C</b> SNEAK · <b>F</b> FLASHLIGHT · <b>R</b> RELOAD</div>
-      <div><b>E</b> SEARCH / USE · <b>TAB</b> BAG · <b>M</b> MAP · <b>3–6</b> MEDS · <b>ESC</b> PAUSE</div>
+      <ByDevice
+        kbm={
+          <>
+            <div><b>WASD</b> MOVE · <b>SHIFT</b> SPRINT · <b>C</b> SNEAK · <b>F</b> FLASHLIGHT · <b>R</b> RELOAD · <b>RMB</b> STEADY</div>
+            <div><b>E</b> SEARCH / USE · <b>TAB</b> BAG · <b>M</b> MAP · <b>G</b> GRENADE · <b>H</b> TREAT · <b>ESC</b> PAUSE</div>
+          </>
+        }
+        pad={
+          <>
+            <div><Key a="move" /> MOVE · <Key a="sprint" /> SPRINT · <Key a="sneak" /> SNEAK · <Key a="aim" /> AIM · <Key a="fire" /> FIRE · <Key a="steady" /> STEADY · <Key a="reload" /> RELOAD</div>
+            <div><Key a="interact" /> SEARCH / USE · <Key a="inventory" /> BAG · <Key a="map" /> MAP · <Key a="grenade" /> GRENADE · <Key a="heal" /> TREAT · <Key a="flashlight" /> LIGHT</div>
+          </>
+        }
+      />
       <div className="dim">Find the shuttle pad or the lift. Loot is only yours once you're out.</div>
     </div>
   );
@@ -213,7 +227,7 @@ export function Hud() {
                 ORBIT WINDOW {fmt(timeLeft)}
               </div>
             )}
-            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} [F] · <span className="dim">MAP [M]</span></div>
+            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} <Key a="flashlight" /> · <span className="dim">MAP <Key a="map" /></span></div>
             <Tracker />
           </>
         ) : (
@@ -228,7 +242,7 @@ export function Hud() {
         <div className="hud-tr crt-text">
           <div className="label">FOUND IN RAID · AT RISK</div>
           <div><span className="big-mid">{haul.toLocaleString()}</span> <span className="dim">CR</span></div>
-          <div className={`small ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : 'dim'}`}>{weight} KG CARRIED · [TAB] BAG</div>
+          <div className={`small ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : 'dim'}`}>{weight} KG CARRIED · <Key a="inventory" /> BAG</div>
         </div>
       )}
 
@@ -245,7 +259,7 @@ export function Hud() {
         </div>
       )}
 
-      {prompt && !dead && !inventoryOpen && <div className="hud-prompt crt-text">{prompt}</div>}
+      {prompt && !dead && !inventoryOpen && <div className="hud-prompt crt-text"><Prompt text={prompt} /></div>}
 
       <Vitals />
       <QuickHud />
@@ -254,11 +268,11 @@ export function Hud() {
       {dead && !facility && (
         <div className="hud-center crt-text">
           <div className="big bad">K.I.A.</div>
-          <div>PRESS [R] TO REDEPLOY · [ESC] MENU</div>
+          <div>PRESS <Key a="reload" /> TO REDEPLOY · <Key a="pause" /> MENU</div>
         </div>
       )}
       {!dead && !facility && cleared && (
-        <div className="hud-top crt-text ok">SECTOR CLEAR. PRESS [ESC] FOR MENU</div>
+        <div className="hud-top crt-text ok">SECTOR CLEAR. PRESS <Key a="pause" /> FOR MENU</div>
       )}
     </div>
   );

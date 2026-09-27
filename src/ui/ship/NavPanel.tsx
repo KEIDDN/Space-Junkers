@@ -6,6 +6,7 @@ import { useProfile } from '../../state/profileStore';
 import { shipActions } from '../../state/shipActions';
 import { shipUi } from '../../state/shipStore';
 import { AtlasSprite } from '../AtlasSprite';
+import { ByDevice, Key } from '../Glyph';
 
 function Danger({ n }: { n: number }) {
   return (
@@ -50,7 +51,7 @@ export function NavPanel() {
   };
 
   return (
-    <div className="modal-root">
+    <div className="modal-root" data-nav-scope="nav">
       <div className="panel nav-panel crt-screen">
         <div className="panel-title">NAVIGATION <span className="dim">// КУРС</span></div>
         <div className="nav-body">
@@ -60,6 +61,7 @@ export function NavPanel() {
               return (
                 <button
                   key={x.id}
+                  data-nav-default={sel === x.id ? '' : undefined}
                   className={`nav-row ${sel === x.id ? 'sel' : ''} ${open ? '' : 'locked'}`}
                   onClick={() => { setSel(x.id); setError(null); audio.ui('tab'); }}
                   onPointerEnter={() => audio.ui('hover')}
@@ -96,8 +98,8 @@ export function NavPanel() {
                 {here ? (
                   <div className="ok nav-status">IN ORBIT. THE AIRLOCK IS READY.</div>
                 ) : (
-                  <button className="deploy" onClick={jump} disabled={credits < cost}>
-                    [ SET COURSE · {onTab ? 'ON THE TAB' : `${cost.toLocaleString()} CR`} ]
+                  <button className="deploy" data-pad-shortcut="X" onClick={jump} disabled={credits < cost}>
+                    [ SET COURSE · {onTab ? 'ON THE TAB' : `${cost.toLocaleString()} CR`} ] <ByDevice kbm={null} pad={<Key a="alt" />} />
                   </button>
                 )}
                 {error && <div className="bad small">{error}</div>}
@@ -111,7 +113,7 @@ export function NavPanel() {
           </div>
         </div>
         <div className="nav-foot dim small">
-          {course ? `CURRENT ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING POSITION OVER OTETS'} · {credits.toLocaleString()} CR · [ESC] CLOSE
+          {course ? `CURRENT ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING POSITION OVER OTETS'} · {credits.toLocaleString()} CR · <Key a="back" /> CLOSE
         </div>
       </div>
     </div>

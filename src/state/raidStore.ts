@@ -379,6 +379,7 @@ export function rangeLoadout(): Loadout {
   for (const id of ['toz12', 'svk', 'ppd41']) l = loadoutAdd(l, createItem(id, { loaded: 99 })).loadout;
   l = loadoutAdd(l, createItem('medkit')).loadout;
   l = loadoutAdd(l, createItem('bandage')).loadout;
-  l.quick = ['bandage', 'medkit', null, null];
+  for (const id of ['frag', 'frag', 'smoke']) l = loadoutAdd(l, createItem(id)).loadout;
+  l.quick = ['bandage', 'medkit', 'frag', 'smoke'];
   return l;
 }

@@ -22,6 +22,8 @@ export function discharge(
   faction: Faction,
   moveFactor: number,
   extraSpreadDeg = 0,
+  /** Holding the aim steady tightens the cone. */
+  spreadMul = 1,
 ): void {
   const def = weapon.def;
   const muzzle = view.muzzleWorld(x, y);
@@ -40,7 +42,7 @@ export function discharge(
   const pen = ammo?.pen ?? 2;
   // Spread is sampled per pellet; bloom was already added by tryFire, so undo one step
   // for the first shot to keep the first bullet accurate.
-  const cone = Math.max(0, weapon.spread(moveFactor) - def.bloomPerShot + extraSpreadDeg) * (ammo?.spreadMul ?? 1) * DEG;
+  const cone = Math.max(0, weapon.spread(moveFactor) - def.bloomPerShot + extraSpreadDeg) * (ammo?.spreadMul ?? 1) * spreadMul * DEG;
   // A slug from a shotgun carries much further than buckshot and hits like a truck.
   const slug = pellets === 1 && def.pellets > 1;
   for (let i = 0; i < pellets; i++) {

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { itemDef } from '../../data/items';
 import { EQUIP_SLOTS, findInGrid, findSpot, loadoutCount, loadoutValue, loadoutWeight, slotAccepts } from '../../core/inventory';
 import { getGrid, locate, type GridKey } from '../../core/transfer';
@@ -7,7 +7,8 @@ import { raid, useRaid } from '../../state/raidStore';
 import { DragLayer } from './DragLayer';
 import { useDrag } from './dragStore';
 import { GridView, QuickBar, SlotView } from './GridView';
-import { CELL, InventoryContext, useOps, type InventoryOps } from './ops';
+import { CELL, InventoryContext, activeInventory, useOps, type InventoryOps } from './ops';
+import { ByDevice, Key } from '../Glyph';
 
 /** The operator: equipment slots, quick bar, pockets, backpack. */
 export function LoadoutPanel({ title }: { title: string }) {
@@ -17,7 +18,7 @@ export function LoadoutPanel({ title }: { title: string }) {
   const value = loadoutValue(l);
   const bag = l.backpack;
   return (
-    <section className="inv-panel loadout-panel">
+    <section className="inv-panel loadout-panel" data-nav-group>
       <header className="inv-head">
         <span className="inv-title">{title}</span>
         <span className={`inv-meta ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : ''}`}>{weight.toFixed(1)} KG</span>
@@ -53,14 +54,16 @@ export function LoadoutPanel({ title }: { title: string }) {
 }
 
 /** A grid pane with a title: a container, a corpse, the stash. */
-export function GridPanel({ gridKey, title, meta, actions, children }: {
+export function GridPanel({ gridKey, title, meta, actions, children, prefer }: {
   gridKey: GridKey; title: string; meta?: ReactNode; actions?: ReactNode; children?: ReactNode;
+  /** The controller starts here (an opened container). */
+  prefer?: boolean;
 }) {
   const ops = useOps();
   const grid = getGrid(ops.ws, gridKey);
   if (!grid) return null;
   return (
-    <section className="inv-panel grid-panel">
+    <section className="inv-panel grid-panel" data-nav-group data-nav-prefer={prefer ? '' : undefined}>
       <header className="inv-head">
         <span className="inv-title">{title}</span>
         {meta}
@@ -73,12 +76,26 @@ export function GridPanel({ gridKey, title, meta, actions, children }: {
   );
 }
 
-export function InventoryHints({ extra }: { extra?: string }) {
+export function InventoryHints({ extra, padExtra }: { extra?: string; padExtra?: ReactNode }) {
   return (
     <div className="inv-hints">
-      DRAG move · <b>R</b> rotate · <b>SHIFT</b>+click quick move · <b>CTRL</b>+click equip/use · <b>RIGHT</b>-click actions{extra ? ` · ${extra}` : ''}
+      <ByDevice
+        kbm={<>DRAG move · <b>R</b> rotate · <b>SHIFT</b>+click quick move · <b>CTRL</b>+click equip/use · <b>RIGHT</b>-click actions{extra ? ` · ${extra}` : ''}</>}
+        pad={<><Key a="confirm" /> pick up · put down · <Key a="alt" /> quick move · <Key a="more" /> actions / rotate · <Key a="prevTab" /><Key a="nextTab" /> panels · <Key a="back" /> back{padExtra}</>}
+      />
     </div>
   );
+}
+
+/** Tell the controller navigator which inventory is on screen. */
+export function useRegisterInventory(ops: InventoryOps | null): void {
+  useEffect(() => {
+    if (!ops) return;
+    activeInventory.ops = ops;
+    return () => {
+      if (activeInventory.ops === ops) activeInventory.ops = null;
+    };
+  }, [ops]);
 }
 
 // ---------------------------------------------------------------------------
@@ -154,11 +171,13 @@ function takeAll(ops: InventoryOps): void {
 export function RaidInventory() {
   const ops = useRaidOps();
   const inventoryOpen = useRaid((s) => s.inventoryOpen);
+  useRegisterInventory(inventoryOpen ? ops : null);
   if (!inventoryOpen) return null;
   return (
     <InventoryContext.Provider value={ops}>
       <div
         className="inv-root raid-inv"
+        data-nav-scope="inventory"
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           if (e.target === e.currentTarget) useDrag.setState({ menu: null });
@@ -169,10 +188,15 @@ export function RaidInventory() {
           <GridPanel
             gridKey="external"
             title={ops.externalLabel ?? 'CONTAINER'}
-            actions={<button className="btn" onClick={() => takeAll(ops)}>TAKE ALL [SHIFT-CLICK ITEMS]</button>}
+            prefer
+            actions={
+              <button className="btn" data-pad-shortcut="RT" onClick={() => takeAll(ops)}>
+                TAKE ALL <ByDevice kbm={<>[SHIFT-CLICK ITEMS]</>} pad={<Key a="fire" />} />
+              </button>
+            }
           />
         )}
-        <InventoryHints extra="drag outside to DROP · TAB / E close" />
+        <InventoryHints extra="drag outside to DROP · TAB / E close" padExtra={ops.ws.external ? <> · <Key a="fire" /> take all</> : null} />
         <DragLayer />
       </div>
     </InventoryContext.Provider>

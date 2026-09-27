@@ -727,3 +727,70 @@ button { font-family: var(--mono); }
 /* Dying: the colour drains out of the world behind the red. */
 .raid-ending.dead { animation: ending-dead 2.4s ease-in forwards, drain 1.2s ease-out forwards; }
 @keyframes drain { from { backdrop-filter: grayscale(0) brightness(1); } to { backdrop-filter: grayscale(0.9) brightness(0.75); } }
+
+/* ===========================================================================
+   INPUT GLYPHS AND CONTROLLER FOCUS
+   Keycaps for the keyboard, button faces for a pad. Focus is a phosphor bracket
+   that reads as the terminal's own cursor, not a browser outline.
+   =========================================================================== */
+
+.glyph {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 11px; line-height: 1; letter-spacing: 0.04em;
+  vertical-align: 1px; white-space: nowrap;
+}
+.glyph-hold { font-size: 9px; color: var(--dim); letter-spacing: 0.1em; }
+.key-cap {
+  padding: 2px 5px 1px; min-width: 16px; justify-content: center;
+  color: var(--text); background: linear-gradient(#2a251e, #16130f);
+  border: 1px solid var(--edge-hi); border-bottom-width: 2px; border-radius: 2px;
+}
+.key-cap .glyph-hold { margin-right: 2px; }
+.pad-btn .pad-label {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  color: var(--text); background: radial-gradient(circle at 35% 30%, #2d2a26, #0d0c0a 75%);
+  border: 1px solid var(--edge-hi);
+}
+.pad-btn.face .pad-label {
+  border-radius: 50%; padding: 0; width: 17px; color: var(--tone); border-color: var(--tone);
+  font-weight: bold; box-shadow: 0 0 6px color-mix(in srgb, var(--tone) 35%, transparent);
+}
+.pad-btn.shoulder .pad-label { border-radius: 6px 6px 3px 3px; font-size: 10px; padding: 0 5px; }
+.pad-btn.misc .pad-label { border-radius: 8px; font-size: 10px; padding: 0 5px; }
+
+/* The controller's focus: a bright bracket, a slight lift, never a blue browser ring. */
+.pad-focus { outline: none; }
+.pad-focus:not(.inv-item):not(.dialog-box) { position: relative; }
+.pad-focus:not(.inv-item):not(.quick-slot)::after {
+  content: ''; position: absolute; inset: -3px; pointer-events: none;
+  border: 1px solid var(--warn);
+  box-shadow: 0 0 10px rgba(242, 163, 58, 0.35), inset 0 0 8px rgba(242, 163, 58, 0.12);
+  animation: pad-focus-in 0.12s ease-out;
+}
+.menu-btn.pad-focus, .btn.pad-focus, .opt.pad-focus, .nav-row.pad-focus, .vendor-row.pad-focus, .tab.pad-focus {
+  color: var(--warn); filter: brightness(1.2);
+}
+.opt.pad-focus { color: var(--crew, var(--warn)); background: rgba(255, 255, 255, 0.04); }
+.inv-item.pad-focus { z-index: 3; }
+.inv-item.pad-focus .item-tile {
+  filter: brightness(1.35); outline: 2px solid var(--warn); outline-offset: -1px;
+  box-shadow: 0 0 12px rgba(242, 163, 58, 0.45);
+}
+.quick-slot.pad-focus { outline: 2px solid var(--warn); }
+.inv-menu button.pad-focus { background: #2a2118; color: var(--warn); }
+.inv-menu button.pad-focus::after { inset: 0; }
+input[type="range"].pad-focus { filter: drop-shadow(0 0 4px rgba(242, 163, 58, 0.8)); }
+.dialog-box.pad-focus::after { display: none; }
+.contract.clickable.pad-focus { border-color: var(--crew, var(--warn)); }
+@keyframes pad-focus-in { from { inset: -7px; opacity: 0; } }
+
+/* A controller in hand: no pointer on screen, and hover-only cues stay off. */
+body[data-device="pad"] { cursor: none; }
+body[data-device="pad"] .inv-item:hover .item-tile { filter: none; }
+body[data-device="pad"] .btn:hover:not(.pad-focus), body[data-device="pad"] .menu-btn:hover:not(.pad-focus) { filter: none; color: inherit; }
+
+.record-panel .tabs { margin-bottom: 8px; }
+.record-settings { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+.record-settings .settings-col { display: flex; flex-direction: column; gap: 6px; }
+.tabs .pad-btn { opacity: 0.85; }

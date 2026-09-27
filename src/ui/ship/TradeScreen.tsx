@@ -12,6 +12,7 @@ import { AtlasSprite } from '../AtlasSprite';
 import { useDrag } from '../inventory/dragStore';
 import { ShipInventory } from '../inventory/ShipInventory';
 import { CATEGORY_NAME } from '../../data/items';
+import { ByDevice, Key } from '../Glyph';
 
 function VendorPanel({ crew }: { crew: CrewId }) {
   const def = CREW[crew];
@@ -33,7 +34,7 @@ function VendorPanel({ crew }: { crew: CrewId }) {
     .join(' · ');
 
   return (
-    <section className="inv-panel vendor-panel" style={{ ['--crew' as string]: def.color }}>
+    <section className="inv-panel vendor-panel" data-nav-group style={{ ['--crew' as string]: def.color }}>
       <header className="inv-head">
         <span className="inv-title" style={{ color: def.color }}>{def.callsign} // STOCK</span>
         <span className="inv-meta">{TRUST_LEVELS[level].name}</span>
@@ -68,11 +69,13 @@ function VendorPanel({ crew }: { crew: CrewId }) {
         })}
       </div>
       <div className={`sell-zone ${sellTarget ? (ok ? 'ok' : 'bad') : ''}`} data-sell="1">
-        DROP HERE TO SELL
+        <ByDevice kbm={<>DROP HERE TO SELL</>} pad={<>CARRY AN ITEM HERE TO SELL · OR <Key a="more" /> SELL</>} />
         <div className="dim small">BUYS: {buys}</div>
         {crew === 'trader' && <div className="small"><span className="ok">▲ {CATEGORY_NAME[market.hot]}</span> · <span className="bad">▼ {CATEGORY_NAME[market.cold]}</span> today</div>}
       </div>
-      {crew === 'merc' && profile.upgrades.includes('workbench') && <div className="dim small">RIGHT-CLICK WORN ARMOR TO REPAIR IT.</div>}
+      {crew === 'merc' && profile.upgrades.includes('workbench') && (
+        <div className="dim small"><ByDevice kbm={<>RIGHT-CLICK</>} pad={<Key a="more" />} /> WORN ARMOR TO REPAIR IT.</div>
+      )}
       {msg && <div className={`vendor-msg ${msg.bad ? 'bad' : 'ok'}`}>{msg.text}</div>}
     </section>
   );

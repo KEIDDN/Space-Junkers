@@ -1,5 +1,6 @@
 import type { AudioService, Surface } from '../engine/audio';
 import type { Camera } from '../engine/camera';
+import type { Haptics } from '../engine/haptics';
 import type { Projectiles } from './combat/projectiles';
 import type { Effects } from './fx/effects';
 import type { TileMap } from './world/tilemap';
@@ -11,6 +12,8 @@ export interface GameContext {
   effects: Effects;
   audio: AudioService;
   camera: Camera;
+  /** Controller rumble for the player's own actions (absent in tests). */
+  haptics?: Haptics;
   /** A loud event (gunfire, explosion) that enemies within `radius` can hear. */
   emitNoise(x: number, y: number, radius: number): void;
   /** Freeze the simulation briefly for impact emphasis. */

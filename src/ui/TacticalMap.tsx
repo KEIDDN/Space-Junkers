@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import type { TacticalSnapshot } from '../game/tactical';
 import { Tile } from '../game/world/tilemap';
 import { useRaid } from '../state/raidStore';
+import { ByDevice, Key } from './Glyph';
 
 const ROOM_NAMES: Record<string, string> = {
   entry: 'LANDING', exfil: 'SHUTTLE PAD', vault: 'VAULT', storage: 'STORAGE', barracks: 'BARRACKS', office: 'OFFICE',
@@ -51,7 +52,7 @@ export function TacticalMap({ snapshot, name, timeLeft }: { snapshot: () => Tact
   if (!open) return null;
   const t = Math.max(0, timeLeft);
   return (
-    <div className="tac-screen">
+    <div className="tac-screen" data-nav-scope="map">
       <div className="panel tac-panel crt">
         <div className="panel-title">
           {name} <span className="dim">// TACTICAL</span>
@@ -66,7 +67,7 @@ export function TacticalMap({ snapshot, name, timeLeft }: { snapshot: () => Tact
           <span><i style={{ background: C.lift }} /> LIFT</span>
           <span><i style={{ background: C.locked }} /> SEALED</span>
           <span className="grow" />
-          <span className="dim">[M] CLOSE</span>
+          <span className="dim"><ByDevice kbm={<>[M] CLOSE</>} pad={<><Key a="back" /> CLOSE</>} /></span>
         </div>
       </div>
     </div>

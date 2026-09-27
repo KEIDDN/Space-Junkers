@@ -35,6 +35,9 @@ const USING_SPEED = 0.45;
 /** Grenade throw: wind-up until release, then recovery (seconds). */
 const THROW_RELEASE = 0.24;
 const THROW_TIME = 0.5;
+/** Steadying the aim: slower feet, a tighter cone. */
+const STEADY_SPEED = 0.62;
+export const STEADY_SPREAD = 0.72;
 
 interface ArmedSlot {
   uid: string;
@@ -108,6 +111,8 @@ export class Player implements Hittable {
   private exhausted = false;
   sneaking = false;
   sprinting = false;
+  /** Holding the aim steady (right mouse / left trigger). */
+  steady = false;
   private sprintOut = 0;
   private breathTimer = 0;
   private aimX = 0;
@@ -238,22 +243,18 @@ export class Player implements Hittable {
     this.updateVitals(dt);
     if (!this.alive) return;
 
-    // --- Movement
-    let ix = 0;
-    let iy = 0;
-    if (input.isDown('KeyA') || input.isDown('ArrowLeft')) ix -= 1;
-    if (input.isDown('KeyD') || input.isDown('ArrowRight')) ix += 1;
-    if (input.isDown('KeyW') || input.isDown('ArrowUp')) iy -= 1;
-    if (input.isDown('KeyS') || input.isDown('ArrowDown')) iy += 1;
-    const len = Math.hypot(ix, iy);
+    // --- Movement (a stick gives analogue speed; keys are always full)
+    const mv = input.move();
+    const len = Math.hypot(mv.x, mv.y);
     const w = this.weapon;
-    if (handsFree && input.wasPressed('KeyC')) {
+    if (handsFree && input.pressed('sneak')) {
       this.sneaking = !this.sneaking;
       this.ctx.audio.sfx('switch', this.x, this.y, 0.5);
     }
+    this.steady = handsFree && input.down('steady') && !this.throwing;
     // Sprint: fast and loud, weapon down, burns stamina.
-    const wantSprint = handsFree && (input.isDown('ShiftLeft') || input.isDown('ShiftRight'));
-    this.sprinting = wantSprint && len > 0 && !this.exhausted && !this.using && !(w?.reloading);
+    const wantSprint = handsFree && input.down('sprint') && !this.steady;
+    this.sprinting = wantSprint && len > 0.5 && !this.exhausted && !this.using && !(w?.reloading);
     if (this.sprinting) {
       this.sneaking = false;
       this.stamina = Math.max(0, this.stamina - STAMINA_DRAIN * dt);
@@ -277,9 +278,12 @@ export class Player implements Hittable {
       }
     }
     const gaitMul = this.sprinting ? SPRINT_MUL : this.sneaking ? SNEAK_MUL : 1;
-    const max = MAX_SPEED * gaitMul * (w?.def.moveSpeedMul ?? 1) * this.speedMul * this.boostMulNow() * (this.using ? USING_SPEED : 1);
-    const tx = len ? (ix / len) * max : 0;
-    const ty = len ? (iy / len) * max : 0;
+    const max = MAX_SPEED * gaitMul * (w?.def.moveSpeedMul ?? 1) * this.speedMul * this.boostMulNow()
+      * (this.using ? USING_SPEED : 1) * (this.steady ? STEADY_SPEED : 1);
+    // Sprinting always runs flat out; otherwise a half-pushed stick walks.
+    const push = this.sprinting ? 1 : Math.min(1, len);
+    const tx = len ? (mv.x / len) * max * push : 0;
+    const ty = len ? (mv.y / len) * max * push : 0;
     const rate = len ? ACCEL : DECEL;
     this.vx = approach(this.vx, tx, rate * dt);
     this.vy = approach(this.vy, ty, rate * dt);
@@ -317,7 +321,7 @@ export class Player implements Hittable {
       action: this.handAction(),
     };
     this.view.update(dt, this.x, this.y, this.aim, moved, backwards, pose);
-    playAnimEvents(this.ctx, this.view, this.x, this.y, this.aim, this.weapon?.def ?? null);
+    playAnimEvents(this.ctx, this.view, this.x, this.y, this.aim, this.weapon?.def ?? null, true);
     if (this.view.stepped) {
       const gait = this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk';
       if (gait === 'sprint') this.ctx.effects.stepDust(this.x, this.y, Math.atan2(this.vy, this.vx));
@@ -340,20 +344,24 @@ export class Player implements Hittable {
     // --- Weapon switching
     const wheel = input.consumeWheel();
     let next = this.current;
-    if (input.wasPressed('Digit1')) next = 0;
-    if (input.wasPressed('Digit2')) next = 1;
-    if (wheel || input.wasPressed('KeyQ')) next = 1 - this.current;
+    if (input.pressed('weapon1')) next = 0;
+    if (input.pressed('weapon2')) next = 1;
+    if (wheel || input.pressed('switchWeapon')) next = 1 - this.current;
     if (next !== this.current && this.arms[next]) this.switchTo(next);
+    else if (next !== this.current && input.pressed('switchWeapon')) this.ctx.audio.sfx('dryfire', this.x, this.y, 0.4);
 
-    if (input.wasPressed('KeyF')) {
+    if (input.pressed('flashlight')) {
       this.flashlight = !this.flashlight;
       this.ctx.audio.sfx('flashlight', this.x, this.y);
     }
 
-    // --- Quick slots
+    // --- Quick slots, and the dedicated grenade and treatment buttons
+    const quick = ['quick1', 'quick2', 'quick3', 'quick4'] as const;
     for (let i = 0; i < 4; i++) {
-      if (input.wasPressed(`Digit${i + 3}`)) this.useQuick(i);
+      if (input.pressed(quick[i])) this.useQuick(i);
     }
+    if (input.pressed('grenade')) this.throwBest();
+    if (input.pressed('heal')) this.treatBest();
 
     // --- Firing / reloading
     const w = this.weapon;
@@ -362,40 +370,44 @@ export class Player implements Hittable {
     w.update(dt);
     if (w.roundLoaded) {
       this.ctx.audio.sfx('shell', this.x, this.y);
+      this.ctx.haptics?.pulse(0, 0.3, 35);
       this.view.pulse('round');
     }
     // A pump or bolt gun that was run dry gets worked once the last round is in.
     if (w.reloaded && w.def.reloadPerRound && !w.tactical) this.rack(false);
     if (w.roundLoaded || w.reloaded || (reloadingBefore && !w.reloading)) this.writeBack(this.current);
 
-    if (input.wasPressed('KeyR')) this.reload();
+    if (input.pressed('reload')) this.reload();
 
     if (this.using) {
       // Pulling the trigger cancels treatment.
-      if (input.wasClicked()) this.cancelUse();
+      if (input.pressed('fire')) this.cancelUse();
       return;
     }
     if (this.sprinting || this.sprintOut > 0) return;
     const moveFactor = Math.min(1, this.speed / MAX_SPEED);
-    const result = w.tryFire(input.mouseDown, input.wasClicked(), Math.random());
+    const result = w.tryFire(input.down('fire'), input.pressed('fire'), Math.random());
     if (result === 'fired') {
-      discharge(this.ctx, this.view, w, this.x, this.y, this.aim, 'player', moveFactor);
+      discharge(this.ctx, this.view, w, this.x, this.y, this.aim, 'player', moveFactor, 0, this.steady ? STEADY_SPREAD : 1);
       this.lastShotAgo = 0;
       const def = w.def;
       this.ctx.camera.kick(-Math.cos(this.aim) * def.cameraKick, -Math.sin(this.aim) * def.cameraKick);
       this.ctx.camera.shake(def.shake);
+      this.ctx.haptics?.fire(def);
       this.writeBack(this.current);
       if (def.cycled && w.ammo > 0) this.cycleTimer = Math.min(0.28, 0.45 / def.fireRate);
       if (w.jammed) {
         this.ctx.audio.sfx('jam', this.x, this.y);
-        this.notice('JAMMED. [R] TO CLEAR', 'bad');
+        this.notice('JAMMED. {reload} TO CLEAR', 'bad');
       }
       if (w.ammo === 0) this.reload();
     } else if (result === 'empty') {
       this.ctx.audio.sfx('dryfire', this.x, this.y);
+      this.ctx.haptics?.pulse(0, 0.25, 40);
       if (!this.reload() && w.reserve === 0) this.notice('OUT OF AMMO', 'bad');
     } else if (result === 'jammed') {
       this.ctx.audio.sfx('dryfire', this.x, this.y);
+      this.ctx.haptics?.pulse(0, 0.25, 40);
     }
   }
 
@@ -409,6 +421,7 @@ export class Player implements Hittable {
   /** Work the action: the gun jerks back and, after a shot, the spent case flies. */
   private rack(eject: boolean): void {
     this.ctx.audio.sfx('cycle', this.x, this.y);
+    this.ctx.haptics?.pulse(0.3, 0.25, 70);
     this.view.pulse('rack');
     const def = this.weapon?.def;
     if (eject && def) {
@@ -491,6 +504,48 @@ export class Player implements Hittable {
     this.useItem(it);
   }
 
+  /** The grenade button: a grenade from the quick bar first, else whichever is carried. */
+  private throwBest(): void {
+    const lo = useRaid.getState().loadout;
+    const items = loadoutItems(lo).filter((i) => itemDef(i.id).kind === 'grenade');
+    if (!items.length) {
+      this.notice('NO GRENADES', 'warn');
+      return;
+    }
+    const bound = items.find((i) => lo.quick.includes(i.id));
+    this.useItem(bound ?? items.find((i) => i.id === 'frag') ?? items[0]);
+  }
+
+  /**
+   * The treatment button: whatever fits the wound. Bleeding wants a dressing; otherwise
+   * the smallest kit that covers what's missing (the quick bar's choice wins ties).
+   */
+  private treatBest(): void {
+    const lo = useRaid.getState().loadout;
+    const meds = loadoutItems(lo).filter((i) => itemDef(i.id).kind === 'med');
+    const missing = this.maxHp - this.hp;
+    const healOf = (it: ItemInstance) => {
+      const d = itemDef(it.id) as MedDef;
+      return (d.pooled ? it.dur ?? d.heal : d.heal) + (d.regen?.hp ?? 0);
+    };
+    let pick: ItemInstance | undefined;
+    if (this.bleeding) {
+      pick = meds
+        .filter((i) => (itemDef(i.id) as MedDef).stopsBleed)
+        .sort((a, b) => Number(lo.quick.includes(b.id)) - Number(lo.quick.includes(a.id)) || itemDef(a.id).value - itemDef(b.id).value)[0];
+    }
+    if (!pick && missing > 1) {
+      const healing = meds.filter((i) => healOf(i) > 0);
+      const covers = healing.filter((i) => healOf(i) >= missing).sort((a, b) => healOf(a) - healOf(b));
+      pick = covers[0] ?? healing.sort((a, b) => healOf(b) - healOf(a))[0];
+    }
+    if (!pick) {
+      this.notice(meds.length ? 'NOT NEEDED' : 'NO MEDICAL SUPPLIES', 'warn');
+      return;
+    }
+    this.useItem(pick);
+  }
+
   /** Start using a consumable (from a quick slot or the inventory). Grenades are thrown at the cursor. */
   useItem(it: ItemInstance): boolean {
     if (!this.alive || this.using) return false;
@@ -530,6 +585,7 @@ export class Player implements Hittable {
       const it = loadoutItems(useRaid.getState().loadout).find((i) => i.uid === th.uid);
       if (it) {
         this.ctx.throwGrenade(this.x, this.y - 2, this.aimX, this.aimY, th.effect, 'player');
+        this.ctx.haptics?.pulse(0.15, 0.2, 60);
         raid.consume(it.uid);
       }
     }
@@ -570,6 +626,7 @@ export class Player implements Hittable {
     }
     raid.consume(it.uid, def.pooled ? Math.max(1, drain) : 0);
     this.ctx.audio.sfx('heal', this.x, this.y);
+    this.ctx.haptics?.pulse(0, 0.25, 90);
     this.ctx.effects.healPuff(this.x, this.y);
   }
 
@@ -628,6 +685,7 @@ export class Player implements Hittable {
     this.vx += dirX * 60;
     this.vy += dirY * 60;
     this.ctx.camera.shake(blocked ? 0.25 : 0.35);
+    this.ctx.haptics?.hurt(damage, blocked);
     this.ctx.audio.sfx('hurt', this.x, this.y);
     if (!this.bleeding && Math.random() < bleedChance(damage)) {
       this.bleeding = true;

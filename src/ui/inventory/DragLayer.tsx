@@ -153,7 +153,7 @@ function ContextMenu() {
   const actions = menuActions(ops, menu.uid);
   if (!actions.length) return null;
   return (
-    <div className="inv-menu" style={{ left: Math.min(menu.x, window.innerWidth - 200), top: Math.min(menu.y, window.innerHeight - actions.length * 26 - 10) }}>
+    <div className="inv-menu" data-nav-scope="menu" style={{ left: Math.min(menu.x, window.innerWidth - 200), top: Math.min(menu.y, window.innerHeight - actions.length * 26 - 10) }}>
       {actions.map((a) => (
         <button
           key={a.label}

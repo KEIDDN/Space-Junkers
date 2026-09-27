@@ -1,6 +1,7 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { tex } from '../engine/assets';
 import type { AudioService } from '../engine/audio';
+import { haptics } from '../engine/haptics';
 import { TILE } from '../engine/config';
 import type { Input } from '../engine/input';
 import { Rng } from '../engine/rng';
@@ -242,6 +243,7 @@ export class Interactions {
         this.alarmTimer = ALARM_INTERVAL * (1 - urgency * 0.55);
         this.audio.sfx('alarm', zx, zy, 1 + urgency * 0.6);
         this.ev.onNoise(zx, zy, ALARM_RADIUS);
+        if (onPad) haptics.rumble(0.12 + urgency * 0.25, 0.12, 380);
       }
       if (onPad && !busy) this.extractRemaining -= dt;
       if (this.extractRemaining <= 0) return this.finish(px, py, inZone);
@@ -272,22 +274,24 @@ export class Interactions {
     }
 
     if (zone?.kind === 'pad' && this.extractRemaining === null) {
-      if (input.wasPressed('KeyE')) {
+      if (input.pressed('interact')) {
+        haptics.rumble(0.35, 0.3, 600);
         this.extractRemaining = EXTRACT_TIME;
         this.alarmTimer = 0;
         this.beaconTimer = 0;
         this.ev.onSignal?.((zone.x + zone.w / 2) * TILE, (zone.y + zone.h / 2) * TILE);
       }
-      return { prompt: '[E] SIGNAL EXTRACTION. The alarm will sound', countdown, inZone };
+      return { prompt: '{interact} SIGNAL EXTRACTION. The alarm will sound', countdown, inZone };
     }
     if (zone?.kind === 'lift' && this.liftRemaining === null) {
       if (!this.powered.has(zone)) return { prompt: 'MAINTENANCE LIFT · NO POWER. Find the breaker', countdown, inZone };
-      if (input.wasPressed('KeyE')) {
+      if (input.pressed('interact')) {
         this.liftRemaining = LIFT_TIME;
         this.liftHum = 0;
+        haptics.rumble(0.3, 0.2, 500);
         this.audio.sfx('keycard', px, py);
       }
-      return { prompt: '[E] RIDE THE LIFT UP. Stay on the platform', countdown, inZone };
+      return { prompt: '{interact} RIDE THE LIFT UP. Stay on the platform', countdown, inZone };
     }
     if (zone?.kind === 'lift') return { prompt: null, countdown, inZone };
 
@@ -313,12 +317,12 @@ export class Interactions {
     if (!nearest) return { prompt: null, countdown, inZone };
 
     if (nearest.searched) {
-      if (input.wasPressed('KeyE')) this.open(nearest);
+      if (input.pressed('interact')) this.open(nearest);
       const n = useRaid.getState().containers[nearest.id]?.items.length ?? 0;
-      return { prompt: `[E] OPEN ${nearest.label}${n ? '' : ' (EMPTY)'}`, countdown, inZone };
+      return { prompt: `{interact} OPEN ${nearest.label}${n ? '' : ' (EMPTY)'}`, countdown, inZone };
     }
 
-    const holding = input.isDown('KeyE');
+    const holding = input.down('interact');
     if (holding && !moving) {
       if (this.searching !== nearest) {
         this.searching = nearest;
@@ -340,7 +344,7 @@ export class Interactions {
       this.searching = null;
       this.progress = 0;
     }
-    return { prompt: `[HOLD E] SEARCH ${nearest.label}`, countdown, inZone };
+    return { prompt: `{hold:interact} SEARCH ${nearest.label}`, countdown, inZone };
   }
 
   private finish(px: number, py: number, inZone: boolean): InteractionView {
@@ -367,24 +371,24 @@ export class Interactions {
   /** Prompt and hold-to-use for a fixture. */
   private useFixture(f: Fixture, dt: number, input: Input, moving: boolean): string {
     if (f.kind === 'terminal') {
-      if (input.wasPressed('KeyE')) {
+      if (input.pressed('interact')) {
         this.audio.ui('open');
         this.ev.onTerminal?.(f.entry ?? 0);
       }
-      return '[E] READ TERMINAL';
+      return '{interact} READ TERMINAL';
     }
     let label: string;
     let time: number;
     if (f.kind === 'lock') {
       const card = this.keycard();
       if (!card) return 'SECURITY DOOR · SEALED. Needs a vault keycard';
-      label = `[HOLD E] SWIPE KEYCARD (${card.dur ?? 1} USE${card.dur === 1 ? '' : 'S'} LEFT)`;
+      label = `{hold:interact} SWIPE KEYCARD (${card.dur ?? 1} USE${card.dur === 1 ? '' : 'S'} LEFT)`;
       time = SWIPE_TIME;
     } else {
-      label = '[HOLD E] THROW THE BREAKER. It will be loud';
+      label = '{hold:interact} THROW THE BREAKER. It will be loud';
       time = BREAKER_TIME;
     }
-    if (input.isDown('KeyE') && !moving) {
+    if (input.down('interact') && !moving) {
       if (this.searching !== f) {
         this.searching = f;
         this.progress = 0;
@@ -407,6 +411,7 @@ export class Interactions {
       this.powered.add(f.exit);
       this.drawLiftLamps();
       this.audio.sfx('breaker', f.x, f.y);
+      haptics.rumble(0.7, 0.5, 350);
       this.ev.onNoise(f.x, f.y, 380);
       this.ev.onLight(f.x, f.y - 10, 90, 0xffe0a0, 0.9);
       raid.notice('Breaker thrown: the maintenance lift has power', 'ok');
@@ -458,6 +463,7 @@ export class Interactions {
     const p = l.pos();
     const n = useRaid.getState().containers[l.id].items.length;
     this.audio.sfx(n ? 'loot' : 'dryfire', p.x, p.y);
+    haptics.tick(n ? 0.3 : 0.15);
     this.open(l);
   }
 

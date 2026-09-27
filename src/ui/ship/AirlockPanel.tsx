@@ -6,6 +6,7 @@ import { audio } from '../../engine/audio';
 import { useProfile } from '../../state/profileStore';
 import { shipUi } from '../../state/shipStore';
 import { AtlasSprite } from '../AtlasSprite';
+import { Key } from '../Glyph';
 
 const SLOT_NAME = { primary: 'PRIMARY', secondary: 'HOLSTER', helmet: 'HEAD', armor: 'BODY', backpack: 'PACK' } as const;
 
@@ -27,12 +28,12 @@ export function AirlockPanel({ onDeploy }: { onDeploy: (destination: string, see
 
   if (!course) {
     return (
-      <div className="modal-root">
+      <div className="modal-root" data-nav-scope="airlock">
         <div className="panel airlock-panel">
           <div className="panel-title">AIRLOCK <span className="dim">// ШЛЮЗ</span></div>
           <p>No course laid in. The ship is holding position over Otets.</p>
           <p className="dim small">Take the pilot's seat in the cockpit and choose a destination.</p>
-          <button className="btn" onClick={() => shipUi.close()}>CLOSE [ESC]</button>
+          <button className="btn" onClick={() => shipUi.close()}>CLOSE <Key a="back" /></button>
         </div>
       </div>
     );
@@ -50,7 +51,7 @@ export function AirlockPanel({ onDeploy }: { onDeploy: (destination: string, see
   ].filter(Boolean) as string[];
 
   return (
-    <div className="modal-root">
+    <div className="modal-root" data-nav-scope="airlock">
       <div className="panel airlock-panel">
         <div className="panel-title">AIRLOCK <span className="dim">// ШЛЮЗ</span></div>
         <div className="airlock-dest">
@@ -76,8 +77,8 @@ export function AirlockPanel({ onDeploy }: { onDeploy: (destination: string, see
         {warnings.map((w) => <div key={w} className="bad small">▲ {w}</div>)}
         <p className="dim small">Once the hatch opens, everything you carry is at risk until you extract. Miss the orbit window and you're left behind.</p>
         <div className="confirm-row">
-          <button className="deploy" onClick={() => { audio.ui('click'); onDeploy(course.destination, course.seed); }}>[ DEPLOY ]</button>
-          <button className="btn" onClick={() => { audio.ui('close'); shipUi.close(); }}>NOT YET</button>
+          <button className="deploy" data-nav-default onClick={() => { audio.ui('click'); onDeploy(course.destination, course.seed); }}>[ DEPLOY ]</button>
+          <button className="btn" onClick={() => { audio.ui('close'); shipUi.close(); }}>NOT YET <Key a="back" /></button>
         </div>
       </div>
     </div>

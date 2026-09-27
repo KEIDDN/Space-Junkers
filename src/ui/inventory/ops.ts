@@ -40,6 +40,9 @@ export interface InventoryOps {
 
 export const InventoryContext = createContext<InventoryOps | null>(null);
 
+/** The inventory currently on screen, for the controller navigator (set by the screen). */
+export const activeInventory: { ops: InventoryOps | null } = { ops: null };
+
 export function useOps(): InventoryOps {
   const ops = useContext(InventoryContext);
   if (!ops) throw new Error('InventoryContext missing');

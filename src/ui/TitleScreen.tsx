@@ -4,6 +4,7 @@ import { audio } from '../engine/audio';
 import { useProfile } from '../state/profileStore';
 import { AtlasSprite } from './AtlasSprite';
 import { SettingsRows } from './Settings';
+import { ByDevice, Key } from './Glyph';
 
 const OPERATORS: { id: Operator; callsign: string; portrait: string; line: string }[] = [
   { id: 'm', callsign: 'VOLK', portrait: 'portrait_m', line: 'Ex-miner. Doesn\'t talk about the collapse at Shaft 9.' },
@@ -59,8 +60,21 @@ export function TitleScreen({ onContinue, onRange }: Props) {
 
   const hover = () => audio.ui('hover');
 
+  // Back out of the operator pick (or a pending wipe) with Esc / the pad's back button.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Escape') return;
+      if (picking) {
+        audio.ui('close');
+        setPicking(false);
+      } else if (confirmWipe) setConfirmWipe(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [picking, confirmWipe]);
+
   return (
-    <div className="screen title-screen" onPointerDown={() => audio.unlock()}>
+    <div className="screen title-screen" data-nav-scope="title" onPointerDown={() => audio.unlock()}>
       <Starfield />
       <div className="title-planet"><AtlasSprite name="planet_otets_big" scale={3} /></div>
       <div className="title-scan" />
@@ -80,7 +94,7 @@ export function TitleScreen({ onContinue, onRange }: Props) {
               if (started && !confirmWipe) setConfirmWipe(true);
               else setPicking(true);
             }}>
-              {confirmWipe ? 'NEW GAME: THIS ERASES YOUR SAVE. CLICK AGAIN' : 'NEW GAME'}
+              {confirmWipe ? 'NEW GAME: THIS ERASES YOUR SAVE. CONFIRM AGAIN' : 'NEW GAME'}
             </button>
             <button className="menu-btn" onPointerEnter={hover} onClick={() => { audio.ui('click'); onRange(); }}>GUNPLAY RANGE</button>
             <SettingsRows />
@@ -97,11 +111,17 @@ export function TitleScreen({ onContinue, onRange }: Props) {
                 </button>
               ))}
             </div>
-            <button className="link" onClick={() => setPicking(false)}>[BACK]</button>
+            <button className="link" onClick={() => setPicking(false)}>[BACK] <Key a="back" /></button>
           </div>
         )}
       </div>
-      <div className="title-foot dim small">BUILD 0.3 · WASD MOVE · MOUSE AIM · E INTERACT · TAB INVENTORY · ESC PAUSE</div>
+      <div className="title-foot dim small">
+        BUILD 1.0 ·{' '}
+        <ByDevice
+          kbm={<>WASD MOVE · MOUSE AIM · E INTERACT · TAB INVENTORY · ESC PAUSE</>}
+          pad={<><Key a="move" /> MOVE · <Key a="aim" /> AIM · <Key a="fire" /> FIRE · <Key a="interact" /> INTERACT · <Key a="inventory" /> BAG · <Key a="pause" /> PAUSE</>}
+        />
+      </div>
     </div>
   );
 }

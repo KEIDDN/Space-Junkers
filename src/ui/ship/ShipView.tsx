@@ -11,6 +11,7 @@ import { BoardPanel } from './BoardPanel';
 import { CrewPanel } from './CrewPanel';
 import { NavPanel } from './NavPanel';
 import { RecordPanel } from './RecordPanel';
+import { ByDevice, Key, Prompt } from '../Glyph';
 
 function ShipHud() {
   const prompt = useShip((s) => s.prompt);
@@ -32,14 +33,21 @@ function ShipHud() {
         <div className="big-mid">{credits.toLocaleString()}</div>
       </div>
       {notices.length > 0 && !panel && (
-        <div className="ship-notices">
+        <div className="ship-notices" data-nav-scope="notices">
           {notices.map((n, i) => <div key={i}>{n}</div>)}
-          <button className="link" onClick={clear} style={{ pointerEvents: 'auto' }}>[OK]</button>
+          <button className="link" data-nav-default onClick={() => { audio.ui('click'); clear(); }} style={{ pointerEvents: 'auto' }}>[OK] <Key a="confirm" /></button>
         </div>
       )}
-      {prompt && !panel && !jumping && <div className="hud-prompt crt-text">{prompt}</div>}
+      {prompt && !panel && !jumping && <div className="hud-prompt crt-text"><Prompt text={prompt} /></div>}
       {jumping && <div className="hud-extract crt-text warn">JUMP DRIVE ENGAGED</div>}
-      {!panel && <div className="ship-hints dim small crt-text">WASD MOVE · E INTERACT · TAB STASH</div>}
+      {!panel && (
+        <div className="ship-hints dim small crt-text">
+          <ByDevice
+            kbm={<>WASD MOVE · E INTERACT · TAB STASH · ESC MENU</>}
+            pad={<><Key a="move" /> MOVE · <Key a="interact" /> INTERACT · <Key a="inventory" /> STASH · <Key a="pause" /> MENU</>}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -55,10 +63,21 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
   const lastPos = useRef<{ x: number; y: number } | undefined>(undefined);
 
   useEffect(() => {
-    // TAB opens the stash here; never let it move browser focus.
-    const noTab = (e: KeyboardEvent) => e.code === 'Tab' && e.preventDefault();
-    window.addEventListener('keydown', noTab);
-    return () => window.removeEventListener('keydown', noTab);
+    // TAB opens the stash here; never let it move browser focus. ESC with nothing open is the menu.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'Tab') e.preventDefault();
+      if (e.code === 'Escape' && !useShip.getState().panel && !useShip.getState().jumping) {
+        // Opened on the next tick, so the panel's own Esc handler doesn't see this press.
+        window.setTimeout(() => {
+          if (!useShip.getState().panel) {
+            audio.ui('open');
+            shipUi.open({ kind: 'record' });
+          }
+        }, 0);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   useEffect(() => {
