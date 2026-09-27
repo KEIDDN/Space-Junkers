@@ -32,6 +32,8 @@ export interface Bullet {
   knockback: number;
   faction: Faction;
   color: number;
+  /** One pellet of a shotgun load (a pellet in the head is not a rifle round in the head). */
+  pellet: boolean;
   /** Last target this bullet whizzed past (reported once). */
   near: Hittable | null;
 }
@@ -44,6 +46,7 @@ export interface ShotSpec {
   knockback: number;
   faction: Faction;
   color: number;
+  pellet?: boolean;
 }
 
 /** Perpendicular miss distance (px) under which a hit counts as a headshot. */
@@ -96,6 +99,7 @@ export class Projectiles {
     b.knockback = spec.knockback;
     b.faction = spec.faction;
     b.color = spec.color;
+    b.pellet = !!spec.pellet;
     b.near = null;
   }
 

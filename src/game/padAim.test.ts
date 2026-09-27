@@ -73,4 +73,30 @@ describe('aim assist', () => {
     run(aim, base({ targets: [target] }), 1);
     expect(aim.angle).toBeCloseTo(0.1, 5);
   });
+
+  it('reaches a little further than it used to, at medium range', () => {
+    const aim = new PadAim();
+    const t = { x: 250, y: 0, r: 11 };
+    const a = 0.12; // ~7 degrees off a body at 250 px
+    run(aim, base({ stick: { x: Math.cos(a), y: Math.sin(a), mag: 1 }, targets: [t] }), 1);
+    expect(aim.pull).toBeGreaterThan(0);
+    expect(Math.abs(aim.angle)).toBeLessThan(a * 0.8); // pulled in, not snapped (the old cone missed it entirely)
+  });
+
+  it('stays with a hostile that moves across the line (but the stick still rules)', () => {
+    const aim = new PadAim();
+    const stick = { x: 1, y: 0, mag: 1 };
+    // A target crossing sideways at 180 px while the stick holds still.
+    let y = 0;
+    let onTarget = 0;
+    for (let i = 0; i < 60; i++) {
+      y += 0.5;
+      aim.update(1 / 60, base({ stick, targets: [{ x: 180, y, r: 11, id: 3 }] }));
+      if (Math.abs(aim.angle - Math.atan2(y, 180)) < Math.atan(11 / 180)) onTarget++;
+    }
+    expect(onTarget).toBeGreaterThan(45);
+    // Push the stick well away and it lets go.
+    run(aim, base({ stick: { x: 0, y: -1, mag: 1 }, targets: [{ x: 180, y, r: 11, id: 3 }] }), 0.5);
+    expect(aim.angle).toBeLessThan(-1);
+  });
 });

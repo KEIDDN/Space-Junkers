@@ -17,6 +17,8 @@ export interface Spawn {
   y: number;
   /** Optional patrol route (world positions). */
   patrol?: { x: number; y: number }[];
+  /** A weapon item this one carries instead of a random pick from their kit. */
+  weapon?: string;
 }
 
 export interface PropPlacement {

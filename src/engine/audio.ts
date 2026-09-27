@@ -28,7 +28,7 @@ export type Sfx =
   | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
   | 'breaker' | 'keycard' | 'lift'
   | 'magout' | 'magin' | 'rack' | 'bolt' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet'
-  | 'heartbeat' | 'mutter' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio' | 'zap' | 'hiss';
+  | 'heartbeat' | 'mutter' | 'query' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio' | 'zap' | 'hiss';
 
 import { SAMPLE_GROUPS } from './sampleManifest';
 
@@ -43,7 +43,7 @@ const HEARING_RANGE = 900;
 const AMBIENCE_LEVEL = 0.55;
 const GUNSHOT_RANGE = 1700;
 
-export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab' | 'tick' | 'relief' | 'loss' | 'valuable';
+export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab' | 'tick' | 'relief' | 'loss' | 'valuable' | 'squelch';
 
 export class AudioService {
   private ctx: AudioContext | null = null;
@@ -630,6 +630,12 @@ export class AudioService {
     const t = ctx.currentTime;
     const r = (a: number, b: number) => a + Math.random() * (b - a);
     switch (kind) {
+      case 'squelch':
+        // A handset keyed: a burst of static, the click of the key, a tail of hiss.
+        this.click(out, t, 1800, 0.4);
+        this.noiseBurst(out, t + 0.01, 0.16, 2600, 0.22);
+        this.noiseBurst(out, t + 0.18, 0.06, 4200, 0.1);
+        break;
       case 'hover':
         if (!this.take(out, 'ui_tick', t, 0.3, r(1.05, 1.15))) this.click(out, t, 4200, 0.12);
         break;
@@ -894,7 +900,7 @@ export class AudioService {
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
       breaker: 0.7, keycard: 0.45, lift: 0.5,
       magout: 0.2, magin: 0.24, rack: 0.28, bolt: 0.5, breakopen: 0.26, breakclose: 0.3, magdrop: 0.2, draw: 0.14, ricochet: 0.35,
-      heartbeat: 0.35, mutter: 0.75, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12, zap: 0.3, hiss: 0.18,
+      heartbeat: 0.35, mutter: 0.75, query: 0.85, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12, zap: 0.3, hiss: 0.18,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
@@ -1159,6 +1165,26 @@ export class AudioService {
           o.stop(at + 0.12);
         }
         this.noiseBurst(out, t + syll * 0.14, 0.04, 3000 * muffle, 0.25);
+        break;
+      }
+      case 'query': {
+        // "Kto tam?" Two clipped syllables and a rising third: someone isn't sure what they saw.
+        const pitches: [number, number][] = [[150, 140], [138, 132], [140, 205]];
+        pitches.forEach(([a, b], i) => {
+          const at = t + i * 0.13;
+          const len = i === 2 ? 0.2 : 0.1;
+          const o = ctx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.setValueAtTime(a, at);
+          o.frequency.linearRampToValueAtTime(b, at + len);
+          const f = ctx.createBiquadFilter();
+          f.type = 'bandpass';
+          f.frequency.value = 1100 * muffle;
+          f.Q.value = 1.4;
+          o.connect(f).connect(env(ctx, at, 0.85, 0.012, len)).connect(out);
+          o.start(at);
+          o.stop(at + len + 0.03);
+        });
         break;
       }
       case 'typing':

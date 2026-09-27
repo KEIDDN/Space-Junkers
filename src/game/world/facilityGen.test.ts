@@ -124,4 +124,31 @@ describe('generateFacility', () => {
     expect(lifts).toBeGreaterThan(40);
     expect(powered).toBe(lifts);
   });
+
+  it('lets a learning operator find their feet: quiet entry, one lone scavenger next, then harder', () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      const map = generateFacility(seed, { theme: THEMES.tikhaya, enemies: { scavenger: 8, raider: 2 }, gentle: true });
+      const roomOf = (x: number, y: number) => map.rooms.find((r) => x / TILE >= r.x && x / TILE < r.x + r.w && y / TILE >= r.y && y / TILE < r.y + r.h);
+      const hostiles = map.spawns.filter((s) => s.kind !== 'player');
+      const at = (d: number) => hostiles.filter((s) => roomOf(s.x, s.y)?.depth === d);
+      expect(at(0).length + at(1).length, `seed ${seed}`).toBe(0);
+      expect(at(2).every((s) => s.kind === 'scavenger'), `seed ${seed}`).toBe(true);
+      for (const r of map.rooms.filter((q) => q.depth === 2)) {
+        expect(at(2).filter((s) => roomOf(s.x, s.y) === r).length, `seed ${seed}`).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('never routes a patrol through the entry room', () => {
+    for (let seed = 1; seed <= 80; seed++) {
+      const map = generateFacility(seed);
+      const start = map.rooms.find((r) => r.role === 'start')!;
+      for (const s of map.spawns) {
+        for (const p of s.patrol ?? []) {
+          const inside = p.x / TILE >= start.x && p.x / TILE < start.x + start.w && p.y / TILE >= start.y && p.y / TILE < start.y + start.h;
+          expect(inside, `seed ${seed}`).toBe(false);
+        }
+      }
+    }
+  });
 });

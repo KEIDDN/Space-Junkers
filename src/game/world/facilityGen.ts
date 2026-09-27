@@ -28,6 +28,11 @@ export interface FacilityOptions {
   theme?: Theme;
   /** Added to every container's risk (richer worlds). */
   lootBonus?: number;
+  /**
+   * An operator still learning (their first raids on Tikhaya): the rooms next to the entry
+   * are quiet, the next ring holds one lone scavenger at most, and it gets harder from there.
+   */
+  gentle?: boolean;
 }
 
 const CELL_W = 16;
@@ -215,7 +220,7 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
 
   // --- Furnish
   const mix = opts.enemies ?? { scavenger: 1 };
-  cells.forEach((c, i) => furnishRoom(map, rng, c, i, maxDepth, danger, cells, mix, theme, plan));
+  cells.forEach((c, i) => furnishRoom(map, rng, c, i, maxDepth, danger, cells, mix, theme, plan, !!opts.gentle));
   wearCorridors(map, new Rng(seed ^ 0x5eed), cells.map((c) => c.room));
   const liftExit = map.exits.find((e) => e.kind === 'lift');
   if (liftExit && plan.breakerAt) liftExit.breaker = plan.breakerAt;
@@ -454,7 +459,7 @@ interface RoomPlan {
 
 function furnishRoom(
   map: TileMap, rng: Rng, cell: Cell, index: number, maxDepth: number, danger: number, cells: Cell[],
-  mix: Record<string, number>, theme: Theme, plan: RoomPlan,
+  mix: Record<string, number>, theme: Theme, plan: RoomPlan, gentle = false,
 ): void {
   const r = cell.room;
   const kit = KITS[r.kind ?? 'storage'] ?? KITS.storage;
@@ -727,17 +732,25 @@ function furnishRoom(
       default: return (rng.chance(0.42) ? 1 : 0) + (r.depth >= 3 && rng.chance(0.25) ? 1 : 0);
     }
   })() + (plan.guards.get(index) ?? 0);
-  const count = r.depth === 1 ? Math.min(1, base) : Math.round(base * danger);
+  let count = r.depth === 1 ? Math.min(1, base) : Math.round(base * danger);
+  // Learning: quiet around the entry, one lone scavenger in the next ring at most.
+  if (gentle && r.depth <= 1) count = 0;
+  else if (gentle && r.depth === 2) count = Math.min(1, count);
   const free = floorTiles(map, r).filter(([x, y]) => !reserved.has(key(x, y)));
   rng.shuffle(free);
   for (let i = 0; i < count && i < free.length; i++) {
     const [x, y] = free[i];
+    const kind = rng.weighted(mix);
     const spawn: Spawn = {
-      kind: rng.weighted(mix), x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
+      kind: gentle && r.depth <= 2 ? 'scavenger' : kind, x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
     };
-    // Some guards walk a route between this room and its neighbours.
-    if (i === 0 && r.role === 'standard' && rng.chance(0.4)) {
-      const other = cells[rng.pick(cell.links)].room;
+    // The first one a learning operator meets carries a pistol, not a sawn-off.
+    if (gentle && r.depth <= 2) spawn.weapon = rng.pick(['sp5', 'pm9']);
+    // Some guards walk a route between this room and its neighbours, never into the entry:
+    // an operator's first seconds down there are theirs.
+    const routes = cell.links.filter((l) => cells[l].room.role !== 'start');
+    if (i === 0 && r.role === 'standard' && routes.length && rng.chance(0.4)) {
+      const other = cells[rng.pick(routes)].room;
       spawn.patrol = [
         { x: spawn.x, y: spawn.y },
         { x: (other.x + other.w / 2) * TILE, y: (other.y + other.h / 2) * TILE },

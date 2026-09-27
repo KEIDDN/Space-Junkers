@@ -12,7 +12,7 @@ import {
 export type RaidStatus = 'active' | 'extracted' | 'dead';
 export type RaidMode = 'range' | 'facility';
 
-export type FeedTone = 'ok' | 'warn' | 'bad' | 'loot';
+export type FeedTone = 'ok' | 'warn' | 'bad' | 'loot' | 'radio';
 
 /** A short line in the HUD feed (loot, armor broke, bleeding...). */
 export interface FeedEntry {
