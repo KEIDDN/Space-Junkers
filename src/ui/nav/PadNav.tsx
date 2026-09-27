@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { audio } from '../../engine/audio';
-import { BTN, padShared, padTouched, readPad, type PadFrame } from '../../engine/pad';
+import { BTN, PAD_BUTTON_COUNT, padShared, padTouched, readPad, type PadFrame } from '../../engine/pad';
 import { itemDef } from '../../data/items';
 import { locate } from '../../core/transfer';
 import { installDeviceWatch, noteDevice, useDevice } from '../../state/deviceStore';
@@ -125,7 +125,7 @@ class Navigator {
     else if (pressed(BTN.RB)) this.tab(scope, 1);
     else if (pressed(BTN.LT)) this.shortcut(scope, 'LT');
     else if (pressed(BTN.RT)) this.shortcut(scope, 'RT');
-    else if (pressed(BTN.START) || pressed(BTN.VIEW)) {
+    else if (pressed(BTN.START) || pressed(BTN.VIEW) || (f.touchpad && pressed(BTN.TOUCHPAD))) {
       if (this.carry) this.cancelCarry();
       sendKey('Escape');
     }
@@ -145,7 +145,7 @@ class Navigator {
   // ---------------------------------------------------------------------------
 
   private buttons(f: PadFrame | null): boolean[] {
-    if (!f) return new Array<boolean>(17).fill(false);
+    if (!f) return new Array<boolean>(PAD_BUTTON_COUNT).fill(false);
     return f.buttons.map((v, i) => (i === BTN.LT || i === BTN.RT ? (this.prev[i] ? v > 0.15 : v > 0.3) : v > 0.5));
   }
 

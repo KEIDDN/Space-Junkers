@@ -33,8 +33,10 @@ SFX_SRC=/path/to/raw python3 tools/build_sfx.py   # rebuild recorded sounds and 
 6. **Return.** Extract and everything you carry comes home. Die and it stays on your body.
    Sell, hand in contracts, upgrade, go again.
 
-You can never be soft-locked: with no gun anywhere, the locker hands out a worthless crew-issue
-kit, and the hop to Tikhaya is free when you can't pay for it.
+You can never be soft-locked. Death still costs you everything you carried, but the ship keeps
+a reserve: come back aboard with no gun that can fire or no pack, and Molot leaves a crew-issue
+SP-5, a box of rounds and a canvas sack in your locker. Crew issue is worth nothing to traders,
+so the reserve can't be farmed. The hop to Tikhaya is free when you can't pay for it.
 
 ## Controls
 
@@ -54,9 +56,9 @@ recognised and their button names shown). Prompts follow whichever you touched l
 | Quick slots | 3–6 | D-pad |
 | Flashlight | F | R3 |
 | Interact; hold to search, swipe, throw breakers | E | A |
-| Inventory / stash | TAB | View |
-| Tactical map | M | Hold View |
-| Pause (ship: menu and settings) | ESC | Menu |
+| Inventory / stash | TAB | View (PlayStation: Create) |
+| Tactical map | M | Hold View (PlayStation: touchpad) |
+| Pause (ship: menu and settings) | ESC | Menu (PlayStation: Options) |
 
 Menus are fully playable on a controller: the D-pad or stick moves focus, A confirms, B goes
 back, LB/RB switch tabs or panels, the right stick scrolls. In inventories A picks an item up

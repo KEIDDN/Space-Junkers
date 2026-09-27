@@ -81,7 +81,7 @@ function WeaponBlock() {
   const low = ammo <= Math.ceil(magSize * 0.25);
   return (
     <div className="hud-br crt-text">
-      <div className="label"><ByDevice kbm={<>[{weaponSlot + 1}]</>} pad={<Key a="switchWeapon" />} /> {weaponName}</div>
+      <div className="label">[{weaponSlot + 1}] {weaponName}</div>
       <div className="ammo">
         <span className={`big ${reloading ? 'dim' : low ? 'bad' : ''}`}>{ammo}</span>
         <span className="dim"> / {reserve}</span>
@@ -164,12 +164,16 @@ function Feed() {
   );
 }
 
-/** First raid only: the keys that matter, for half a minute. */
+/**
+ * The HUD carries no permanent key list: prompts appear where they matter (a container,
+ * an empty magazine, a jam) and the full controls live in the pause menu. The operator's
+ * very first raid shows the keys that matter for a few seconds, then gets out of the way.
+ */
 function FirstRaidHint() {
-  const first = useProfile((s) => s.stats.raids <= 1);
+  const first = useProfile((s) => s.stats.raids <= 1 && s.stats.extractions + s.stats.deaths === 0);
   const [show, setShow] = useState(true);
   useEffect(() => {
-    const id = window.setTimeout(() => setShow(false), 30000);
+    const id = window.setTimeout(() => setShow(false), 14000);
     return () => window.clearTimeout(id);
   }, []);
   if (!first || !show) return null;
@@ -190,6 +194,21 @@ function FirstRaidHint() {
         }
       />
       <div className="dim">Find the shuttle pad or the lift. Loot is only yours once you're out.</div>
+    </div>
+  );
+}
+
+/** Every raid: a one-line reminder of where the map and the controls are, fading out. */
+function EntryHint() {
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const id = window.setTimeout(() => setShow(false), 7000);
+    return () => window.clearTimeout(id);
+  }, []);
+  if (!show) return null;
+  return (
+    <div className="hud-entry dim small">
+      <Key a="map" /> MAP · <Key a="inventory" /> BAG · <Key a="pause" /> CONTROLS
     </div>
   );
 }
@@ -227,8 +246,9 @@ export function Hud() {
                 ORBIT WINDOW {fmt(timeLeft)}
               </div>
             )}
-            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} <Key a="flashlight" /> · <span className="dim">MAP <Key a="map" /></span></div>
+            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'}</div>
             <Tracker />
+            <EntryHint />
           </>
         ) : (
           <>
@@ -242,7 +262,7 @@ export function Hud() {
         <div className="hud-tr crt-text">
           <div className="label">FOUND IN RAID · AT RISK</div>
           <div><span className="big-mid">{haul.toLocaleString()}</span> <span className="dim">CR</span></div>
-          <div className={`small ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : 'dim'}`}>{weight} KG CARRIED · <Key a="inventory" /> BAG</div>
+          <div className={`small ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : 'dim'}`}>{weight} KG CARRIED</div>
         </div>
       )}
 

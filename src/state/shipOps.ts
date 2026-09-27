@@ -1,12 +1,9 @@
-import { itemDef } from '../data/items';
-import {
-  EQUIP_SLOTS, addToGrid, createItem, findSpot, loadoutAdd, loadoutItems, newUid, slotAccepts, sortGrid,
-  type ItemInstance,
-} from '../core/inventory';
+import { EQUIP_SLOTS, findSpot, newUid, slotAccepts, sortGrid } from '../core/inventory';
 import {
   getGrid, loadWeapon, locate, moveItem, quickMove, splitStack, unloadWeapon,
   type GridKey, type Target, type Workspace,
 } from '../core/transfer';
+import { hasUsableGun, issueReserve } from '../core/reserve';
 import { useProfile } from './profileStore';
 
 /**
@@ -91,37 +88,25 @@ export const ship = {
     return true;
   },
 
-  /** Does the player have any gun at all, anywhere? */
+  /** Can the operator go out armed: a gun with rounds for it, anywhere aboard? */
   hasAnyWeapon(): boolean {
     const p = useProfile.getState();
-    if (loadoutItems(p.loadout).some((i) => itemDef(i.id).kind === 'weapon')) return true;
-    return p.stash.items.some((q) => itemDef(q.item.id).kind === 'weapon' || !!q.item.contents?.items.some((c) => itemDef(c.item.id).kind === 'weapon'));
+    return hasUsableGun(p.loadout, p.stash);
   },
 
   /**
-   * The crew never lets you go out empty-handed. When you own no gun at all, the locker
-   * hands out a crew-issue kit. Crew issue is worthless to traders, so it can't be farmed.
+   * The ship's reserve (see core/reserve.ts): fills in a crew-issue sidearm with rounds and
+   * a sack when the operator has lost theirs. Returns what was handed out.
    */
-  takeCrewKit(): boolean {
-    if (ship.hasAnyWeapon()) return false;
+  stockReserve(): string[] {
     const p = useProfile.getState();
-    let loadout = p.loadout;
-    let stash = p.stash;
-    const gun = createItem('sp5', { loaded: 7, crew: true });
-    if (!loadout.secondary) loadout = { ...loadout, secondary: gun };
-    else stash = addToGrid(stash, gun).grid;
-    if (!loadout.backpack) loadout = { ...loadout, backpack: createItem('sack', { crew: true }) };
-    const extras: ItemInstance[] = [
-      createItem('ammo_9x18', { qty: 28, crew: true }),
-      createItem('bandage', { crew: true }),
-    ];
-    for (const it of extras) {
-      const r = loadoutAdd(loadout, it);
-      loadout = r.loadout;
-      if (r.rest) stash = addToGrid(stash, r.rest).grid;
-    }
-    if (!loadout.quick.includes('bandage')) loadout = { ...loadout, quick: ['bandage', ...loadout.quick.slice(1)] };
-    p.apply({ loadout, stash });
-    return true;
+    const r = issueReserve(p.loadout, p.stash);
+    if (r.issued.length) p.apply({ loadout: r.loadout, stash: r.stash });
+    return r.issued;
+  },
+
+  /** The stash button for the same thing (kept for saves that arrive short). */
+  takeCrewKit(): boolean {
+    return ship.stockReserve().length > 0;
   },
 };

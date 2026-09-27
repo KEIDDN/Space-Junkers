@@ -82,7 +82,8 @@ const PAD_CONTROLS: [GlyphId, string][] = [
   ['quick', 'Quick slots'],
   ['flashlight', 'Flashlight'],
   ['interact', 'Use · hold to search'],
-  ['inventory', 'Bag · hold for map'],
+  ['inventory', 'Bag'],
+  ['map', 'Map'],
   ['pause', 'Pause'],
 ];
 

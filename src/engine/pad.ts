@@ -10,7 +10,13 @@ export const BTN = {
   VIEW: 8, START: 9,
   L3: 10, R3: 11,
   UP: 12, DOWN: 13, LEFT: 14, RIGHT: 15,
+  HOME: 16,
+  /** DualShock 4 / DualSense touchpad click (Chromium's standard mapping). */
+  TOUCHPAD: 17,
 } as const;
+
+/** Buttons read from a pad (the 16 standard ones, home, and the PlayStation touchpad). */
+export const PAD_BUTTON_COUNT = 18;
 
 export type PadFamily = 'xbox' | 'playstation' | 'nintendo';
 
@@ -19,6 +25,8 @@ export interface PadFrame {
   buttons: number[];
   axes: [number, number, number, number];
   family: PadFamily;
+  /** The pad reports a touchpad button (PlayStation pads in Chromium). */
+  touchpad: boolean;
   /** The browser's pad, for rumble. */
   pad: Gamepad;
 }
@@ -69,8 +77,8 @@ export function readPad(): PadFrame | null {
   if (active && active !== pad && (!pad || !busy(pad))) pad = active;
   pad ??= list[0];
   if (busy(pad)) padShared.lastIndex = pad.index;
-  const buttons = new Array<number>(17).fill(0);
-  for (let i = 0; i < Math.min(17, pad.buttons.length); i++) {
+  const buttons = new Array<number>(PAD_BUTTON_COUNT).fill(0);
+  for (let i = 0; i < Math.min(PAD_BUTTON_COUNT, pad.buttons.length); i++) {
     const b = pad.buttons[i];
     buttons[i] = b.pressed ? Math.max(b.value, 1) : b.value;
   }
@@ -78,10 +86,12 @@ export function readPad(): PadFrame | null {
   buttons[BTN.LT] = pad.buttons[BTN.LT] ? Math.max(pad.buttons[BTN.LT].value, pad.buttons[BTN.LT].pressed ? 1 : 0) : 0;
   buttons[BTN.RT] = pad.buttons[BTN.RT] ? Math.max(pad.buttons[BTN.RT].value, pad.buttons[BTN.RT].pressed ? 1 : 0) : 0;
   const a = pad.axes;
+  const family = padFamily(pad.id);
   return {
     buttons,
     axes: [a[0] ?? 0, a[1] ?? 0, a[2] ?? 0, a[3] ?? 0],
-    family: padFamily(pad.id),
+    family,
+    touchpad: family === 'playstation' && pad.buttons.length > BTN.TOUCHPAD,
     pad,
   };
 }

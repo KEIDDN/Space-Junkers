@@ -36,7 +36,9 @@ export const KEY_BINDS: Record<Action, string[]> = {
 /**
  * Controller layout. Triggers fire and steady the aim; the right thumb stays on the aim
  * stick for everything urgent (shoulders), face buttons are for deliberate actions.
- * The view button is shared: tap for the bag, hold for the map. Sprint on L3 latches.
+ * The bag and the map live on the centre buttons: on a PlayStation pad the touchpad is
+ * the map and Create the bag; elsewhere the view button is shared (tap for the bag, hold
+ * for the map). Start / Options pauses. Sprint on L3 latches.
  */
 export const PAD_BINDS: Partial<Record<Action, number>> = {
   fire: BTN.RT,
@@ -56,7 +58,7 @@ export const PAD_BINDS: Partial<Record<Action, number>> = {
   pause: BTN.START,
 };
 
-/** Seconds the view button must be held to open the map instead of the bag. */
+/** Seconds the view button must be held to open the map instead of the bag (non-PlayStation pads). */
 export const VIEW_HOLD = 0.35;
 
 /** Trigger thresholds with hysteresis, so a half-pulled trigger never chatters. */
