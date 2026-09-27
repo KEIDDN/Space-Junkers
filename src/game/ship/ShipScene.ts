@@ -217,7 +217,7 @@ export class ShipScene {
     // The ship's own small life: status lights, a machine that sparks, steam, dust.
     this.effects = new Effects(map, audio);
     this.ambientFx = new AmbientFx(L.props, this.effects, audio, (x, y, r, c, i) => this.lighting.flash(x, y, r, c, i));
-    this.world.addChild(ground, floorProps, this.effects.decals, this.doors.container, wallProps, this.actors, this.effects.lit, this.ambientFx.dust);
+    this.world.addChild(ground, floorProps, this.effects.decals, this.doors.container, wallProps, this.ambientFx.parts, this.actors, this.effects.lit, this.ambientFx.dust);
     this.glowWorld.addChild(this.ambientFx.glow, this.effects.overlay, this.markers);
     this.app.stage.addChild(this.stars, this.world, this.lighting.overlay, this.glowWorld, this.glow);
     this.camera.snapTo(this.px, this.py);

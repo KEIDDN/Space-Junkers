@@ -15,6 +15,7 @@ import { ControlsList, SettingsRows } from './Settings';
 import { RaidInventory } from './inventory/InventoryScreen';
 import { Results } from './Results';
 import { Key } from './Glyph';
+import { PostFx } from './PostFx';
 
 /** Bank or lose the loadout. Runs once per raid, from whichever path ends it first. */
 export function settleRaid(status: 'extracted' | 'dead'): void {
@@ -168,6 +169,7 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
     <div className="screen game-screen">
       <div className="game-frame">
         <div ref={hostRef} className="game-host" />
+        <PostFx />
         <Hud />
         <RaidInventory />
         <TerminalView />

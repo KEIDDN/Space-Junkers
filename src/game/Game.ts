@@ -340,8 +340,10 @@ export class Game {
     this.ambientFx = new AmbientFx(
       [...this.map.props, ...this.map.containers.map((c) => ({ sprite: CONTAINERS[c.type]?.sprite ?? '', x: c.tx * 32 + 16, y: c.ty * 32 + 29 }))],
       this.effects, this.audio, this.ctx.lightFlash, this.opts.seed,
+      (x, y, r) => this.lighting?.sag(x, y, r),
     );
     this.worldGlow.addChildAt(this.ambientFx.glow, 0);
+    this.worldLit.addChildAt(this.ambientFx.parts, 1); // over the wall props, under everyone
     if (this.lighting) this.worldLit.addChild(this.ambientFx.dust);
     for (const p of props) this.actorLayer.addChild(p);
 

@@ -1,4 +1,5 @@
 import type { FloorStyle } from '../game/render/mapView';
+import { PROLOGUE_DESTINATION, PROLOGUE_SEED } from './prologue';
 import type { ItemCategory } from './items';
 
 /**
@@ -36,7 +37,7 @@ const CLEAN: FloorStyle = [['floor_plate', 40], ['floor_a', 35], ['floor_c', 25]
 
 export const THEMES: Record<string, Theme> = {
   tikhaya: {
-    id: 'tikhaya', names: ['KOMBINAT-3 MACHINE WORKS', 'TRACTOR PLANT 9', 'ORE MILL "RASSVET"', 'DEPOT 41', 'SERVICE STATION "ZARYA-7"'],
+    id: 'tikhaya', names: ['KOMBINAT-3 MACHINE WORKS', 'TRACTOR PLANT 9', 'ORE MILL "RASSVET"', 'DEPOT 41'],
     floor: DECK, floorTint: 0xffffff, wall: 'wall_face_a', wallTint: 0xffffff, trim: 0x6e2a1f, ambient: 0.23,
     light: { room: 0xffb46b, start: 0xcfe0ff, vault: 0xff3a2a, extraction: 0x7dff9a },
     rooms: { storage: 3, workshop: 3, mess: 1, barracks: 1, office: 1, reactor: 1, medbay: 1 },
@@ -88,6 +89,8 @@ export function themeFor(destination: string | undefined): Theme {
 
 /** The name of the facility a raid seed lands in. */
 export function facilityName(destination: string | undefined, seed: number): string {
+  // The first job's station has a name of its own.
+  if (destination === PROLOGUE_DESTINATION && seed === PROLOGUE_SEED) return 'SERVICE STATION "ZARYA-7"';
   const names = themeFor(destination).names;
   return names[Math.abs(seed) % names.length];
 }

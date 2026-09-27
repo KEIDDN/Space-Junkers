@@ -413,6 +413,16 @@ export class AudioService {
         }
       }
       if (Math.random() < 0.45) return;
+      // The place is abandoned, not dead: somewhere a machine spins up, a hatch slams,
+      // someone walks, and very rarely the ninth channel comes through a speaker.
+      if (kind === 'facility' && Math.random() < 0.25) {
+        const e = Math.random();
+        if (e < 0.1) this.channelNine(bus, t);
+        else if (e < 0.45) this.spinUp(bus, t);
+        else if (e < 0.75) this.hatch(bus, t);
+        else this.farSteps(bus, t);
+        return;
+      }
       const r = Math.random();
       if (kind === 'facility' && r < 0.06) {
         this.distantFight(bus, t);
@@ -494,6 +504,78 @@ export class AudioService {
         }, 900);
       },
     };
+  }
+
+  /** A far bus for distant events: panned somewhere, with plenty of room on it. */
+  private farBus(out: AudioNode, level: number, wet = 0.7): GainNode {
+    const ctx = this.ctx!;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    const g = ctx.createGain();
+    g.gain.value = level;
+    g.connect(pan).connect(out);
+    if (this.reverbIn) {
+      const send = ctx.createGain();
+      send.gain.value = wet;
+      g.connect(send).connect(this.reverbIn);
+    }
+    return g;
+  }
+
+  /** A machine somewhere starts up, runs a while, winds down. Nobody switched it on. */
+  private spinUp(out: AudioNode, t: number): void {
+    const ctx = this.ctx!;
+    const g = this.farBus(out, 0.22);
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(18, t);
+    o.frequency.linearRampToValueAtTime(52 + Math.random() * 20, t + 2.2);
+    o.frequency.setValueAtTime(52, t + 5);
+    o.frequency.linearRampToValueAtTime(14, t + 7.5);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 260;
+    const e = ctx.createGain();
+    e.gain.setValueAtTime(0.0001, t);
+    e.gain.exponentialRampToValueAtTime(0.5, t + 1.8);
+    e.gain.setValueAtTime(0.5, t + 5);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + 7.6);
+    o.connect(f).connect(e).connect(g);
+    o.start(t);
+    o.stop(t + 7.8);
+    this.thump(g, t + 0.05, 60, 0.2, 0.5);
+    this.click(g, t + 0.06, 700, 0.3);
+  }
+
+  /** A heavy hatch slammed somewhere, and the hiss of its seal. */
+  private hatch(out: AudioNode, t: number): void {
+    const g = this.farBus(out, 0.3, 0.9);
+    this.noiseBurst(g, t, 0.35, 2200, 0.12);
+    this.thump(g, t + 0.32, 48, 0.4, 0.9);
+    this.click(g, t + 0.33, 520, 0.4);
+  }
+
+  /** Boots, far off, walking, then stopping. Maybe a patrol. Maybe not. */
+  private farSteps(out: AudioNode, t: number): void {
+    const g = this.farBus(out, 0.16, 0.8);
+    const n = 4 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < n; i++) {
+      const at = t + i * (0.42 + Math.random() * 0.06);
+      this.thump(g, at, 90 + Math.random() * 20, 0.06, 0.6);
+      this.noiseBurst(g, at, 0.03, 900, 0.3);
+    }
+  }
+
+  /**
+   * Channel nine through a speaker nobody turned off: static, then five slow tones, the same
+   * five on every world. Nobody aboard can say what they mean.
+   */
+  channelNine(out: AudioNode, t: number): void {
+    const g = this.farBus(out, 0.14, 0.6);
+    this.noiseBurst(g, t, 0.9, 2600, 0.25);
+    const motif = [392, 466.2, 440, 349.2, 392];
+    motif.forEach((f, i) => this.tone(g, t + 0.8 + i * 0.55, f, 0.42, 0.5));
+    this.noiseBurst(g, t + 3.6, 0.6, 2600, 0.2);
   }
 
   /** Somebody else's firefight, far away through a lot of concrete. */

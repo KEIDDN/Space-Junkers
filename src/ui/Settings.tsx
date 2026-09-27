@@ -40,6 +40,7 @@ export function SettingsRows() {
       <Slider label="SCREEN SHAKE" value={s.shake} min={0} max={1} step={0.1} show={String(Math.round(s.shake * 100))} onChange={s.setShake} />
       <Slider label="BRIGHTNESS" value={s.brightness} min={0.8} max={1.6} step={0.1} show={String(Math.round(s.brightness * 100))} onChange={s.setBrightness} />
       <Toggle label="SOUND CUES" on={s.soundCues} note="arrows toward unseen gunfire" onChange={s.setSoundCues} />
+      <Toggle label="FILM FINISH" on={s.filmic} note="vignette, fine grain, colour grade" onChange={s.setFilmic} />
       {pad && (
         <>
           <Slider label="AIM SPEED" value={s.aimSpeed} min={0.5} max={1.5} step={0.1} show={String(Math.round(s.aimSpeed * 100))} onChange={s.setAimSpeed} />

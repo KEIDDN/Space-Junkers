@@ -23,6 +23,25 @@ interface Emitter {
   timer: number;
 }
 
+interface Screen {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+  phase: number;
+  speed: number;
+  /** Seconds until the picture jumps. */
+  jump: number;
+}
+
+interface Fan {
+  x: number;
+  y: number;
+  r: number;
+  angle: number;
+  speed: number;
+}
+
 interface Mote {
   x: number;
   y: number;
@@ -46,6 +65,20 @@ const LED_ZONES: Record<string, [number, number, number, number, number, number[
   ship_reactor: [-4, 4, -40, -30, 2, [0xffb040]],
 };
 
+/** Screens that refresh: [x0, x1, y0, y1] of the glass, relative to the bottom-centre. */
+const SCREENS: Record<string, [number, number, number, number]> = {
+  ship_terminal: [-7, 7, -44, -30],
+  hack_terminal: [-7, 7, -48, -34],
+  ship_tv: [-12, 12, -38, -22],
+  med_monitor: [-9, 9, -22, -10],
+  hack_console: [-12, 12, -32, -20],
+};
+/** Wall fans: centre of the blades, relative to the bottom-centre, and radius. */
+const FANS: Record<string, [number, number, number]> = {
+  ship_vent: [0, -16, 11],
+  ship_vent2: [0, -16, 11],
+};
+
 const SPARKING = new Set(['ship_machine', 'ship_workbench', 'ship_console_b', 'ship_robot', 'ship_tv']);
 const STEAMING = new Set(['ship_pipe_v', 'ship_tank', 'ship_capsule']);
 
@@ -53,6 +86,7 @@ const MOTE_W = 360;
 const MOTE_H = 220;
 
 export class AmbientFx {
+  private props: { sprite: string; x: number; y: number }[];
   /** Emissive LEDs, drawn above the darkness. */
   readonly glow = new Graphics();
   /** Dust in the air, drawn in the lit layer (only visible where light falls). */
@@ -61,6 +95,11 @@ export class AmbientFx {
   private sparks: Emitter[] = [];
   private steam: Emitter[] = [];
   private motes: Mote[] = [];
+  private screens: Screen[] = [];
+  private fans: Fan[] = [];
+  /** Moving parts in the lit layer (fan blades): shaded by the lights like everything else. */
+  readonly parts = new Graphics();
+  private sagTimer = 30 + Math.random() * 40;
   private t = 0;
 
   constructor(
@@ -69,7 +108,10 @@ export class AmbientFx {
     private audio: AudioService,
     private flash: (x: number, y: number, radius: number, color: number, intensity: number) => void,
     seed = 1,
+    /** Brown the lamps out around a point (the lighting's sag), or null aboard the ship. */
+    private sag: ((x: number, y: number, r: number) => void) | null = null,
   ) {
+    this.props = props;
     let r = seed >>> 0 || 1;
     const rand = () => {
       r = (r * 1664525 + 1013904223) >>> 0;
@@ -86,6 +128,15 @@ export class AmbientFx {
           });
         }
       }
+      const sc = SCREENS[p.sprite];
+      if (sc) {
+        this.screens.push({
+          x0: p.x + sc[0], x1: p.x + sc[1], y0: p.y + sc[2], y1: p.y + sc[3],
+          phase: rand(), speed: 0.25 + rand() * 0.35, jump: 3 + rand() * 12,
+        });
+      }
+      const fan = FANS[p.sprite];
+      if (fan && rand() < 0.8) this.fans.push({ x: p.x + fan[0], y: p.y + fan[1], r: fan[2], angle: rand() * 6, speed: 2 + rand() * 5 });
       // One machine in three is on its last legs.
       if (SPARKING.has(p.sprite) && rand() < 0.35) this.sparks.push({ x: p.x + (rand() - 0.5) * 16, y: p.y - 14 - rand() * 12, timer: 1 + rand() * 6 });
       if (STEAMING.has(p.sprite) && rand() < 0.5) this.steam.push({ x: p.x + (rand() - 0.5) * 8, y: p.y - 26 - rand() * 20, timer: 2 + rand() * 6 });
@@ -121,6 +172,46 @@ export class AmbientFx {
       if (s.x < camLeft - 150 || s.x > camLeft + camW + 150 || s.y < camTop - 150 || s.y > camTop + camH + 150) continue;
       this.effects.steam(s.x, s.y);
       this.audio.sfx('hiss', s.x, s.y);
+    }
+
+    // Screens: the refresh line rolls down the glass; now and then the picture jumps.
+    const inView = (x0: number, y0: number, x1: number, y1: number) => x1 > camLeft && x0 < camLeft + camW && y1 > camTop && y0 < camTop + camH;
+    for (const s of this.screens) {
+      if (!inView(s.x0, s.y0, s.x1, s.y1)) continue;
+      s.phase = (s.phase + dt * s.speed) % 1;
+      s.jump -= dt;
+      const h = s.y1 - s.y0;
+      const y = Math.round(s.y0 + s.phase * h);
+      g.rect(s.x0, y, s.x1 - s.x0, 1).fill({ color: 0x9dffc0, alpha: 0.28 });
+      if (s.jump < 0) {
+        g.rect(s.x0, s.y0, s.x1 - s.x0, h).fill({ color: 0xc8ffe0, alpha: 0.18 });
+        if (s.jump < -0.08) s.jump = 4 + Math.random() * 14;
+      }
+    }
+
+    // Fans turning behind their grilles.
+    const f = this.parts.clear();
+    for (const fan of this.fans) {
+      if (!inView(fan.x - fan.r, fan.y - fan.r, fan.x + fan.r, fan.y + fan.r)) continue;
+      fan.angle += dt * fan.speed;
+      for (let b = 0; b < 3; b++) {
+        const a = fan.angle + (b * Math.PI * 2) / 3;
+        f.moveTo(fan.x, fan.y).arc(fan.x, fan.y, fan.r - 2, a, a + 0.55).closePath().fill({ color: 0x0b0a09, alpha: 0.45 });
+      }
+    }
+
+    // Somewhere a load comes on, and the lamps near it brown out for a moment.
+    if (this.sag) {
+      this.sagTimer -= dt;
+      if (this.sagTimer <= 0) {
+        this.sagTimer = 45 + Math.random() * 60;
+        const near = this.props.filter((p) => Math.abs(p.x - (camLeft + camW / 2)) < camW && Math.abs(p.y - (camTop + camH / 2)) < camH);
+        const src = near.length ? near[Math.floor(Math.random() * near.length)] : null;
+        if (src) {
+          this.sag(src.x, src.y, 260);
+          this.audio.sfx('zap', src.x, src.y);
+        }
+      }
     }
 
     // Dust: a field that wraps around the camera, drifting and twinkling slightly.

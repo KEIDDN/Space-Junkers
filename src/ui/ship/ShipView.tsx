@@ -19,6 +19,7 @@ import { CrewPanel } from './CrewPanel';
 import { NavPanel } from './NavPanel';
 import { RecordPanel } from './RecordPanel';
 import { ByDevice, Key, Prompt } from '../Glyph';
+import { PostFx } from '../PostFx';
 
 /** The wake-up call plays once per session, not every time the ship is rebuilt. */
 const wakeHeard = { done: false };
@@ -150,6 +151,7 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
     <div className="screen game-screen" onPointerDown={() => audio.unlock()}>
       <div className="game-frame">
         <div ref={hostRef} className="game-host" />
+        <PostFx />
         <ShipHud />
         {panel?.kind === 'crew' && <CrewPanel key={panel.crew} crew={panel.crew} />}
         {panel?.kind === 'stash' && <ShipInventory onClose={() => shipUi.close()} />}
