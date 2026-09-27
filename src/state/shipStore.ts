@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { CrewId } from '../data/crew';
+import type { Issued } from '../core/reserve';
 
 export type ShipPanel =
   | { kind: 'crew'; crew: CrewId }
@@ -15,9 +16,11 @@ export interface ShipState {
   panel: ShipPanel | null;
   /** Set when a jump is made; the scene plays the effect and clears it. */
   jumping: boolean;
+  /** The emergency kit the ship's reserve just issued (shown until acknowledged). */
+  reserve: Issued[] | null;
 }
 
-export const useShip = create<ShipState>(() => ({ prompt: null, panel: null, jumping: false }));
+export const useShip = create<ShipState>(() => ({ prompt: null, panel: null, jumping: false, reserve: null }));
 
 export const shipUi = {
   open(panel: ShipPanel): void {

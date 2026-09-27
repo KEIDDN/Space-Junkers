@@ -37,9 +37,11 @@ Money is **kosmorubli** (КР, *KR* on screen), the orbital rouble: the Commonwe
 them for its colonies, and out here nobody has anything better.
 
 You can never be soft-locked. Death still costs you everything you carried, but the ship keeps
-a reserve: come back aboard with no gun that can fire or no pack, and Molot leaves a crew-issue
-SP-5, a box of rounds and a canvas sack in your locker. Crew issue is worth nothing to traders,
-so the reserve can't be farmed. The hop to Tikhaya is free when you can't pay for it.
+a reserve: come back aboard with no gun that can fire or no pack on you, and Molot issues a
+crew-issue SP-5 (loaded), a box of rounds, a canvas sack and a dressing, straight onto you, on
+a stamped slip that says where each piece is. Crew issue is worth nothing to traders, and the
+same kit is handed back from the locker rather than issued again, so the reserve can't be
+farmed. The hop to Tikhaya is free when you can't pay for it.
 
 ## Controls
 

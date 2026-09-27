@@ -6,7 +6,7 @@ import { ShipScene } from '../../game/ship/ShipScene';
 import { useProfile } from '../../state/profileStore';
 import { shipUi, useShip } from '../../state/shipStore';
 import { ship } from '../../state/shipOps';
-import { RESERVE_GUN, RESERVE_PACK } from '../../core/reserve';
+import { ReserveSlip } from './ReserveSlip';
 import { ShipInventory } from '../inventory/ShipInventory';
 import { AirlockPanel } from './AirlockPanel';
 import { BoardPanel } from './BoardPanel';
@@ -65,14 +65,12 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
   const lastPos = useRef<{ x: number; y: number } | undefined>(undefined);
 
   useEffect(() => {
-    // Back aboard with nothing to shoot or carry with: the ship's reserve fills the gap.
-    const issued = ship.stockReserve();
-    if (issued.length) {
-      const what = [issued.includes(RESERVE_GUN) && 'a crew-issue SP-5 with a box of rounds', issued.includes(RESERVE_PACK) && 'a canvas sack']
-        .filter(Boolean).join(' and ');
-      useProfile.setState((s) => ({ notices: [...s.notices, `SHIP RESERVE: Molot left ${what} in your locker. "Bring back better."`] }));
-    }
+    // Back aboard with nothing to shoot or carry with: the ship's reserve fills the gap, and
+    // says so on a slip nobody can miss.
+    const items = ship.stockReserve();
+    if (items.length) shipUi.patch({ reserve: items });
   }, []);
+  const reserve = useShip((s) => s.reserve);
 
   useEffect(() => {
     // TAB opens the stash here; never let it move browser focus. ESC with nothing open is the menu.
@@ -116,6 +114,7 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
         {panel?.kind === 'board' && <BoardPanel />}
         {panel?.kind === 'airlock' && <AirlockPanel onDeploy={onDeploy} />}
         {panel?.kind === 'record' && <RecordPanel onQuit={onQuit} />}
+        {reserve && !panel && <ReserveSlip items={reserve} onClose={() => shipUi.patch({ reserve: null })} />}
       </div>
     </div>
   );

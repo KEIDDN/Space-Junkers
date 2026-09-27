@@ -8,6 +8,7 @@ import { questStatus } from '../core/quests';
 import { useProfile } from '../state/profileStore';
 import { useRaid } from '../state/raidStore';
 import { facilityName } from '../data/themes';
+import { issueReserve } from '../core/reserve';
 import { AtlasSprite } from './AtlasSprite';
 import { Key } from './Glyph';
 
@@ -47,6 +48,8 @@ export function Results({ onContinue }: { onContinue: () => void }) {
     .filter((i) => !i.crew || !extracted)
     .sort((a, b) => itemValueDeep(b) - itemValueDeep(a));
   const haul = haulValue(loadout, brought);
+  // What the ship's reserve will hand back aboard, so a lost kit is never a mystery.
+  const reserve = extracted ? [] : issueReserve(profile.loadout, profile.stash).items;
   const lost = loadoutValue(loadout);
   // Rows arrive one by one, then the total adds itself up.
   const shown = Math.min(rows.length, 12);
@@ -86,6 +89,12 @@ export function Results({ onContinue }: { onContinue: () => void }) {
             ? <>HAUL: <span className="warn">{total.toLocaleString()} KR</span> <span className="dim small">· carried home to the ship</span></>
             : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{total.toLocaleString()} KR</span></>}
         </div>
+        {reserve.length > 0 && (
+          <div className="results-reserve small">
+            <span className="warn">CREW RESERVE:</span> Molot is making up an emergency kit from the ship's locker:{' '}
+            {reserve.map((r) => `${itemDef(r.id).name}${r.qty > 1 ? ` ×${r.qty}` : ''}`).join(', ')}. It will be on you when you're back aboard.
+          </div>
+        )}
         {progressed.length > 0 && (
           <div className="results-contracts">
             <div className="results-sub">CONTRACT PROGRESS</div>

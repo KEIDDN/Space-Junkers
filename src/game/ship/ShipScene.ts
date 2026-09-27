@@ -225,7 +225,7 @@ export class ShipScene {
     const dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
     this.time += dt;
     const ship = useShip.getState();
-    const busy = !!ship.panel;
+    const busy = !!ship.panel || !!ship.reserve;
 
     // --- Movement (frozen while a panel is open)
     this.input.poll(dt);
