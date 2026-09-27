@@ -82,10 +82,11 @@ interface Props {
 
 const CREDITS: [string, string[]][] = [
   ['CHARACTERS', [
-    'Liberated Pixel Cup & the Universal LPC Spritesheet Generator (CC-BY-SA 3.0 / GPL 3.0)',
+    'Heads, headgear and packs drawn for Space Junkers; bodies animated with',
+    'the Liberated Pixel Cup & the Universal LPC Spritesheet Generator (CC-BY-SA 3.0 / GPL 3.0)',
     'bluecarrot16 · BenCreating · ElizaWy · JaidynReiman · wulax · Redshrike · makrohn · pvigier',
-    'Durrani · Evert · TheraHedwig · MuffinElZangano · MrBeast · MadMarcel · bigbeargames · pennomi',
-    'castelonia · Napsio · Nila122 · Skorpio · Joe White · Luke Mehl · dalonedrau · laetissima · macmanmatty',
+    'Durrani · Evert · TheraHedwig · MuffinElZangano · bigbeargames · pennomi',
+    'castelonia · Napsio · Nila122 · Joe White · Luke Mehl · dalonedrau · laetissima · macmanmatty',
     'Per-file credits: Assets/LPC/CREDITS.csv',
   ]],
   ['MUSIC', [

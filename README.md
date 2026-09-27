@@ -20,18 +20,29 @@ SFX_SRC=/path/to/raw python3 tools/build_sfx.py   # rebuild recorded sounds and 
 
 ## The loop
 
+A new operator starts with the premise typed over black and wakes at their bunk on the
+Lastochka: Molot signs their kit over at the locker, Fedya gives the first job over the
+cockpit radio (service station Zarya-7 on Tikhaya stopped answering), and the airlock
+leads down. The ship log under the ship's name says where to go next; nothing stops you.
+Until their first extraction the crew talk them through Tikhaya on the radio, and its
+scavengers give them a chance to learn.
+
 1. **Ship.** Walk the *Lastochka*. Talk to the crew, take contracts, trade, sort your stash and
    loadout (TAB or the locker), install ship work at the board.
 2. **Course.** Pick a destination at the nav console and pay the fuel. Broke? Fedya flies you to
    Tikhaya on his tab.
 3. **Deploy** from the airlock with whatever you're wearing and carrying.
-4. **Raid.** Facilities are procedural, themed by planet, and dark. Listen before you look.
-   Search containers and bodies, read terminals, open the vault if you brought a keycard.
+4. **Raid.** Facilities are procedural, themed by planet, and dark. Listen before you look:
+   guards mutter into radios and say it out loud when they think they heard something.
+   Search containers and bodies, read terminals and the notes people left, open the vault if
+   you brought a keycard.
 5. **Extract** on the shuttle pad (12 s, and the alarm brings company) or on the maintenance lift
    (quiet and quick, once you've thrown its breaker somewhere else). The Lastochka can only hold
    orbit so long: miss the window and you're M.I.A.
 6. **Return.** Extract and everything you carry comes home. Die and it stays on your body.
-   Sell, hand in contracts, upgrade, go again.
+   The crew notice how it went (and what you read down there). Sell, hand in contracts,
+   upgrade, go again. Everything you've read is kept in the service record's RECOVERED
+   RECORDS, sorted by the threads that run through every world.
 
 Money is **kosmorubli** (КР, *KR* on screen), the orbital rouble: the Commonwealth printed
 them for its colonies, and out here nobody has anything better.
@@ -74,8 +85,8 @@ With the mouse: drag to move, R or Space rotates while dragging, Shift-click qui
 Ctrl-click equips/uses, right-click for actions, drag outside to drop.
 
 Settings (title screen, pause menu, the ship menu): volume, music, screen shake, brightness,
-optional sound cues toward unseen gunfire and alarms, and with a controller connected, aim
-speed, aim assist and vibration.
+optional sound cues toward unseen gunfire and alarms, the film finish (vignette, grain,
+grade), and with a controller connected, aim speed, aim assist and vibration.
 
 ## World
 
@@ -97,8 +108,10 @@ unlocks stock, lines and destinations.
 |---|---|
 | `Assets/` | Original art. Never modified. |
 | `tools/build_assets.py` | Cuts sprites out of the painted sheets, strips the haze, snaps them to a pixel grid, builds palette variants, packs `public/assets/sprites.{png,json}`. |
+| `tools/build_characters.py` | Characters: LPC bodies for the motion, recoloured, with the drawn heads, headgear and packs placed on every frame; packs `public/assets/chars.{png,json}`. |
+| `tools/sj_heads.py`, `tools/sj_props.py` | Original pixel art as ASCII: every head, helmet, hood, mask and pack; the storytelling props. |
 | `src/core/` | Pure game rules with tests: inventory grids, transfers, profile/save, damage, economy, quests, upgrades, raid results. |
-| `src/data/` | Content: items, weapons, enemies, loot tables, crew, vendors, quests, destinations, facility themes, lore. Tuning happens here. |
+| `src/data/` | Content: items, weapons, enemies (and per-world AI tuning), loot tables, crew and their chatter, vendors, quests, destinations, facility themes, lore and its threads, the prologue. Tuning happens here. |
 | `src/engine/` | Plumbing: render constants, asset loading, action-based input (keyboard, mouse, gamepad), rumble, camera, audio (synthesized and recorded). |
 | `src/ui/nav/` | Controller navigation for every menu (spatial focus, carrying items). |
 | `tools/build_sfx.py` | Cuts and encodes the recorded sound effects and music. |
