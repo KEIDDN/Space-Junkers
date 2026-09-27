@@ -23,7 +23,8 @@ export type Sfx =
   | 'dryfire' | 'switch' | 'step' | 'casing' | 'impactWall' | 'impactFlesh' | 'hurt' | 'kill'
   | 'door' | 'rummage' | 'loot' | 'flashlight' | 'beacon' | 'alarm' | 'extracted'
   | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop'
-  | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath';
+  | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
+  | 'breaker' | 'keycard' | 'lift';
 
 const HEARING_RANGE = 900;
 const GUNSHOT_RANGE = 1700;
@@ -382,6 +383,7 @@ export class AudioService {
       shell: 0.45, cycle: 0.55, jam: 0.6, unjam: 0.55, inject: 0.45, bandage: 0.4, heal: 0.25,
       armor: 0.6, headshot: 0.8, drop: 0.35,
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
+      breaker: 0.7, keycard: 0.45, lift: 0.5,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
@@ -597,6 +599,45 @@ export class AudioService {
       case 'breath':
         this.noiseBurst(out, t, 0.35, 600, 0.35);
         break;
+      case 'breaker': {
+        // Heavy lever, contactor slam, then the mains hum coming up.
+        this.click(out, t, 900, 1);
+        this.thump(out, t + 0.05, 70, 0.8, 0.35);
+        this.click(out, t + 0.07, 2600, 0.7);
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(50, t + 0.15);
+        o.frequency.linearRampToValueAtTime(100, t + 0.9);
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = 500 * muffle;
+        o.connect(f).connect(env(ctx, t + 0.15, 0.35, 0.2, 1.3)).connect(out);
+        o.start(t + 0.15);
+        o.stop(t + 1.7);
+        break;
+      }
+      case 'keycard':
+        // Reader accepts: two rising beeps and the bolts drawing back.
+        this.tone(out, t, 1320, 0.07, 0.9);
+        this.tone(out, t + 0.1, 1760, 0.1, 0.9);
+        this.thump(out, t + 0.25, 90, 0.6, 0.2);
+        this.click(out, t + 0.3, 1800, 0.6);
+        break;
+      case 'lift': {
+        // Motor winding up under load.
+        const o = ctx.createOscillator();
+        o.type = 'square';
+        o.frequency.setValueAtTime(60, t);
+        o.frequency.linearRampToValueAtTime(85, t + 1.4);
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = 380 * muffle;
+        o.connect(f).connect(env(ctx, t, 0.3, 0.1, 1.5)).connect(out);
+        o.start(t);
+        o.stop(t + 1.7);
+        this.noiseBurst(out, t, 0.9, 500 * muffle, 0.15);
+        break;
+      }
     }
   }
 

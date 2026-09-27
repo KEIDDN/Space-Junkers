@@ -81,7 +81,6 @@ export class Doors {
     for (const t of def.tiles) this.map.setDoorLocked(t.tx, t.ty, false);
     for (const leaf of d.leaves) leaf.tint = 0xe8b0a0;
     this.drawLamp(d);
-    this.audio.sfx('switch', d.cx, d.cy);
   }
 
   private drawLamp(d: DoorState): void {

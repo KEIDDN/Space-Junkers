@@ -237,7 +237,7 @@ export class Interactions {
         this.liftHum -= dt;
         if (this.liftHum <= 0) {
           this.liftHum = 1.6;
-          this.audio.sfx('beacon', px, py, 0.35);
+          this.audio.sfx('lift', px, py);
           this.ev.onNoise(px, py, 150);
         }
         if (this.liftRemaining <= 0) return this.finish(px, py, inZone);
@@ -264,7 +264,7 @@ export class Interactions {
       if (input.wasPressed('KeyE')) {
         this.liftRemaining = LIFT_TIME;
         this.liftHum = 0;
-        this.audio.sfx('switch', px, py);
+        this.audio.sfx('keycard', px, py);
       }
       return { prompt: '[E] RIDE THE LIFT UP. Stay on the platform', countdown, inZone };
     }
@@ -383,8 +383,7 @@ export class Interactions {
     if (f.kind === 'breaker' && f.exit) {
       this.powered.add(f.exit);
       this.drawLiftLamps();
-      this.audio.sfx('switch', f.x, f.y);
-      this.audio.sfx('door', f.x, f.y);
+      this.audio.sfx('breaker', f.x, f.y);
       this.ev.onNoise(f.x, f.y, 380);
       this.ev.onLight(f.x, f.y - 10, 90, 0xffe0a0, 0.9);
       raid.notice('Breaker thrown: the maintenance lift has power', 'ok');
@@ -395,6 +394,7 @@ export class Interactions {
         return;
       }
       raid.consume(card.uid, 1);
+      this.audio.sfx('keycard', f.x, f.y);
       const left = (card.dur ?? 1) - 1;
       raid.notice(left > 0 ? `Security door open · keycard ${left} use${left === 1 ? '' : 's'} left` : 'Security door open · the keycard is spent', 'ok');
       this.ev.onUnlock?.(f.door);

@@ -71,3 +71,26 @@ F. **Destinations.** Planets with themed facilities, room archetypes, storytelli
    vault, extraction variants, and a raid timer with reinforcements.
 G. **Polish and QA.** Ambience, UI sounds, title/pause/settings, a design-system pass, full-loop
    playtests, balance and exploit checks.
+
+## Status
+
+All seven slices are in. What each one delivered, beyond the plan above:
+
+- **A–B.** 121 items, grid inventory with rotation/stacking/sort, versioned save with backup and
+  0.2 migration, raid loadout with calibers, per-round reloads, jams, armor classes vs penetration,
+  bleeding and pooled medkits.
+- **C–D.** Walkable ship with five crew, typewriter dialogue with voice blips, 19 data-driven
+  contracts, trust levels, vendors with daily market rotation (tested: no buy/sell arbitrage),
+  ship upgrades that change the ship.
+- **E.** Four enemy factions with awareness, shouts, cover, flanking, suppression, search,
+  grenades; sprint/sneak/footstep noise; headshots; physical deaths; audio occlusion.
+- **F.** Five themed destinations (palettes, room purposes, furniture kits, loot bias, lighting),
+  sealed vaults with keycards, maintenance lift + breaker as a second exit, tactical map with
+  fog of war, lore terminals, orbit-window timer with M.I.A., reinforcement squads.
+- **G.** Full-loop browser playtests, exploit checks (found-in-raid provenance, crew-issue
+  items unsellable, fuel fallback so nobody is stranded), settings (volume, screen shake),
+  controls reference, first-raid hint.
+
+Known limits / next candidates: the Free Pixel Gun Pack license needs confirming (see
+`ASSET_SOURCES.md`); music is ambience only; facilities share one tileset, so themes lean on
+palette and furniture rather than new architecture.
