@@ -72,8 +72,9 @@ export function AirlockPanel({ onDeploy }: { onDeploy: (destination: string, see
           })}
         </div>
         <div className="kit-row"><span>AT RISK</span><span className="warn">{loadoutValue(loadout).toLocaleString()} CR</span></div>
+        <div className="kit-row"><span>ORBIT WINDOW</span><span>{d.minutes} MIN</span></div>
         {warnings.map((w) => <div key={w} className="bad small">▲ {w}</div>)}
-        <p className="dim small">Once the hatch opens, everything you carry is at risk until you extract.</p>
+        <p className="dim small">Once the hatch opens, everything you carry is at risk until you extract. Miss the orbit window and you're left behind.</p>
         <div className="confirm-row">
           <button className="deploy" onClick={() => { audio.ui('click'); onDeploy(course.destination, course.seed); }}>[ DEPLOY ]</button>
           <button className="btn" onClick={() => { audio.ui('close'); shipUi.close(); }}>NOT YET</button>

@@ -32,7 +32,7 @@ export const UPGRADES: UpgradeDef[] = [
   },
   {
     id: 'scanner', name: 'Signal Scanner', crew: 'hacker',
-    effect: 'Your HUD points to the extraction zone',
+    effect: 'HUD bearing to the pad; your map shows every exit and the vault',
     description: 'Shura listens to the facility beacons from orbit and feeds the bearing to your helmet.',
     cost: 8000, items: [['radio', 1], ['circuit', 2], ['capacitor', 1]],
   },
