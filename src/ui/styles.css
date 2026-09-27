@@ -575,6 +575,37 @@ button { font-family: var(--mono); }
   text-shadow: 4px 4px 0 #6e2a1f, 0 0 30px rgba(242, 163, 58, 0.18);
 }
 .title-sub { color: var(--warn); letter-spacing: 0.3em; font-size: 12px; }
+/* The signal breaks up now and then: the logo slips a few pixels and snaps back. */
+.title-logo { animation: logo-breakup 9s steps(1) infinite; }
+@keyframes logo-breakup {
+  0%, 91%, 100% { transform: none; text-shadow: 4px 4px 0 #6e2a1f, 0 0 30px rgba(242, 163, 58, 0.18); }
+  92% { transform: translateX(3px); text-shadow: 4px 4px 0 #6e2a1f, -3px 0 0 rgba(120, 220, 200, 0.35); }
+  93% { transform: translateX(-2px) skewX(-4deg); }
+  94% { transform: translateX(1px); text-shadow: 4px 4px 0 #6e2a1f, 2px 0 0 rgba(255, 70, 50, 0.35); }
+}
+/* A band of interference rolling down the tube. */
+.title-interference {
+  position: absolute; left: 0; right: 0; height: 90px; pointer-events: none; z-index: 1;
+  background: linear-gradient(to bottom, transparent, rgba(200, 220, 210, 0.035) 40%, rgba(200, 220, 210, 0.06) 50%, transparent);
+  animation: roll 7.5s linear infinite;
+}
+@keyframes roll { from { top: -100px; } to { top: 100%; } }
+.title-nav {
+  position: absolute; top: 18px; right: 22px; z-index: 2; width: 300px; padding: 8px 10px;
+  border: 1px solid rgba(159, 216, 184, 0.25); background: rgba(4, 12, 9, 0.7);
+  font-family: 'VT323', monospace; font-size: 17px; line-height: 1.2; color: #9fd8b8;
+}
+.title-nav-head { display: flex; align-items: center; gap: 8px; letter-spacing: 0.1em; }
+.title-nav-row { display: flex; justify-content: space-between; }
+.title-nav-row .signal { letter-spacing: 1px; }
+.title-nav-ticker { color: #d7c9a8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; animation: ticker-in 0.35s steps(3, end); }
+@keyframes ticker-in { from { opacity: 0; } to { opacity: 1; } }
+.title-nav .cyr { font-family: var(--display); font-size: 11px; letter-spacing: 0.2em; color: #9fd8b8; }
+.warn-lamp {
+  width: 8px; height: 8px; border-radius: 50%; background: #d23a22; box-shadow: 0 0 8px 2px rgba(210, 58, 34, 0.7);
+  animation: lamp 1.7s steps(1) infinite;
+}
+@keyframes lamp { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.15; box-shadow: none; } }
 .title-menu { display: flex; flex-direction: column; gap: 6px; width: 440px; margin-top: 10px; }
 .menu-btn.big { font-family: var(--display); font-size: 16px; letter-spacing: 0.14em; padding: 12px 18px; }
 .menu-btn .dim { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; }

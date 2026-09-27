@@ -38,6 +38,41 @@ function Starfield() {
   return <canvas ref={ref} className="title-stars" />;
 }
 
+const TICKER = [
+  'RELAY OTETS-2 · NO CARRIER',
+  'CENTRAL · LAST HANDSHAKE 00:00:00.000',
+  'TIKHAYA · 14 STATIONS ON RESERVE POWER',
+  'CH.9 · PATTERN · 11 MIN INTERVAL · DO NOT ANSWER',
+  'LASTOCHKA · REACTOR PUMP 2 · SERVICE OVERDUE',
+  'MERZLOTA · HEAT RESERVED FOR SHAFT 9',
+  'KRASNAYA DEPOT 4 · ORDERS NOT COUNTERMANDED',
+  'ORBIT HOLD · OTETS · CREW ABOARD: 5',
+];
+
+/**
+ * The nav set's readout in the corner: what the relays are saying (nothing), a signal meter
+ * that never settles, and a red lamp that has been blinking for forty years.
+ */
+function NavReadout() {
+  const [i, setI] = useState(0);
+  const [bars, setBars] = useState(3);
+  useEffect(() => {
+    const t1 = window.setInterval(() => setI((n) => (n + 1) % TICKER.length), 3800);
+    const t2 = window.setInterval(() => setBars(Math.random() < 0.8 ? 1 + Math.floor(Math.random() * 3) : 5), 260);
+    return () => {
+      window.clearInterval(t1);
+      window.clearInterval(t2);
+    };
+  }, []);
+  return (
+    <div className="title-nav">
+      <div className="title-nav-head"><span className="warn-lamp" /> NAV-7 <span className="cyr">ЛАСТОЧКА</span></div>
+      <div className="title-nav-row"><span className="dim">CARRIER</span><span className="signal">{'▮'.repeat(bars)}<span className="dim">{'▯'.repeat(6 - bars)}</span></span></div>
+      <div key={i} className="title-nav-ticker">{TICKER[i]}</div>
+    </div>
+  );
+}
+
 interface Props {
   onContinue: () => void;
   /** A fresh operator: the premise, then the first morning aboard. */
@@ -120,8 +155,10 @@ export function TitleScreen({ onContinue, onNewGame, onRange }: Props) {
       <Starfield />
       <div className="title-planet"><AtlasSprite name="planet_otets_big" scale={3} /></div>
       <div className="title-scan" />
+      <div className="title-interference" />
+      <NavReadout />
       <div className="title-content">
-        <div className="title-logo">SPACE<br />JUNKERS</div>
+        <div className="title-logo" data-text="SPACE JUNKERS">SPACE<br />JUNKERS</div>
         <div className="title-sub">СКРАПЕРЫ · SALVAGE CREW OF THE LASTOCHKA</div>
 
         {view === 'menu' && (
