@@ -83,6 +83,8 @@ export interface ContainerPlacement {
   risk: number;
   /** Lies on the floor (remains): walkable, drawn under actors. */
   flat?: boolean;
+  /** The world's loot bonus (extra finds per container). */
+  rich?: number;
 }
 
 export type RoomRole = 'start' | 'standard' | 'loot' | 'vault' | 'extraction';

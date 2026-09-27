@@ -229,7 +229,7 @@ export class Game {
     const facility = this.opts.mode === 'facility';
     this.theme = themeFor(dest?.id);
     this.map = facility
-      ? generateFacility(this.opts.seed, { danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme })
+      ? generateFacility(this.opts.seed, { danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme, lootBonus: dest?.lootBonus ?? 0 })
       : mapFromAscii(TEST_RANGE);
     this.elapsed = 0;
     this.window = facility ? (dest?.minutes ?? 18) * 60 : Infinity;

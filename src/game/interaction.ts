@@ -112,7 +112,7 @@ export class Interactions {
       this.lootables.push({
         id: `c${i}`, kind: 'container', label: def.label, pos: () => ({ x, y: place.flat ? y - 4 : y - 10 }),
         searchTime: def.searchTime, searched: false, sprite,
-        roll: () => rollContainer(new Rng(seed), def, place.risk, lootMul),
+        roll: () => rollContainer(new Rng(seed), def, place.risk, lootMul, place.rich ?? 0),
       });
     });
     for (const e of map.exits) {

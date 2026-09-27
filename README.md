@@ -44,7 +44,7 @@ kit, and the hop to Tikhaya is free when you can't pay for it.
 | Shift | Sprint (gun lowered) | |
 | C | Sneak (silent steps) | |
 | R | Reload, clear a jam | |
-| 1 / 2 / Q | Primary / sidearm / swap | |
+| 1 / 2 / Q / wheel | Primary / sidearm / swap | |
 | 3–6 | Quick slots (meds, grenades at the cursor) | |
 | F | Flashlight | |
 | E | Interact; hold to search, swipe, throw breakers | Talk, use |

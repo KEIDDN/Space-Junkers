@@ -25,6 +25,8 @@ export interface DestinationDef {
   dangerMul: number;
   /** How long the Lastochka can hold orbit, in minutes. After that you're left behind. */
   minutes: number;
+  /** Pushes every container toward rarer finds: the reason to fly further. */
+  lootBonus: number;
 }
 
 export const DESTINATIONS: DestinationDef[] = [
@@ -32,31 +34,31 @@ export const DESTINATIONS: DestinationDef[] = [
     id: 'tikhaya', name: 'TIKHAYA', subtitle: 'INDUSTRIAL MOON', planet: 'tikhaya', danger: 1, cost: 250,
     description: 'A green moon of tractor plants and ore mills. The Commonwealth\'s workshop, left running with nobody at the controls.',
     loot: 'Scrap, electronics, tools, provisions', hostiles: 'Scavenger gangs',
-    unlockHint: '', enemies: { scavenger: 8, raider: 2 }, dangerMul: 0.85, minutes: 20,
+    unlockHint: '', enemies: { scavenger: 8, raider: 2 }, dangerMul: 0.85, minutes: 20, lootBonus: 0,
   },
   {
     id: 'merzlota', name: 'MERZLOTA', subtitle: 'FROZEN MINING WORLD', planet: 'merzlota', danger: 2, cost: 900,
     description: 'Deep-bore mines under a hundred metres of ice. The miners sealed themselves in when the heating failed.',
     loot: 'Minerals, crystals, fuel, mining tech', hostiles: 'Scavengers, raider crews',
-    unlockHint: 'Fedya knows a mine foreman\'s coordinates. Earn his trust.', enemies: { scavenger: 4, raider: 6 }, dangerMul: 1, minutes: 20,
+    unlockHint: 'Fedya knows a mine foreman\'s coordinates. Earn his trust.', enemies: { scavenger: 4, raider: 6 }, dangerMul: 1, minutes: 20, lootBonus: 0.2,
   },
   {
     id: 'krasnaya', name: 'KRASNAYA PUSTOSH', subtitle: 'RED WASTE · MILITARY', planet: 'krasnaya', danger: 3, cost: 2200,
     description: 'Garrison depots in a red dust desert. The soldiers there never got the order to stand down.',
     loot: 'Weapons, ammunition, armor, orders', hostiles: 'Garrison remnants',
-    unlockHint: 'Molot served on Krasnaya. He won\'t take you until you prove yourself.', enemies: { soldier: 8, raider: 2 }, dangerMul: 1.1, minutes: 18,
+    unlockHint: 'Molot served on Krasnaya. He won\'t take you until you prove yourself.', enemies: { soldier: 8, raider: 2 }, dangerMul: 1.1, minutes: 18, lootBonus: 0.3,
   },
   {
     id: 'kombinat', name: 'KOMBINAT ORBITAL', subtitle: 'CORPORATE STATION', planet: 'kombinat', danger: 4, cost: 4500,
     description: 'A research hub bought out after the Collapse. Corporate security guards what they don\'t understand.',
     loot: 'Technology, data, AI cores, valuables', hostiles: 'Corporate security',
-    unlockHint: 'Shura needs a security key before the station will even answer.', enemies: { security: 7, soldier: 2, raider: 1 }, dangerMul: 1.15, minutes: 18,
+    unlockHint: 'Shura needs a security key before the station will even answer.', enemies: { security: 7, soldier: 2, raider: 1 }, dangerMul: 1.15, minutes: 18, lootBonus: 0.75,
   },
   {
     id: 'sirin', name: 'SIRIN', subtitle: 'SOURCE OF THE SIGNAL', planet: 'sirin', danger: 5, cost: 9000,
     description: 'The channel every Commonwealth node was listening to when the lights went out. Nobody who landed has reported back.',
     loot: 'Unknown', hostiles: 'Unknown',
-    unlockHint: 'Nobody has these coordinates. Yet.', enemies: { security: 5, soldier: 5 }, dangerMul: 1.3, minutes: 16,
+    unlockHint: 'Nobody has these coordinates. Yet.', enemies: { security: 5, soldier: 5 }, dangerMul: 1.3, minutes: 16, lootBonus: 0.9,
   },
 ];
 

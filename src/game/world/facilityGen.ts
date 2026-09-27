@@ -26,6 +26,8 @@ export interface FacilityOptions {
   enemies?: Record<string, number>;
   /** Look and room purposes. */
   theme?: Theme;
+  /** Added to every container's risk (richer worlds). */
+  lootBonus?: number;
 }
 
 const CELL_W = 16;
@@ -208,7 +210,7 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   const lift = liftRooms.length && rng.chance(0.75) ? rng.pick(liftRooms) : -1;
   const breakerRooms = cells.map((_, i) => i).filter((i) => i !== lift && i !== vaultIdx && i !== startIdx && !cells[lift]?.links.includes(i));
   const plan: RoomPlan = {
-    lift, breaker: lift >= 0 && breakerRooms.length ? rng.pick(breakerRooms) : -1, guards, vaultLocked, breakerAt: null,
+    lift, breaker: lift >= 0 && breakerRooms.length ? rng.pick(breakerRooms) : -1, guards, vaultLocked, breakerAt: null, lootBonus: opts.lootBonus ?? 0,
   };
 
   // --- Furnish
@@ -404,6 +406,7 @@ interface RoomPlan {
   vaultLocked: boolean;
   /** Where the breaker ended up. */
   breakerAt: { tx: number; ty: number } | null;
+  lootBonus: number;
 }
 
 function furnishRoom(
@@ -483,7 +486,8 @@ function furnishRoom(
     return true;
   };
 
-  const risk = Math.min(1, r.depth / Math.max(1, maxDepth) + (r.role === 'vault' ? 0.5 : 0));
+  const risk = Math.min(1, r.depth / Math.max(1, maxDepth) + (r.role === 'vault' ? 0.5 : 0)) + plan.lootBonus;
+  const rich = plan.lootBonus || undefined;
   const backWallX = () => rng.shuffle(Array.from({ length: r.w }, (_, i) => r.x + i));
   const standsOnBackWall = (x: number) => map.get(x, r.y - 1) === Tile.Wall;
 
@@ -491,7 +495,7 @@ function furnishRoom(
     const back = backWallX().filter(standsOnBackWall).map((x) => [x, r.y] as [number, number]);
     const spots = backOnly ? back : [...back, ...rng.shuffle(wallSpots())];
     for (const spot of spots) {
-      if (tryBlock([spot], () => map.containers.push({ type, tx: spot[0], ty: spot[1], risk }), true)) return true;
+      if (tryBlock([spot], () => map.containers.push({ type, tx: spot[0], ty: spot[1], risk, rich }), true)) return true;
     }
     return false;
   };
@@ -579,7 +583,7 @@ function furnishRoom(
     if (free.length) {
       const [x, y] = rng.pick(free);
       reserved.add(key(x, y));
-      map.containers.push({ type: 'remains', tx: x, ty: y, risk, flat: true });
+      map.containers.push({ type: 'remains', tx: x, ty: y, risk, flat: true, rich });
       map.props.push({ sprite: rng.pick(['fx_blood_1', 'fx_blood_2']), x: px(x) + TILE / 2 + rng.int(-6, 6), y: px(y + 1) - 4, layer: 'floor', tint: 0x7a3a30 });
     }
   }

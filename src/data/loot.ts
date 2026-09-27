@@ -117,17 +117,20 @@ const RARITIES: Rarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 
 /**
  * Pick one item id.
- * @param risk 0..1 danger of the room; nudges the roll toward rarer items.
+ * @param risk danger of the room (0..1) plus the world's loot bonus; pushes the roll toward rarer items.
  * @param themeMul optional category multipliers from the facility theme.
  */
 export function rollItemId(
   rng: Rng, def: Pick<ContainerDef, 'rarity' | 'categories'>, risk: number,
   themeMul: Partial<Record<ItemCategory, number>> = {},
 ): string | null {
+  // Deep rooms and rich worlds thin out the junk and bring up the good stuff.
   const rw = { ...def.rarity };
-  rw.rare *= 1 + risk;
-  rw.epic *= 1 + risk * 2;
-  rw.legendary *= 1 + risk * 3;
+  rw.common /= 1 + Math.max(0, risk - 0.4) * 1.5;
+  rw.uncommon *= 1 + risk * 0.4;
+  rw.rare *= 1 + risk * 1.5;
+  rw.epic *= 1 + risk * 3;
+  rw.legendary *= 1 + risk * 4;
   let rarity = rng.weighted(rw);
   // Fall back to more common rarities if nothing in the container's categories has this one.
   for (let r = RARITY_ORDER[rarity]; r >= 0; r--) {
@@ -167,12 +170,15 @@ export function foundInstance(rng: Rng, id: string): ItemInstance {
   }
 }
 
-/** Fill a container's grid. Items that don't fit are simply not there. */
+/**
+ * Fill a container's grid. Items that don't fit are simply not there.
+ * @param rich the world's loot bonus: richer worlds pack more into every container.
+ */
 export function rollContainer(
-  rng: Rng, def: ContainerDef, risk: number, themeMul: Partial<Record<ItemCategory, number>> = {},
+  rng: Rng, def: ContainerDef, risk: number, themeMul: Partial<Record<ItemCategory, number>> = {}, rich = 0,
 ): Grid {
   let grid = emptyGrid(def.grid[0], def.grid[1]);
-  const n = rng.int(def.rolls[0], def.rolls[1]);
+  const n = rng.int(def.rolls[0], def.rolls[1]) + Math.floor(rich * 2 + rng.next());
   for (let i = 0; i < n; i++) {
     const id = rollItemId(rng, def, risk, themeMul);
     if (!id) continue;
