@@ -69,7 +69,7 @@ function VendorPanel({ crew }: { crew: CrewId }) {
         })}
       </div>
       <div className={`sell-zone ${sellTarget ? (ok ? 'ok' : 'bad') : ''}`} data-sell="1">
-        <ByDevice kbm={<>DROP HERE TO SELL</>} pad={<>CARRY AN ITEM HERE TO SELL · OR <Key a="more" /> SELL</>} />
+        <ByDevice kbm={<>DROP HERE TO SELL</>} pad={<>CARRY AN ITEM HERE TO SELL</>} />
         <div className="dim small">BUYS: {buys}</div>
         {crew === 'trader' && <div className="small"><span className="ok">▲ {CATEGORY_NAME[market.hot]}</span> · <span className="bad">▼ {CATEGORY_NAME[market.cold]}</span> today</div>}
       </div>

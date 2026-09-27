@@ -3,7 +3,7 @@ import type { Operator } from '../core/profile';
 import { audio } from '../engine/audio';
 import { useProfile } from '../state/profileStore';
 import { AtlasSprite } from './AtlasSprite';
-import { SettingsRows } from './Settings';
+import { ControlsList, SettingsRows } from './Settings';
 import { ByDevice, Key } from './Glyph';
 
 const OPERATORS: { id: Operator; callsign: string; portrait: string; line: string }[] = [
@@ -48,7 +48,7 @@ export function TitleScreen({ onContinue, onRange }: Props) {
   const stats = useProfile((s) => s.stats);
   const credits = useProfile((s) => s.credits);
   const resetProfile = useProfile((s) => s.resetProfile);
-  const [picking, setPicking] = useState(false);
+  const [view, setView] = useState<'menu' | 'pick' | 'settings'>('menu');
   const [confirmWipe, setConfirmWipe] = useState(false);
 
   const newGame = (op: Operator) => {
@@ -59,19 +59,21 @@ export function TitleScreen({ onContinue, onRange }: Props) {
   };
 
   const hover = () => audio.ui('hover');
+  const open = (v: typeof view) => {
+    audio.ui(v === 'menu' ? 'close' : 'click');
+    setView(v);
+  };
 
-  // Back out of the operator pick (or a pending wipe) with Esc / the pad's back button.
+  // Back out of a sub-screen (or a pending wipe) with Esc / the pad's back button.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'Escape') return;
-      if (picking) {
-        audio.ui('close');
-        setPicking(false);
-      } else if (confirmWipe) setConfirmWipe(false);
+      if (view !== 'menu') open('menu');
+      else if (confirmWipe) setConfirmWipe(false);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [picking, confirmWipe]);
+  });
 
   return (
     <div className="screen title-screen" data-nav-scope="title" onPointerDown={() => audio.unlock()}>
@@ -82,24 +84,37 @@ export function TitleScreen({ onContinue, onRange }: Props) {
         <div className="title-logo">SPACE<br />JUNKERS</div>
         <div className="title-sub">СКРАПЕРЫ · SALVAGE CREW OF THE LASTOCHKA</div>
 
-        {!picking ? (
+        {view === 'menu' && (
           <div className="title-menu">
             {started && (
               <button className="menu-btn big" onPointerEnter={hover} onClick={() => { audio.ui('click'); onContinue(); }}>
                 CONTINUE <span className="dim">· DAY {useProfile.getState().day} · {credits.toLocaleString()} CR · {stats.extractions} EXTRACTION{stats.extractions === 1 ? '' : 'S'}</span>
               </button>
             )}
-            <button className="menu-btn big" onPointerEnter={hover} onClick={() => {
-              audio.ui('click');
+            <button className={`menu-btn big ${confirmWipe ? 'danger armed' : ''}`} onPointerEnter={hover} onClick={() => {
+              audio.ui(confirmWipe || !started ? 'click' : 'error');
               if (started && !confirmWipe) setConfirmWipe(true);
-              else setPicking(true);
+              else open('pick');
             }}>
               {confirmWipe ? 'NEW GAME: THIS ERASES YOUR SAVE. CONFIRM AGAIN' : 'NEW GAME'}
             </button>
             <button className="menu-btn" onPointerEnter={hover} onClick={() => { audio.ui('click'); onRange(); }}>GUNPLAY RANGE</button>
-            <SettingsRows />
+            <button className="menu-btn" onPointerEnter={hover} onClick={() => open('settings')}>SETTINGS &amp; CONTROLS</button>
           </div>
-        ) : (
+        )}
+        {view === 'settings' && (
+          <div className="title-settings panel">
+            <div className="pause-body">
+              <div className="pause-col"><SettingsRows /></div>
+              <div className="pause-col controls-col">
+                <div className="dim small">CONTROLS</div>
+                <ControlsList />
+              </div>
+            </div>
+            <button className="link" onClick={() => open('menu')}>[BACK] <Key a="back" /></button>
+          </div>
+        )}
+        {view === 'pick' && (
           <div className="title-pick">
             <div className="dim small">CHOOSE YOUR OPERATOR</div>
             <div className="operators">
@@ -111,7 +126,7 @@ export function TitleScreen({ onContinue, onRange }: Props) {
                 </button>
               ))}
             </div>
-            <button className="link" onClick={() => setPicking(false)}>[BACK] <Key a="back" /></button>
+            <button className="link" onClick={() => open('menu')}>[BACK] <Key a="back" /></button>
           </div>
         )}
       </div>

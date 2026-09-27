@@ -57,6 +57,11 @@ export class AudioService {
   private room: RoomAcoustics = ROOMS.facility;
   volume = 0.7;
 
+  /** The browser hasn't let sound start yet (it needs a click or a key first). */
+  get locked(): boolean {
+    return !this.ctx || this.ctx.state !== 'running';
+  }
+
   /** Must be called from a user gesture (browser autoplay policy). */
   unlock(): void {
     if (this.ctx) {

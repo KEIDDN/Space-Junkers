@@ -9,6 +9,7 @@ import { useDrag } from './dragStore';
 import { GridView, QuickBar, SlotView } from './GridView';
 import { CELL, InventoryContext, activeInventory, useOps, type InventoryOps } from './ops';
 import { ByDevice, Key } from '../Glyph';
+import { useDevice } from '../../state/deviceStore';
 
 /** The operator: equipment slots, quick bar, pockets, backpack. */
 export function LoadoutPanel({ title }: { title: string }) {
@@ -39,7 +40,7 @@ export function LoadoutPanel({ title }: { title: string }) {
       </div>
       <div className="inv-sub">
         <span>QUICK USE</span>
-        <span className="dim">drag a med or grenade on a key</span>
+        <span className="dim"><ByDevice kbm={<>drag a med or grenade on a key</>} pad={<>meds · grenades · <Key a="alt" /> clears</>} /></span>
       </div>
       <QuickBar counts={(id) => loadoutCount(l, id)} />
       <div className="inv-sub"><span>POCKETS</span></div>
@@ -77,6 +78,15 @@ export function GridPanel({ gridKey, title, meta, actions, children, prefer }: {
 }
 
 export function InventoryHints({ extra, padExtra }: { extra?: string; padExtra?: ReactNode }) {
+  const carrying = useDrag((s) => !!s.drag);
+  const device = useDevice((s) => s.device);
+  if (carrying && device === 'pad') {
+    return (
+      <div className="inv-hints carrying">
+        <span className="warn">CARRYING</span> · <Key a="navigate" /> move · <Key a="confirm" /> put down · <Key a="more" /> rotate · <Key a="prevTab" /><Key a="nextTab" /> jump panel · <Key a="back" /> cancel
+      </div>
+    );
+  }
   return (
     <div className="inv-hints">
       <ByDevice

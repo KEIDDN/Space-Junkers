@@ -11,6 +11,7 @@ import { ShipView } from '../ui/ship/ShipView';
 import { TitleScreen } from '../ui/TitleScreen';
 import { SceneCover, type Cover } from '../ui/SceneCover';
 import { PadNav } from '../ui/nav/PadNav';
+import { AudioGate } from '../ui/AudioGate';
 
 type Scene =
   | { kind: 'title' }
@@ -93,6 +94,7 @@ export function App() {
       {view}
       <SceneCover cover={cover} />
       <PadNav />
+      <AudioGate />
     </>
   );
 }

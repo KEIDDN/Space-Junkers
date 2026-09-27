@@ -38,7 +38,7 @@ export function RecordPanel({ onQuit }: { onQuit: () => void }) {
   };
   return (
     <div className="modal-root" data-nav-scope="record">
-      <div className="panel record-panel">
+      <div className={`panel record-panel ${tab === 'settings' ? 'wide' : ''}`}>
         <div className="panel-title">SERVICE RECORD <span className="dim">// ЛИЧНОЕ ДЕЛО</span></div>
         <div className="tabs">
           <ByDevice kbm={null} pad={<Key a="prevTab" />} />
@@ -57,7 +57,10 @@ export function RecordPanel({ onQuit }: { onQuit: () => void }) {
         ) : (
           <div className="record-settings">
             <div className="settings-col"><SettingsRows /></div>
-            <ControlsList />
+            <div className="controls-col">
+              <div className="dim small">CONTROLS</div>
+              <ControlsList />
+            </div>
           </div>
         )}
         <div className="confirm-row">

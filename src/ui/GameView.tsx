@@ -42,9 +42,10 @@ function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onRes
     <div className="pause-screen" data-nav-scope="pause">
       <div className="panel pause-panel">
         <div className="panel-title">SIGNAL HOLD <span className="dim">// PAUSED</span></div>
+        <div className="pause-body">
+          <div className="pause-col">
         <button className="menu-btn" data-nav-default onClick={onResume} onPointerEnter={() => audio.ui('hover')}>RESUME <Key a="back" /></button>
         <SettingsRows />
-        <ControlsList />
         {!confirm ? (
           <button className="menu-btn danger" onClick={() => { audio.ui('click'); setConfirm(true); }} onPointerEnter={() => audio.ui('hover')}>
             {facility ? 'ABANDON RAID' : 'LEAVE RANGE'}
@@ -58,6 +59,12 @@ function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onRes
             </div>
           </div>
         )}
+          </div>
+          <div className="pause-col controls-col">
+            <div className="dim small">CONTROLS</div>
+            <ControlsList />
+          </div>
+        </div>
       </div>
     </div>
   );
