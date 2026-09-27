@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "assets": "python3 tools/build_assets.py"
+    "assets": "python3 tools/build_characters.py && python3 tools/build_assets.py"
   },
   "dependencies": {
     "@fontsource/russo-one": "^5.3.0",

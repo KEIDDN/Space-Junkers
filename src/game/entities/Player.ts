@@ -1,4 +1,4 @@
-import { anim } from '../../engine/assets';
+import { operatorLook } from './look';
 import type { Input } from '../../engine/input';
 import { GUN_HEIGHT } from '../../engine/config';
 import { ITEMS, itemDef, type ArmorDef, type MedDef } from '../../data/items';
@@ -126,10 +126,10 @@ export class Player implements Hittable {
   /** Called with a short message for the HUD feed (armor broke, bleeding...). */
   onNotice: ((text: string, tone: 'bad' | 'ok' | 'warn') => void) | null = null;
 
-  constructor(private ctx: GameContext, x: number, y: number, operator: Operator) {
+  constructor(private ctx: GameContext, x: number, y: number, private operator: Operator) {
     this.x = x;
     this.y = y;
-    this.view = new ActorView({ walk: anim(`op_${operator}_walk`), death: anim(`op_${operator}_death`) });
+    this.view = new ActorView(operatorLook(operator, useRaid.getState().loadout));
     this.syncLoadout(useRaid.getState().loadout);
     const start = this.arms[0] ? 0 : 1;
     this.current = start;
@@ -187,6 +187,8 @@ export class Player implements Hittable {
       }
     }
     this.speedMul = speedMultiplier(l);
+    // Whatever is worn shows: a helmet, a plate carrier, a pack on the back.
+    this.view?.setLook(operatorLook(this.operator, l));
     if (changed) {
       if (!this.arms[this.current]) this.current = this.arms[0] ? 0 : this.arms[1] ? 1 : this.current;
       this.equipView();

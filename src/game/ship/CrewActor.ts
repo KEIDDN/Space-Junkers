@@ -1,95 +1,134 @@
-import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
-import { anim } from '../../engine/assets';
+import { Container, Graphics } from 'pixi.js';
 import type { CrewStation } from '../../data/shipLayout';
-
-type CrewAnim = 'idle' | 'walk' | 'talk' | 'interact' | 'sit';
-
-const FPS: Record<CrewAnim, number> = { idle: 2.2, walk: 7, talk: 5, interact: 2.6, sit: 1.8 };
+import { DIR_DOWN, DIR_LEFT, DIR_RIGHT, DIR_UP, LayeredSprite, dirOf, type Dir } from '../entities/layers';
+import { crewLook } from '../entities/look';
 
 /**
- * A crew member at their station. Loops their station animation, turns to face the
- * operator when they come close, and talks with their hands while in conversation.
+ * How each of the crew spends time at their station. Kept small and grounded: the
+ * hacker hunched at the console, the medic working over the bed, the trader sorting
+ * stock, the smuggler never quite settled, the merc at the bench going over his kit.
+ */
+interface Routine {
+  /** The pose they hold at their station, and which way they face. */
+  rest: 'idle' | 'sit';
+  facing: Dir;
+  /** What they do now and then. */
+  busy: 'type' | 'work' | 'sort' | 'glance' | 'kit';
+  /** Seconds between bouts, and how long a bout lasts. */
+  every: [number, number];
+  lasts: [number, number];
+}
+
+const ROUTINES: Record<string, Routine> = {
+  hacker: { rest: 'sit', facing: DIR_UP, busy: 'type', every: [1.5, 4], lasts: [3, 7] },
+  medic: { rest: 'idle', facing: DIR_LEFT, busy: 'work', every: [3, 6], lasts: [2.5, 5] },
+  trader: { rest: 'sit', facing: DIR_DOWN, busy: 'sort', every: [5, 9], lasts: [2, 3.5] },
+  smuggler: { rest: 'idle', facing: DIR_DOWN, busy: 'glance', every: [1.5, 4], lasts: [0.8, 1.6] },
+  merc: { rest: 'idle', facing: DIR_DOWN, busy: 'kit', every: [6, 11], lasts: [4, 8] },
+};
+
+const rand = ([a, b]: [number, number]) => a + Math.random() * (b - a);
+
+/**
+ * A crew member at their station. Breathes, keeps busy in character, turns to face the
+ * operator when they come close, and talks with their hands in conversation.
  */
 export class CrewActor {
   readonly container = new Container();
-  private sprite: Sprite;
-  private anims: Record<CrewAnim, Texture[]>;
-  private current: CrewAnim;
+  private body: LayeredSprite;
+  private routine: Routine;
   private t = Math.random() * 3;
-  private frame = 0;
-  private pingpong = 1;
-  private gestureTimer = 3 + Math.random() * 6;
-  private gestureLeft = 0;
+  private busyT = 0;
+  private busyLeft = 0;
+  private glanceDir: Dir = DIR_DOWN;
+  private talkT = 0;
   /** Set on the frame they start fiddling with their station (for its sound). */
   busied = false;
-  private glanceTimer = 4 + Math.random() * 8;
-  private glanceLeft = 0;
 
   constructor(readonly station: CrewStation, sprite: string) {
-    const a = (n: CrewAnim) => anim(`crew_${sprite}_${n}`);
-    this.anims = { idle: a('idle'), walk: a('walk'), talk: a('talk'), interact: a('interact'), sit: a('sit') };
-    this.current = station.anim;
-    const shadow = new Graphics().ellipse(0, 0, 10, 3).fill({ color: 0x000000, alpha: 0.4 });
-    this.sprite = new Sprite(this.anims[this.current][0]);
-    this.sprite.anchor.set(0.5, 1);
-    this.sprite.y = 1;
-    this.container.addChild(shadow, this.sprite);
+    this.routine = ROUTINES[sprite] ?? ROUTINES.smuggler;
+    if (station.anim === 'sit') this.routine = { ...this.routine, rest: 'sit' };
+    const shadow = new Graphics().ellipse(0, 0, 10, 3.5).fill({ color: 0x000000, alpha: 0.4 });
+    this.body = new LayeredSprite(crewLook(sprite));
+    this.container.addChild(shadow, this.body.container);
     this.container.position.set(Math.round(station.x), Math.round(station.y));
     this.container.zIndex = station.y;
-    if (station.faceRight) this.sprite.scale.x = -1;
+    this.busyT = rand(this.routine.every);
   }
 
   update(dt: number, px: number, py: number, talking: boolean): void {
     this.busied = false;
-    const seated = this.station.anim === 'sit';
-    const near = Math.hypot(px - this.station.x, py - this.station.y) < 90;
-    let want: CrewAnim = this.station.anim;
-    if (talking && !seated) want = 'talk';
-    else if (talking && seated) want = 'sit';
-    else if (!seated && !near) {
-      // Now and then, busy themselves with their station.
-      this.gestureTimer -= dt;
-      if (this.gestureTimer <= 0 && this.gestureLeft <= 0) {
-        this.gestureLeft = 2 + Math.random() * 2;
-        this.gestureTimer = 6 + Math.random() * 8;
-        this.busied = true;
-      }
-      if (this.gestureLeft > 0) {
-        this.gestureLeft -= dt;
-        want = this.station.anim === 'idle' ? 'interact' : 'idle';
-      }
-    }
-    if (want !== this.current) {
-      this.current = want;
-      this.frame = 0;
-      this.t = 0;
-    }
-    // Turn to face whoever is talking to them (seated crew stay put).
-    const home = this.station.faceRight ? -1 : 1;
-    if ((near || talking) && !seated) this.sprite.scale.x = px > this.station.x ? -1 : 1;
-    else if (!seated) {
-      // Left alone, people glance around now and then instead of staring at a wall.
-      this.glanceTimer -= dt;
-      if (this.glanceTimer <= 0) {
-        this.glanceLeft = 1.2 + Math.random() * 1.6;
-        this.glanceTimer = 7 + Math.random() * 9;
-      }
-      this.glanceLeft -= dt;
-      this.sprite.scale.x = this.glanceLeft > 0 ? -home : home;
-    }
-
-    const frames = this.anims[this.current];
     this.t += dt;
-    const step = 1 / FPS[this.current];
-    while (this.t >= step) {
-      this.t -= step;
-      // Station loops ping-pong: the painted frames are variations, not a cycle.
-      if (this.current === 'talk') this.frame = (this.frame + 1) % frames.length;
+    const r = this.routine;
+    const seated = r.rest === 'sit';
+    const near = Math.hypot(px - this.station.x, py - this.station.y) < 90;
+    const toPlayer = dirOf(Math.atan2(py - (this.station.y - 16), px - this.station.x));
+    let bob = 0;
+
+    if (talking) {
+      // Face you and talk with the hands (seated crew turn in their seat).
+      this.talkT += dt;
+      if (seated) this.body.show('sit', toPlayer, 0);
       else {
-        if (this.frame + this.pingpong >= frames.length || this.frame + this.pingpong < 0) this.pingpong *= -1;
-        this.frame += this.pingpong;
+        const f = [1, 2, 3, 2][Math.floor(this.talkT * 4) % 4];
+        this.body.show('spellcast', toPlayer, f);
+      }
+      this.container.y = Math.round(this.station.y);
+      return;
+    }
+    this.talkT = 0;
+
+    // Keep busy now and then (not while someone stands right there).
+    if (this.busyLeft > 0) this.busyLeft -= dt;
+    else if (!near) {
+      this.busyT -= dt;
+      if (this.busyT <= 0) {
+        this.busyLeft = rand(r.lasts);
+        this.busyT = rand(r.every);
+        this.busied = r.busy !== 'glance';
+        const sides: Dir[] = [DIR_LEFT, DIR_RIGHT, DIR_DOWN];
+        this.glanceDir = sides[Math.floor(Math.random() * sides.length)];
       }
     }
-    this.sprite.texture = frames[this.frame];
+    const busy = this.busyLeft > 0 && !near;
+    const breathe = Math.sin(this.t * 1.9) > 0.3 ? 1 : 0;
+
+    if (near) {
+      if (seated) this.body.show('sit', toPlayer, 0);
+      else this.body.show('idle', toPlayer, breathe);
+    } else if (!busy) {
+      if (seated) this.body.show('sit', r.facing, 0);
+      else this.body.show('idle', r.facing, breathe);
+    } else {
+      switch (r.busy) {
+        case 'type':
+          // Hunched over the keys: small, quick jolts.
+          this.body.show('sit', r.facing, 0);
+          bob = Math.sin(this.t * 22) > 0.4 && Math.sin(this.t * 3.1) > -0.2 ? 1 : 0;
+          break;
+        case 'work': {
+          // Hands busy at the bed: reach, check, set down.
+          const f = [2, 3, 4, 3][Math.floor(this.t * 2.6) % 4];
+          this.body.show('spellcast', r.facing, f);
+          break;
+        }
+        case 'sort':
+          // Turns to one crate, then the other, shifting stock.
+          this.body.show('sit', this.glanceDir === DIR_DOWN ? DIR_LEFT : this.glanceDir, 0);
+          bob = Math.sin(this.t * 5) > 0.5 ? 1 : 0;
+          break;
+        case 'glance':
+          // Never quite still: a look over one shoulder, then the other.
+          this.body.show('idle', this.glanceDir, breathe);
+          break;
+        case 'kit': {
+          // Turned to the bench, stripping and checking the gear: slow, practised hands.
+          const f = [2, 2, 3, 4, 3, 2][Math.floor(this.t * 1.8) % 6];
+          this.body.show('spellcast', DIR_RIGHT, f);
+          break;
+        }
+      }
+    }
+    this.container.y = Math.round(this.station.y) + bob;
   }
 }

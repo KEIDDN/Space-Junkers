@@ -80,7 +80,7 @@ export const CONTAINERS: Record<string, ContainerDef> = {
     categories: { ammo: 8, gear: 2, weapons: 0.5 },
   },
   remains: {
-    id: 'remains', label: 'REMAINS', sprite: 'scav_dead_0', searchTime: 1.3, grid: [4, 3], rolls: [1, 3],
+    id: 'remains', label: 'REMAINS', sprite: 'remains', searchTime: 1.3, grid: [4, 3], rolls: [1, 3],
     rarity: { common: 50, uncommon: 38, rare: 10, epic: 2, legendary: 0.1 },
     categories: { food: 2, medical: 2, ammo: 2, valuables: 1.5, documents: 1.5, weapons: 0.6 },
   },

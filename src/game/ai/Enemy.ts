@@ -1,4 +1,3 @@
-import { anim, hasAnim } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import type { EnemyDef } from '../../data/enemies';
 import { ITEMS, defaultAmmo, type ArmorDef, type WeaponItemDef } from '../../data/items';
@@ -9,6 +8,7 @@ import type { Hittable } from '../combat/projectiles';
 import { WeaponState } from '../combat/weapon';
 import type { GameContext } from '../context';
 import { ActorView, type Pose } from '../entities/ActorView';
+import { enemyLook } from '../entities/look';
 import { playAnimEvents, weaponAction } from '../entities/handling';
 import { hasLineOfSight, moveCircle } from '../world/collision';
 import { findPath } from '../world/pathfinding';
@@ -107,21 +107,16 @@ export class Enemy implements Hittable {
     this.x = x;
     this.y = y;
     this.hp = def.hp;
-    // Each faction has two looks; a squad is never a row of clones.
-    const look = Math.random() < 0.45 && hasAnim(`${def.anim}_b_walk`) ? `${def.anim}_b` : def.anim;
-    this.view = new ActorView({
-      walk: anim(`${look}_walk`),
-      flash: anim(`${look}_walk_flash`),
-      death: anim(`${look}_dead`),
-    });
+    // Each faction has two looks; a squad is never a row of clones. What they wear shows.
+    const chance = def.armorChance ?? 1;
+    if (def.armor && Math.random() < chance) this.armor = { id: def.armor, dur: (ITEMS[def.armor] as ArmorDef).durability };
+    if (def.helmet && Math.random() < chance) this.helmet = { id: def.helmet, dur: (ITEMS[def.helmet] as ArmorDef).durability };
+    this.view = new ActorView(enemyLook(def.anim, Math.random() < 0.45 ? 1 : 0, { armor: this.armor?.id, helmet: this.helmet?.id }));
     this.weaponItem = def.weapons[Math.floor(Math.random() * def.weapons.length)];
     const gun = WEAPONS[(ITEMS[this.weaponItem] as WeaponItemDef).weapon];
     this.weapon = new WeaponState(gun, Infinity);
     this.weapon.ammoId = defaultAmmo(gun.caliber).id;
     this.view.setWeapon(this.weapon.def);
-    const chance = def.armorChance ?? 1;
-    if (def.armor && Math.random() < chance) this.armor = { id: def.armor, dur: (ITEMS[def.armor] as ArmorDef).durability };
-    if (def.helmet && Math.random() < chance) this.helmet = { id: def.helmet, dur: (ITEMS[def.helmet] as ArmorDef).durability };
     this.grenades = def.grenades ?? 0;
     if (route && route.length > 1) this.setState('patrol');
   }

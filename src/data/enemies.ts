@@ -1,7 +1,7 @@
 export interface EnemyDef {
   id: string;
   name: string;
-  /** Atlas animation prefix: `${anim}_walk`, `${anim}_walk_flash`, `${anim}_dead`. */
+  /** Faction look (character sheets `en_<anim>_a`/`_b`, see `game/entities/look.ts`). */
   anim: string;
   hp: number;
   /** px/s */
