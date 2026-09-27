@@ -23,7 +23,7 @@ vi.mock('../entities/ActorView', () => ({
     }
   },
 }));
-vi.mock('../../engine/assets', () => ({ anim: () => [], tex: () => ({}) }));
+vi.mock('../../engine/assets', () => ({ anim: () => [], hasAnim: () => false, tex: () => ({}) }));
 
 import { ENEMIES } from '../../data/enemies';
 import type { GameContext } from '../context';

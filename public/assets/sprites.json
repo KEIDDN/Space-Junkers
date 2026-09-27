@@ -4340,7 +4340,7 @@
     "h": 48
    }
   },
-  "raider_walk_0": {
+  "raider_b_walk_0": {
    "frame": {
     "x": 882,
     "y": 992,
@@ -4360,7 +4360,7 @@
     "h": 48
    }
   },
-  "raider_walk_1": {
+  "raider_b_walk_1": {
    "frame": {
     "x": 931,
     "y": 992,
@@ -4380,9 +4380,249 @@
     "h": 48
    }
   },
-  "raider_walk_2": {
+  "raider_b_walk_2": {
    "frame": {
     "x": 0,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_3": {
+   "frame": {
+    "x": 49,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_4": {
+   "frame": {
+    "x": 98,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_5": {
+   "frame": {
+    "x": 147,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_flash_0": {
+   "frame": {
+    "x": 196,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_flash_1": {
+   "frame": {
+    "x": 245,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_flash_2": {
+   "frame": {
+    "x": 294,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_flash_3": {
+   "frame": {
+    "x": 343,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_flash_4": {
+   "frame": {
+    "x": 392,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_b_walk_flash_5": {
+   "frame": {
+    "x": 441,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_walk_0": {
+   "frame": {
+    "x": 490,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_walk_1": {
+   "frame": {
+    "x": 539,
+    "y": 1041,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "raider_walk_2": {
+   "frame": {
+    "x": 588,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4402,7 +4642,7 @@
   },
   "raider_walk_3": {
    "frame": {
-    "x": 49,
+    "x": 637,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4422,7 +4662,7 @@
   },
   "raider_walk_4": {
    "frame": {
-    "x": 98,
+    "x": 686,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4442,7 +4682,7 @@
   },
   "raider_walk_5": {
    "frame": {
-    "x": 147,
+    "x": 735,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4462,7 +4702,7 @@
   },
   "raider_walk_flash_0": {
    "frame": {
-    "x": 196,
+    "x": 784,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4482,7 +4722,7 @@
   },
   "raider_walk_flash_1": {
    "frame": {
-    "x": 245,
+    "x": 833,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4502,7 +4742,7 @@
   },
   "raider_walk_flash_2": {
    "frame": {
-    "x": 294,
+    "x": 882,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4522,7 +4762,7 @@
   },
   "raider_walk_flash_3": {
    "frame": {
-    "x": 343,
+    "x": 931,
     "y": 1041,
     "w": 48,
     "h": 48
@@ -4542,8 +4782,8 @@
   },
   "raider_walk_flash_4": {
    "frame": {
-    "x": 392,
-    "y": 1041,
+    "x": 0,
+    "y": 1090,
     "w": 48,
     "h": 48
    },
@@ -4562,246 +4802,6 @@
   },
   "raider_walk_flash_5": {
    "frame": {
-    "x": 441,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_0": {
-   "frame": {
-    "x": 490,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_1": {
-   "frame": {
-    "x": 539,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_2": {
-   "frame": {
-    "x": 588,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_3": {
-   "frame": {
-    "x": 637,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_4": {
-   "frame": {
-    "x": 686,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_5": {
-   "frame": {
-    "x": 735,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_flash_0": {
-   "frame": {
-    "x": 784,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_flash_1": {
-   "frame": {
-    "x": 833,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_flash_2": {
-   "frame": {
-    "x": 882,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_flash_3": {
-   "frame": {
-    "x": 931,
-    "y": 1041,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_flash_4": {
-   "frame": {
-    "x": 0,
-    "y": 1090,
-    "w": 48,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 48,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 48,
-    "h": 48
-   }
-  },
-  "scav_walk_flash_5": {
-   "frame": {
     "x": 49,
     "y": 1090,
     "w": 48,
@@ -4820,7 +4820,7 @@
     "h": 48
    }
   },
-  "security_walk_0": {
+  "scav_b_walk_0": {
    "frame": {
     "x": 98,
     "y": 1090,
@@ -4840,7 +4840,7 @@
     "h": 48
    }
   },
-  "security_walk_1": {
+  "scav_b_walk_1": {
    "frame": {
     "x": 147,
     "y": 1090,
@@ -4860,7 +4860,7 @@
     "h": 48
    }
   },
-  "security_walk_2": {
+  "scav_b_walk_2": {
    "frame": {
     "x": 196,
     "y": 1090,
@@ -4880,7 +4880,7 @@
     "h": 48
    }
   },
-  "security_walk_3": {
+  "scav_b_walk_3": {
    "frame": {
     "x": 245,
     "y": 1090,
@@ -4900,7 +4900,7 @@
     "h": 48
    }
   },
-  "security_walk_4": {
+  "scav_b_walk_4": {
    "frame": {
     "x": 294,
     "y": 1090,
@@ -4920,7 +4920,7 @@
     "h": 48
    }
   },
-  "security_walk_5": {
+  "scav_b_walk_5": {
    "frame": {
     "x": 343,
     "y": 1090,
@@ -4940,7 +4940,7 @@
     "h": 48
    }
   },
-  "security_walk_flash_0": {
+  "scav_b_walk_flash_0": {
    "frame": {
     "x": 392,
     "y": 1090,
@@ -4960,7 +4960,7 @@
     "h": 48
    }
   },
-  "security_walk_flash_1": {
+  "scav_b_walk_flash_1": {
    "frame": {
     "x": 441,
     "y": 1090,
@@ -4980,7 +4980,7 @@
     "h": 48
    }
   },
-  "security_walk_flash_2": {
+  "scav_b_walk_flash_2": {
    "frame": {
     "x": 490,
     "y": 1090,
@@ -5000,7 +5000,7 @@
     "h": 48
    }
   },
-  "security_walk_flash_3": {
+  "scav_b_walk_flash_3": {
    "frame": {
     "x": 539,
     "y": 1090,
@@ -5020,7 +5020,7 @@
     "h": 48
    }
   },
-  "security_walk_flash_4": {
+  "scav_b_walk_flash_4": {
    "frame": {
     "x": 588,
     "y": 1090,
@@ -5040,7 +5040,7 @@
     "h": 48
    }
   },
-  "security_walk_flash_5": {
+  "scav_b_walk_flash_5": {
    "frame": {
     "x": 637,
     "y": 1090,
@@ -5060,11 +5060,11 @@
     "h": 48
    }
   },
-  "ship_server": {
+  "scav_walk_0": {
    "frame": {
     "x": 686,
     "y": 1090,
-    "w": 28,
+    "w": 48,
     "h": 48
    },
    "rotated": false,
@@ -5072,37 +5072,17 @@
    "spriteSourceSize": {
     "x": 0,
     "y": 0,
-    "w": 28,
+    "w": 48,
     "h": 48
    },
    "sourceSize": {
-    "w": 28,
+    "w": 48,
     "h": 48
    }
   },
-  "ship_server2": {
+  "scav_walk_1": {
    "frame": {
-    "x": 715,
-    "y": 1090,
-    "w": 26,
-    "h": 48
-   },
-   "rotated": false,
-   "trimmed": false,
-   "spriteSourceSize": {
-    "x": 0,
-    "y": 0,
-    "w": 26,
-    "h": 48
-   },
-   "sourceSize": {
-    "w": 26,
-    "h": 48
-   }
-  },
-  "soldier_walk_0": {
-   "frame": {
-    "x": 742,
+    "x": 735,
     "y": 1090,
     "w": 48,
     "h": 48
@@ -5120,9 +5100,9 @@
     "h": 48
    }
   },
-  "soldier_walk_1": {
+  "scav_walk_2": {
    "frame": {
-    "x": 791,
+    "x": 784,
     "y": 1090,
     "w": 48,
     "h": 48
@@ -5140,9 +5120,9 @@
     "h": 48
    }
   },
-  "soldier_walk_2": {
+  "scav_walk_3": {
    "frame": {
-    "x": 840,
+    "x": 833,
     "y": 1090,
     "w": 48,
     "h": 48
@@ -5160,9 +5140,9 @@
     "h": 48
    }
   },
-  "soldier_walk_3": {
+  "scav_walk_4": {
    "frame": {
-    "x": 889,
+    "x": 882,
     "y": 1090,
     "w": 48,
     "h": 48
@@ -5180,9 +5160,9 @@
     "h": 48
    }
   },
-  "soldier_walk_4": {
+  "scav_walk_5": {
    "frame": {
-    "x": 938,
+    "x": 931,
     "y": 1090,
     "w": 48,
     "h": 48
@@ -5200,7 +5180,7 @@
     "h": 48
    }
   },
-  "soldier_walk_5": {
+  "scav_walk_flash_0": {
    "frame": {
     "x": 0,
     "y": 1139,
@@ -5220,7 +5200,7 @@
     "h": 48
    }
   },
-  "soldier_walk_flash_0": {
+  "scav_walk_flash_1": {
    "frame": {
     "x": 49,
     "y": 1139,
@@ -5240,7 +5220,7 @@
     "h": 48
    }
   },
-  "soldier_walk_flash_1": {
+  "scav_walk_flash_2": {
    "frame": {
     "x": 98,
     "y": 1139,
@@ -5260,7 +5240,7 @@
     "h": 48
    }
   },
-  "soldier_walk_flash_2": {
+  "scav_walk_flash_3": {
    "frame": {
     "x": 147,
     "y": 1139,
@@ -5280,7 +5260,7 @@
     "h": 48
    }
   },
-  "soldier_walk_flash_3": {
+  "scav_walk_flash_4": {
    "frame": {
     "x": 196,
     "y": 1139,
@@ -5300,7 +5280,7 @@
     "h": 48
    }
   },
-  "soldier_walk_flash_4": {
+  "scav_walk_flash_5": {
    "frame": {
     "x": 245,
     "y": 1139,
@@ -5320,7 +5300,7 @@
     "h": 48
    }
   },
-  "soldier_walk_flash_5": {
+  "security_b_walk_0": {
    "frame": {
     "x": 294,
     "y": 1139,
@@ -5340,10 +5320,990 @@
     "h": 48
    }
   },
-  "ship_console_b": {
+  "security_b_walk_1": {
    "frame": {
     "x": 343,
     "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_2": {
+   "frame": {
+    "x": 392,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_3": {
+   "frame": {
+    "x": 441,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_4": {
+   "frame": {
+    "x": 490,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_5": {
+   "frame": {
+    "x": 539,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_flash_0": {
+   "frame": {
+    "x": 588,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_flash_1": {
+   "frame": {
+    "x": 637,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_flash_2": {
+   "frame": {
+    "x": 686,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_flash_3": {
+   "frame": {
+    "x": 735,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_flash_4": {
+   "frame": {
+    "x": 784,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_b_walk_flash_5": {
+   "frame": {
+    "x": 833,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_0": {
+   "frame": {
+    "x": 882,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_1": {
+   "frame": {
+    "x": 931,
+    "y": 1139,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_2": {
+   "frame": {
+    "x": 0,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_3": {
+   "frame": {
+    "x": 49,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_4": {
+   "frame": {
+    "x": 98,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_5": {
+   "frame": {
+    "x": 147,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_flash_0": {
+   "frame": {
+    "x": 196,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_flash_1": {
+   "frame": {
+    "x": 245,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_flash_2": {
+   "frame": {
+    "x": 294,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_flash_3": {
+   "frame": {
+    "x": 343,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_flash_4": {
+   "frame": {
+    "x": 392,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "security_walk_flash_5": {
+   "frame": {
+    "x": 441,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "ship_server": {
+   "frame": {
+    "x": 490,
+    "y": 1188,
+    "w": 28,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 28,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 28,
+    "h": 48
+   }
+  },
+  "ship_server2": {
+   "frame": {
+    "x": 519,
+    "y": 1188,
+    "w": 26,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 26,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 26,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_0": {
+   "frame": {
+    "x": 546,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_1": {
+   "frame": {
+    "x": 595,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_2": {
+   "frame": {
+    "x": 644,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_3": {
+   "frame": {
+    "x": 693,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_4": {
+   "frame": {
+    "x": 742,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_5": {
+   "frame": {
+    "x": 791,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_flash_0": {
+   "frame": {
+    "x": 840,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_flash_1": {
+   "frame": {
+    "x": 889,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_flash_2": {
+   "frame": {
+    "x": 938,
+    "y": 1188,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_flash_3": {
+   "frame": {
+    "x": 0,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_flash_4": {
+   "frame": {
+    "x": 49,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_b_walk_flash_5": {
+   "frame": {
+    "x": 98,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_0": {
+   "frame": {
+    "x": 147,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_1": {
+   "frame": {
+    "x": 196,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_2": {
+   "frame": {
+    "x": 245,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_3": {
+   "frame": {
+    "x": 294,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_4": {
+   "frame": {
+    "x": 343,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_5": {
+   "frame": {
+    "x": 392,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_flash_0": {
+   "frame": {
+    "x": 441,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_flash_1": {
+   "frame": {
+    "x": 490,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_flash_2": {
+   "frame": {
+    "x": 539,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_flash_3": {
+   "frame": {
+    "x": 588,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_flash_4": {
+   "frame": {
+    "x": 637,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "soldier_walk_flash_5": {
+   "frame": {
+    "x": 686,
+    "y": 1237,
+    "w": 48,
+    "h": 48
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 48,
+    "h": 48
+   },
+   "sourceSize": {
+    "w": 48,
+    "h": 48
+   }
+  },
+  "ship_console_b": {
+   "frame": {
+    "x": 735,
+    "y": 1237,
     "w": 83,
     "h": 47
    },
@@ -5362,8 +6322,8 @@
   },
   "item_medkit": {
    "frame": {
-    "x": 427,
-    "y": 1139,
+    "x": 819,
+    "y": 1237,
     "w": 58,
     "h": 46
    },
@@ -5382,8 +6342,8 @@
   },
   "item_server": {
    "frame": {
-    "x": 486,
-    "y": 1139,
+    "x": 878,
+    "y": 1237,
     "w": 38,
     "h": 46
    },
@@ -5402,8 +6362,8 @@
   },
   "item_tablet": {
    "frame": {
-    "x": 525,
-    "y": 1139,
+    "x": 917,
+    "y": 1237,
     "w": 26,
     "h": 46
    },
@@ -5422,8 +6382,8 @@
   },
   "med_iv": {
    "frame": {
-    "x": 552,
-    "y": 1139,
+    "x": 944,
+    "y": 1237,
     "w": 15,
     "h": 46
    },
@@ -5442,8 +6402,8 @@
   },
   "ship_bed": {
    "frame": {
-    "x": 568,
-    "y": 1139,
+    "x": 0,
+    "y": 1286,
     "w": 70,
     "h": 46
    },
@@ -5462,8 +6422,8 @@
   },
   "item_circuit": {
    "frame": {
-    "x": 639,
-    "y": 1139,
+    "x": 71,
+    "y": 1286,
     "w": 47,
     "h": 45
    },
@@ -5482,8 +6442,8 @@
   },
   "item_coil": {
    "frame": {
-    "x": 687,
-    "y": 1139,
+    "x": 119,
+    "y": 1286,
     "w": 26,
     "h": 45
    },
@@ -5502,8 +6462,8 @@
   },
   "ship_machine": {
    "frame": {
-    "x": 714,
-    "y": 1139,
+    "x": 146,
+    "y": 1286,
     "w": 54,
     "h": 45
    },
@@ -5522,8 +6482,8 @@
   },
   "trade_crates": {
    "frame": {
-    "x": 769,
-    "y": 1139,
+    "x": 201,
+    "y": 1286,
     "w": 37,
     "h": 45
    },
@@ -5542,8 +6502,8 @@
   },
   "item_battery": {
    "frame": {
-    "x": 807,
-    "y": 1139,
+    "x": 239,
+    "y": 1286,
     "w": 26,
     "h": 44
    },
@@ -5562,8 +6522,8 @@
   },
   "item_fan": {
    "frame": {
-    "x": 834,
-    "y": 1139,
+    "x": 266,
+    "y": 1286,
     "w": 38,
     "h": 44
    },
@@ -5582,8 +6542,8 @@
   },
   "item_hdd": {
    "frame": {
-    "x": 873,
-    "y": 1139,
+    "x": 305,
+    "y": 1286,
     "w": 45,
     "h": 44
    },
@@ -5602,8 +6562,8 @@
   },
   "item_idol": {
    "frame": {
-    "x": 919,
-    "y": 1139,
+    "x": 351,
+    "y": 1286,
     "w": 30,
     "h": 44
    },
@@ -5622,8 +6582,8 @@
   },
   "item_ingots": {
    "frame": {
-    "x": 950,
-    "y": 1139,
+    "x": 382,
+    "y": 1286,
     "w": 55,
     "h": 44
    },
@@ -5642,8 +6602,8 @@
   },
   "item_optic": {
    "frame": {
-    "x": 0,
-    "y": 1188,
+    "x": 438,
+    "y": 1286,
     "w": 34,
     "h": 44
    },
@@ -5662,8 +6622,8 @@
   },
   "item_pocketpc": {
    "frame": {
-    "x": 35,
-    "y": 1188,
+    "x": 473,
+    "y": 1286,
     "w": 22,
     "h": 44
    },
@@ -5682,8 +6642,8 @@
   },
   "item_scrap": {
    "frame": {
-    "x": 58,
-    "y": 1188,
+    "x": 496,
+    "y": 1286,
     "w": 38,
     "h": 44
    },
@@ -5702,8 +6662,8 @@
   },
   "item_void": {
    "frame": {
-    "x": 97,
-    "y": 1188,
+    "x": 535,
+    "y": 1286,
     "w": 60,
     "h": 44
    },
@@ -5722,8 +6682,8 @@
   },
   "ship_robot": {
    "frame": {
-    "x": 158,
-    "y": 1188,
+    "x": 596,
+    "y": 1286,
     "w": 41,
     "h": 44
    },
@@ -5742,8 +6702,8 @@
   },
   "smug_crate": {
    "frame": {
-    "x": 200,
-    "y": 1188,
+    "x": 638,
+    "y": 1286,
     "w": 46,
     "h": 44
    },
@@ -5762,8 +6722,8 @@
   },
   "item_fungus": {
    "frame": {
-    "x": 247,
-    "y": 1188,
+    "x": 685,
+    "y": 1286,
     "w": 30,
     "h": 43
    },
@@ -5782,8 +6742,8 @@
   },
   "item_hide": {
    "frame": {
-    "x": 278,
-    "y": 1188,
+    "x": 716,
+    "y": 1286,
     "w": 46,
     "h": 43
    },
@@ -5802,8 +6762,8 @@
   },
   "med_cabinet": {
    "frame": {
-    "x": 325,
-    "y": 1188,
+    "x": 763,
+    "y": 1286,
     "w": 25,
     "h": 43
    },
@@ -5822,8 +6782,8 @@
   },
   "ship_plant3": {
    "frame": {
-    "x": 351,
-    "y": 1188,
+    "x": 789,
+    "y": 1286,
     "w": 16,
     "h": 43
    },
@@ -5842,8 +6802,8 @@
   },
   "ship_tv": {
    "frame": {
-    "x": 368,
-    "y": 1188,
+    "x": 806,
+    "y": 1286,
     "w": 36,
     "h": 43
    },
@@ -5862,8 +6822,8 @@
   },
   "hack_stool": {
    "frame": {
-    "x": 405,
-    "y": 1188,
+    "x": 843,
+    "y": 1286,
     "w": 16,
     "h": 42
    },
@@ -5882,8 +6842,8 @@
   },
   "item_cable": {
    "frame": {
-    "x": 422,
-    "y": 1188,
+    "x": 860,
+    "y": 1286,
     "w": 39,
     "h": 42
    },
@@ -5902,8 +6862,8 @@
   },
   "item_capacitor": {
    "frame": {
-    "x": 462,
-    "y": 1188,
+    "x": 900,
+    "y": 1286,
     "w": 41,
     "h": 42
    },
@@ -5922,8 +6882,8 @@
   },
   "item_carkit": {
    "frame": {
-    "x": 504,
-    "y": 1188,
+    "x": 942,
+    "y": 1286,
     "w": 44,
     "h": 42
    },
@@ -5942,8 +6902,8 @@
   },
   "item_cell": {
    "frame": {
-    "x": 549,
-    "y": 1188,
+    "x": 987,
+    "y": 1286,
     "w": 18,
     "h": 42
    },
@@ -5962,8 +6922,8 @@
   },
   "item_core": {
    "frame": {
-    "x": 568,
-    "y": 1188,
+    "x": 0,
+    "y": 1333,
     "w": 26,
     "h": 42
    },
@@ -5982,8 +6942,8 @@
   },
   "item_diagpad": {
    "frame": {
-    "x": 595,
-    "y": 1188,
+    "x": 27,
+    "y": 1333,
     "w": 36,
     "h": 42
    },
@@ -6002,8 +6962,8 @@
   },
   "item_frost_quartz": {
    "frame": {
-    "x": 632,
-    "y": 1188,
+    "x": 64,
+    "y": 1333,
     "w": 41,
     "h": 42
    },
@@ -6022,8 +6982,8 @@
   },
   "item_fuel": {
    "frame": {
-    "x": 674,
-    "y": 1188,
+    "x": 106,
+    "y": 1333,
     "w": 30,
     "h": 42
    },
@@ -6042,8 +7002,8 @@
   },
   "item_painting": {
    "frame": {
-    "x": 705,
-    "y": 1188,
+    "x": 137,
+    "y": 1333,
     "w": 32,
     "h": 42
    },
@@ -6062,8 +7022,8 @@
   },
   "item_vodka": {
    "frame": {
-    "x": 738,
-    "y": 1188,
+    "x": 170,
+    "y": 1333,
     "w": 16,
     "h": 42
    },
@@ -6082,8 +7042,8 @@
   },
   "ship_locker_s": {
    "frame": {
-    "x": 755,
-    "y": 1188,
+    "x": 187,
+    "y": 1333,
     "w": 22,
     "h": 42
    },
@@ -6102,8 +7062,8 @@
   },
   "trade_lamp": {
    "frame": {
-    "x": 778,
-    "y": 1188,
+    "x": 210,
+    "y": 1333,
     "w": 17,
     "h": 42
    },
@@ -6122,8 +7082,8 @@
   },
   "wall_face_a": {
    "frame": {
-    "x": 796,
-    "y": 1188,
+    "x": 228,
+    "y": 1333,
     "w": 32,
     "h": 42
    },
@@ -6142,8 +7102,8 @@
   },
   "wall_face_a_alien": {
    "frame": {
-    "x": 829,
-    "y": 1188,
+    "x": 261,
+    "y": 1333,
     "w": 32,
     "h": 42
    },
@@ -6162,8 +7122,8 @@
   },
   "wall_face_a_corp": {
    "frame": {
-    "x": 862,
-    "y": 1188,
+    "x": 294,
+    "y": 1333,
     "w": 32,
     "h": 42
    },
@@ -6182,8 +7142,8 @@
   },
   "wall_face_a_ice": {
    "frame": {
-    "x": 895,
-    "y": 1188,
+    "x": 327,
+    "y": 1333,
     "w": 32,
     "h": 42
    },
@@ -6202,8 +7162,8 @@
   },
   "wall_face_a_ochre": {
    "frame": {
-    "x": 928,
-    "y": 1188,
+    "x": 360,
+    "y": 1333,
     "w": 32,
     "h": 42
    },
@@ -6222,8 +7182,8 @@
   },
   "wall_face_l": {
    "frame": {
-    "x": 961,
-    "y": 1188,
+    "x": 393,
+    "y": 1333,
     "w": 48,
     "h": 42
    },
@@ -6242,8 +7202,8 @@
   },
   "wall_face_r": {
    "frame": {
-    "x": 0,
-    "y": 1233,
+    "x": 442,
+    "y": 1333,
     "w": 53,
     "h": 42
    },
@@ -6262,8 +7222,8 @@
   },
   "item_stim": {
    "frame": {
-    "x": 54,
-    "y": 1233,
+    "x": 496,
+    "y": 1333,
     "w": 46,
     "h": 41
    },
@@ -6282,8 +7242,8 @@
   },
   "ship_chair4": {
    "frame": {
-    "x": 101,
-    "y": 1233,
+    "x": 543,
+    "y": 1333,
     "w": 23,
     "h": 41
    },
@@ -6302,8 +7262,8 @@
   },
   "hack_rack": {
    "frame": {
-    "x": 125,
-    "y": 1233,
+    "x": 567,
+    "y": 1333,
     "w": 24,
     "h": 40
    },
@@ -6322,8 +7282,8 @@
   },
   "item_ammo_762": {
    "frame": {
-    "x": 150,
-    "y": 1233,
+    "x": 592,
+    "y": 1333,
     "w": 34,
     "h": 40
    },
@@ -6342,8 +7302,8 @@
   },
   "item_ammo_762_ap": {
    "frame": {
-    "x": 185,
-    "y": 1233,
+    "x": 627,
+    "y": 1333,
     "w": 34,
     "h": 40
    },
@@ -6362,8 +7322,8 @@
   },
   "item_antiseptic": {
    "frame": {
-    "x": 220,
-    "y": 1233,
+    "x": 662,
+    "y": 1333,
     "w": 22,
     "h": 40
    },
@@ -6382,8 +7342,8 @@
   },
   "item_compass": {
    "frame": {
-    "x": 243,
-    "y": 1233,
+    "x": 685,
+    "y": 1333,
     "w": 25,
     "h": 40
    },
@@ -6402,8 +7362,8 @@
   },
   "item_cryo": {
    "frame": {
-    "x": 269,
-    "y": 1233,
+    "x": 711,
+    "y": 1333,
     "w": 32,
     "h": 40
    },
@@ -6422,8 +7382,8 @@
   },
   "item_droneeye": {
    "frame": {
-    "x": 302,
-    "y": 1233,
+    "x": 744,
+    "y": 1333,
     "w": 34,
     "h": 40
    },
@@ -6442,8 +7402,8 @@
   },
   "item_gland": {
    "frame": {
-    "x": 337,
-    "y": 1233,
+    "x": 779,
+    "y": 1333,
     "w": 34,
     "h": 40
    },
@@ -6462,8 +7422,8 @@
   },
   "item_motor": {
    "frame": {
-    "x": 372,
-    "y": 1233,
+    "x": 814,
+    "y": 1333,
     "w": 47,
     "h": 40
    },
@@ -6482,8 +7442,8 @@
   },
   "item_orders": {
    "frame": {
-    "x": 420,
-    "y": 1233,
+    "x": 862,
+    "y": 1333,
     "w": 49,
     "h": 40
    },
@@ -6502,8 +7462,8 @@
   },
   "item_pipe": {
    "frame": {
-    "x": 470,
-    "y": 1233,
+    "x": 912,
+    "y": 1333,
     "w": 44,
     "h": 40
    },
@@ -6522,8 +7482,8 @@
   },
   "item_rustcap": {
    "frame": {
-    "x": 515,
-    "y": 1233,
+    "x": 957,
+    "y": 1333,
     "w": 36,
     "h": 40
    },
@@ -6542,8 +7502,8 @@
   },
   "portrait_f": {
    "frame": {
-    "x": 552,
-    "y": 1233,
+    "x": 994,
+    "y": 1333,
     "w": 26,
     "h": 40
    },
@@ -6562,8 +7522,8 @@
   },
   "ship_cabinet_s": {
    "frame": {
-    "x": 579,
-    "y": 1233,
+    "x": 0,
+    "y": 1376,
     "w": 30,
     "h": 40
    },
@@ -6582,8 +7542,8 @@
   },
   "ship_chair": {
    "frame": {
-    "x": 610,
-    "y": 1233,
+    "x": 31,
+    "y": 1376,
     "w": 22,
     "h": 40
    },
@@ -6602,8 +7562,8 @@
   },
   "ship_desk_small": {
    "frame": {
-    "x": 633,
-    "y": 1233,
+    "x": 54,
+    "y": 1376,
     "w": 28,
     "h": 40
    },
@@ -6622,8 +7582,8 @@
   },
   "item_ai_core": {
    "frame": {
-    "x": 662,
-    "y": 1233,
+    "x": 83,
+    "y": 1376,
     "w": 34,
     "h": 39
    },
@@ -6642,8 +7602,8 @@
   },
   "item_amethyst": {
    "frame": {
-    "x": 697,
-    "y": 1233,
+    "x": 118,
+    "y": 1376,
     "w": 38,
     "h": 39
    },
@@ -6662,8 +7622,8 @@
   },
   "item_chain": {
    "frame": {
-    "x": 736,
-    "y": 1233,
+    "x": 157,
+    "y": 1376,
     "w": 34,
     "h": 39
    },
@@ -6682,8 +7642,8 @@
   },
   "item_egg": {
    "frame": {
-    "x": 771,
-    "y": 1233,
+    "x": 192,
+    "y": 1376,
     "w": 40,
     "h": 39
    },
@@ -6702,8 +7662,8 @@
   },
   "item_iron_ore": {
    "frame": {
-    "x": 812,
-    "y": 1233,
+    "x": 233,
+    "y": 1376,
     "w": 43,
     "h": 39
    },
@@ -6722,8 +7682,8 @@
   },
   "ship_armchair": {
    "frame": {
-    "x": 856,
-    "y": 1233,
+    "x": 277,
+    "y": 1376,
     "w": 24,
     "h": 39
    },
@@ -6742,8 +7702,8 @@
   },
   "barrel_blue": {
    "frame": {
-    "x": 881,
-    "y": 1233,
+    "x": 302,
+    "y": 1376,
     "w": 20,
     "h": 38
    },
@@ -6762,8 +7722,8 @@
   },
   "barrel_gray": {
    "frame": {
-    "x": 902,
-    "y": 1233,
+    "x": 323,
+    "y": 1376,
     "w": 20,
     "h": 38
    },
@@ -6782,8 +7742,8 @@
   },
   "item_bandage": {
    "frame": {
-    "x": 923,
-    "y": 1233,
+    "x": 344,
+    "y": 1376,
     "w": 41,
     "h": 38
    },
@@ -6802,8 +7762,8 @@
   },
   "item_beast_skull": {
    "frame": {
-    "x": 965,
-    "y": 1233,
+    "x": 386,
+    "y": 1376,
     "w": 38,
     "h": 38
    },
@@ -6822,8 +7782,8 @@
   },
   "item_bone": {
    "frame": {
-    "x": 0,
-    "y": 1276,
+    "x": 425,
+    "y": 1376,
     "w": 46,
     "h": 38
    },
@@ -6842,8 +7802,8 @@
   },
   "item_chalice": {
    "frame": {
-    "x": 47,
-    "y": 1276,
+    "x": 472,
+    "y": 1376,
     "w": 20,
     "h": 38
    },
@@ -6862,8 +7822,8 @@
   },
   "item_copper_ore": {
    "frame": {
-    "x": 68,
-    "y": 1276,
+    "x": 493,
+    "y": 1376,
     "w": 42,
     "h": 38
    },
@@ -6882,8 +7842,8 @@
   },
   "item_ruby": {
    "frame": {
-    "x": 111,
-    "y": 1276,
+    "x": 536,
+    "y": 1376,
     "w": 36,
     "h": 38
    },
@@ -6902,8 +7862,8 @@
   },
   "item_terminal": {
    "frame": {
-    "x": 148,
-    "y": 1276,
+    "x": 573,
+    "y": 1376,
     "w": 26,
     "h": 38
    },
@@ -6922,8 +7882,8 @@
   },
   "portrait_m": {
    "frame": {
-    "x": 175,
-    "y": 1276,
+    "x": 600,
+    "y": 1376,
     "w": 30,
     "h": 38
    },
@@ -6942,8 +7902,8 @@
   },
   "ship_cab3": {
    "frame": {
-    "x": 206,
-    "y": 1276,
+    "x": 631,
+    "y": 1376,
     "w": 25,
     "h": 38
    },
@@ -6962,8 +7922,8 @@
   },
   "barrel_red": {
    "frame": {
-    "x": 232,
-    "y": 1276,
+    "x": 657,
+    "y": 1376,
     "w": 20,
     "h": 37
    },
@@ -6982,8 +7942,8 @@
   },
   "crate_pale": {
    "frame": {
-    "x": 253,
-    "y": 1276,
+    "x": 678,
+    "y": 1376,
     "w": 37,
     "h": 37
    },
@@ -7002,8 +7962,8 @@
   },
   "item_jewelbox": {
    "frame": {
-    "x": 291,
-    "y": 1276,
+    "x": 716,
+    "y": 1376,
     "w": 40,
     "h": 37
    },
@@ -7022,8 +7982,8 @@
   },
   "item_pills": {
    "frame": {
-    "x": 332,
-    "y": 1276,
+    "x": 757,
+    "y": 1376,
     "w": 19,
     "h": 37
    },
@@ -7042,8 +8002,8 @@
   },
   "item_sack": {
    "frame": {
-    "x": 352,
-    "y": 1276,
+    "x": 777,
+    "y": 1376,
     "w": 32,
     "h": 37
    },
@@ -7062,8 +8022,8 @@
   },
   "item_verdite": {
    "frame": {
-    "x": 385,
-    "y": 1276,
+    "x": 810,
+    "y": 1376,
     "w": 28,
     "h": 37
    },
@@ -7082,8 +8042,8 @@
   },
   "item_watch": {
    "frame": {
-    "x": 414,
-    "y": 1276,
+    "x": 839,
+    "y": 1376,
     "w": 27,
     "h": 37
    },
@@ -7102,8 +8062,8 @@
   },
   "ship_crate_w": {
    "frame": {
-    "x": 442,
-    "y": 1276,
+    "x": 867,
+    "y": 1376,
     "w": 37,
     "h": 37
    },
@@ -7122,8 +8082,8 @@
   },
   "hack_console": {
    "frame": {
-    "x": 480,
-    "y": 1276,
+    "x": 905,
+    "y": 1376,
     "w": 44,
     "h": 36
    },
@@ -7142,8 +8102,8 @@
   },
   "hack_server": {
    "frame": {
-    "x": 525,
-    "y": 1276,
+    "x": 950,
+    "y": 1376,
     "w": 24,
     "h": 36
    },
@@ -7162,8 +8122,8 @@
   },
   "item_ammo_12buck": {
    "frame": {
-    "x": 550,
-    "y": 1276,
+    "x": 975,
+    "y": 1376,
     "w": 32,
     "h": 36
    },
@@ -7182,8 +8142,8 @@
   },
   "item_coolant": {
    "frame": {
-    "x": 583,
-    "y": 1276,
+    "x": 0,
+    "y": 1417,
     "w": 40,
     "h": 36
    },
@@ -7202,8 +8162,8 @@
   },
   "item_datachip": {
    "frame": {
-    "x": 624,
-    "y": 1276,
+    "x": 41,
+    "y": 1417,
     "w": 44,
     "h": 36
    },
@@ -7222,8 +8182,8 @@
   },
   "item_geiger": {
    "frame": {
-    "x": 669,
-    "y": 1276,
+    "x": 86,
+    "y": 1417,
     "w": 35,
     "h": 36
    },
@@ -7242,8 +8202,8 @@
   },
   "item_gold_ore": {
    "frame": {
-    "x": 705,
-    "y": 1276,
+    "x": 122,
+    "y": 1417,
     "w": 38,
     "h": 36
    },
@@ -7262,8 +8222,8 @@
   },
   "item_milk": {
    "frame": {
-    "x": 744,
-    "y": 1276,
+    "x": 161,
+    "y": 1417,
     "w": 20,
     "h": 36
    },
@@ -7282,8 +8242,8 @@
   },
   "item_radio": {
    "frame": {
-    "x": 765,
-    "y": 1276,
+    "x": 182,
+    "y": 1417,
     "w": 30,
     "h": 36
    },
@@ -7302,8 +8262,8 @@
   },
   "item_seccam": {
    "frame": {
-    "x": 796,
-    "y": 1276,
+    "x": 213,
+    "y": 1417,
     "w": 30,
     "h": 36
    },
@@ -7322,8 +8282,8 @@
   },
   "item_stew": {
    "frame": {
-    "x": 827,
-    "y": 1276,
+    "x": 244,
+    "y": 1417,
     "w": 24,
     "h": 36
    },
@@ -7342,8 +8302,8 @@
   },
   "ship_crate_o": {
    "frame": {
-    "x": 852,
-    "y": 1276,
+    "x": 269,
+    "y": 1417,
     "w": 32,
     "h": 36
    },
@@ -7362,8 +8322,8 @@
   },
   "crate_green": {
    "frame": {
-    "x": 885,
-    "y": 1276,
+    "x": 302,
+    "y": 1417,
     "w": 34,
     "h": 35
    },
@@ -7382,8 +8342,8 @@
   },
   "item_ammo_545": {
    "frame": {
-    "x": 920,
-    "y": 1276,
+    "x": 337,
+    "y": 1417,
     "w": 28,
     "h": 35
    },
@@ -7402,8 +8362,8 @@
   },
   "item_ammo_545_ap": {
    "frame": {
-    "x": 949,
-    "y": 1276,
+    "x": 366,
+    "y": 1417,
     "w": 12,
     "h": 35
    },
@@ -7422,8 +8382,8 @@
   },
   "item_ring": {
    "frame": {
-    "x": 962,
-    "y": 1276,
+    "x": 379,
+    "y": 1417,
     "w": 23,
     "h": 35
    },
@@ -7442,8 +8402,8 @@
   },
   "item_sapphire": {
    "frame": {
-    "x": 986,
-    "y": 1276,
+    "x": 403,
+    "y": 1417,
     "w": 26,
     "h": 35
    },
@@ -7462,8 +8422,8 @@
   },
   "ship_chair2": {
    "frame": {
-    "x": 0,
-    "y": 1315,
+    "x": 430,
+    "y": 1417,
     "w": 16,
     "h": 35
    },
@@ -7482,8 +8442,8 @@
   },
   "crate_gray": {
    "frame": {
-    "x": 17,
-    "y": 1315,
+    "x": 447,
+    "y": 1417,
     "w": 31,
     "h": 34
    },
@@ -7502,8 +8462,8 @@
   },
   "item_antibiotics": {
    "frame": {
-    "x": 49,
-    "y": 1315,
+    "x": 479,
+    "y": 1417,
     "w": 18,
     "h": 34
    },
@@ -7522,8 +8482,8 @@
   },
   "item_crown": {
    "frame": {
-    "x": 68,
-    "y": 1315,
+    "x": 498,
+    "y": 1417,
     "w": 36,
     "h": 34
    },
@@ -7542,8 +8502,8 @@
   },
   "item_gold_bar": {
    "frame": {
-    "x": 105,
-    "y": 1315,
+    "x": 535,
+    "y": 1417,
     "w": 37,
     "h": 34
    },
@@ -7562,8 +8522,8 @@
   },
   "item_landscape": {
    "frame": {
-    "x": 143,
-    "y": 1315,
+    "x": 573,
+    "y": 1417,
     "w": 38,
     "h": 34
    },
@@ -7582,8 +8542,8 @@
   },
   "item_scales": {
    "frame": {
-    "x": 182,
-    "y": 1315,
+    "x": 612,
+    "y": 1417,
     "w": 53,
     "h": 34
    },
@@ -7602,8 +8562,8 @@
   },
   "item_tape": {
    "frame": {
-    "x": 236,
-    "y": 1315,
+    "x": 666,
+    "y": 1417,
     "w": 42,
     "h": 34
    },
@@ -7622,8 +8582,8 @@
   },
   "item_tusk": {
    "frame": {
-    "x": 279,
-    "y": 1315,
+    "x": 709,
+    "y": 1417,
     "w": 59,
     "h": 34
    },
@@ -7642,8 +8602,8 @@
   },
   "ship_crate_g": {
    "frame": {
-    "x": 339,
-    "y": 1315,
+    "x": 769,
+    "y": 1417,
     "w": 31,
     "h": 34
    },
@@ -7662,8 +8622,8 @@
   },
   "item_camera": {
    "frame": {
-    "x": 371,
-    "y": 1315,
+    "x": 801,
+    "y": 1417,
     "w": 37,
     "h": 33
    },
@@ -7682,8 +8642,8 @@
   },
   "item_skull": {
    "frame": {
-    "x": 409,
-    "y": 1315,
+    "x": 839,
+    "y": 1417,
     "w": 35,
     "h": 33
    },
@@ -7702,8 +8662,8 @@
   },
   "smug_chest": {
    "frame": {
-    "x": 445,
-    "y": 1315,
+    "x": 875,
+    "y": 1417,
     "w": 35,
     "h": 33
    },
@@ -7722,8 +8682,8 @@
   },
   "case_green": {
    "frame": {
-    "x": 481,
-    "y": 1315,
+    "x": 911,
+    "y": 1417,
     "w": 40,
     "h": 32
    },
@@ -7742,8 +8702,8 @@
   },
   "case_red": {
    "frame": {
-    "x": 522,
-    "y": 1315,
+    "x": 952,
+    "y": 1417,
     "w": 45,
     "h": 32
    },
@@ -7762,8 +8722,8 @@
   },
   "crate_orange": {
    "frame": {
-    "x": 568,
-    "y": 1315,
+    "x": 0,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7782,8 +8742,8 @@
   },
   "door_h_a": {
    "frame": {
-    "x": 601,
-    "y": 1315,
+    "x": 33,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7802,8 +8762,8 @@
   },
   "door_h_b": {
    "frame": {
-    "x": 634,
-    "y": 1315,
+    "x": 66,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7822,8 +8782,8 @@
   },
   "door_v_a": {
    "frame": {
-    "x": 667,
-    "y": 1315,
+    "x": 99,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7842,8 +8802,8 @@
   },
   "door_v_b": {
    "frame": {
-    "x": 700,
-    "y": 1315,
+    "x": 132,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7862,8 +8822,8 @@
   },
   "floor_a": {
    "frame": {
-    "x": 733,
-    "y": 1315,
+    "x": 165,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7882,8 +8842,8 @@
   },
   "floor_b": {
    "frame": {
-    "x": 766,
-    "y": 1315,
+    "x": 198,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7902,8 +8862,8 @@
   },
   "floor_c": {
    "frame": {
-    "x": 799,
-    "y": 1315,
+    "x": 231,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7922,8 +8882,8 @@
   },
   "floor_grate": {
    "frame": {
-    "x": 832,
-    "y": 1315,
+    "x": 264,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7942,8 +8902,8 @@
   },
   "floor_plate": {
    "frame": {
-    "x": 865,
-    "y": 1315,
+    "x": 297,
+    "y": 1454,
     "w": 32,
     "h": 32
    },
@@ -7962,8 +8922,8 @@
   },
   "gun_1": {
    "frame": {
-    "x": 898,
-    "y": 1315,
+    "x": 330,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -7982,8 +8942,8 @@
   },
   "gun_10": {
    "frame": {
-    "x": 0,
-    "y": 1351,
+    "x": 395,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8002,8 +8962,8 @@
   },
   "gun_11": {
    "frame": {
-    "x": 65,
-    "y": 1351,
+    "x": 460,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8022,8 +8982,8 @@
   },
   "gun_12": {
    "frame": {
-    "x": 130,
-    "y": 1351,
+    "x": 525,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8042,8 +9002,8 @@
   },
   "gun_13": {
    "frame": {
-    "x": 195,
-    "y": 1351,
+    "x": 590,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8062,8 +9022,8 @@
   },
   "gun_14": {
    "frame": {
-    "x": 260,
-    "y": 1351,
+    "x": 655,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8082,8 +9042,8 @@
   },
   "gun_15": {
    "frame": {
-    "x": 325,
-    "y": 1351,
+    "x": 720,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8102,8 +9062,8 @@
   },
   "gun_16": {
    "frame": {
-    "x": 390,
-    "y": 1351,
+    "x": 785,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8122,8 +9082,8 @@
   },
   "gun_17": {
    "frame": {
-    "x": 455,
-    "y": 1351,
+    "x": 850,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8142,8 +9102,8 @@
   },
   "gun_18": {
    "frame": {
-    "x": 520,
-    "y": 1351,
+    "x": 915,
+    "y": 1454,
     "w": 64,
     "h": 32
    },
@@ -8162,8 +9122,8 @@
   },
   "gun_19": {
    "frame": {
-    "x": 585,
-    "y": 1351,
+    "x": 0,
+    "y": 1487,
     "w": 128,
     "h": 32
    },
@@ -8182,8 +9142,8 @@
   },
   "gun_2": {
    "frame": {
-    "x": 714,
-    "y": 1351,
+    "x": 129,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8202,8 +9162,8 @@
   },
   "gun_20": {
    "frame": {
-    "x": 779,
-    "y": 1351,
+    "x": 194,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8222,8 +9182,8 @@
   },
   "gun_21": {
    "frame": {
-    "x": 844,
-    "y": 1351,
+    "x": 259,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8242,8 +9202,8 @@
   },
   "gun_22": {
    "frame": {
-    "x": 909,
-    "y": 1351,
+    "x": 324,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8262,8 +9222,8 @@
   },
   "gun_23": {
    "frame": {
-    "x": 0,
-    "y": 1384,
+    "x": 389,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8282,8 +9242,8 @@
   },
   "gun_24": {
    "frame": {
-    "x": 65,
-    "y": 1384,
+    "x": 454,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8302,8 +9262,8 @@
   },
   "gun_25": {
    "frame": {
-    "x": 130,
-    "y": 1384,
+    "x": 519,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8322,8 +9282,8 @@
   },
   "gun_26": {
    "frame": {
-    "x": 195,
-    "y": 1384,
+    "x": 584,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8342,8 +9302,8 @@
   },
   "gun_27": {
    "frame": {
-    "x": 260,
-    "y": 1384,
+    "x": 649,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8362,8 +9322,8 @@
   },
   "gun_28": {
    "frame": {
-    "x": 325,
-    "y": 1384,
+    "x": 714,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8382,8 +9342,8 @@
   },
   "gun_29": {
    "frame": {
-    "x": 390,
-    "y": 1384,
+    "x": 779,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8402,8 +9362,8 @@
   },
   "gun_3": {
    "frame": {
-    "x": 455,
-    "y": 1384,
+    "x": 844,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8422,8 +9382,8 @@
   },
   "gun_30": {
    "frame": {
-    "x": 520,
-    "y": 1384,
+    "x": 909,
+    "y": 1487,
     "w": 64,
     "h": 32
    },
@@ -8442,8 +9402,8 @@
   },
   "gun_31": {
    "frame": {
-    "x": 585,
-    "y": 1384,
+    "x": 0,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8462,8 +9422,8 @@
   },
   "gun_32": {
    "frame": {
-    "x": 650,
-    "y": 1384,
+    "x": 65,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8482,8 +9442,8 @@
   },
   "gun_33": {
    "frame": {
-    "x": 715,
-    "y": 1384,
+    "x": 130,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8502,8 +9462,8 @@
   },
   "gun_34": {
    "frame": {
-    "x": 780,
-    "y": 1384,
+    "x": 195,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8522,8 +9482,8 @@
   },
   "gun_35": {
    "frame": {
-    "x": 845,
-    "y": 1384,
+    "x": 260,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8542,8 +9502,8 @@
   },
   "gun_36": {
    "frame": {
-    "x": 910,
-    "y": 1384,
+    "x": 325,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8562,8 +9522,8 @@
   },
   "gun_37": {
    "frame": {
-    "x": 0,
-    "y": 1417,
+    "x": 390,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8582,8 +9542,8 @@
   },
   "gun_38": {
    "frame": {
-    "x": 65,
-    "y": 1417,
+    "x": 455,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8602,8 +9562,8 @@
   },
   "gun_39": {
    "frame": {
-    "x": 130,
-    "y": 1417,
+    "x": 520,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8622,8 +9582,8 @@
   },
   "gun_4": {
    "frame": {
-    "x": 195,
-    "y": 1417,
+    "x": 585,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8642,8 +9602,8 @@
   },
   "gun_40": {
    "frame": {
-    "x": 260,
-    "y": 1417,
+    "x": 650,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8662,8 +9622,8 @@
   },
   "gun_41": {
    "frame": {
-    "x": 325,
-    "y": 1417,
+    "x": 715,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8682,8 +9642,8 @@
   },
   "gun_42": {
    "frame": {
-    "x": 390,
-    "y": 1417,
+    "x": 780,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8702,8 +9662,8 @@
   },
   "gun_43": {
    "frame": {
-    "x": 455,
-    "y": 1417,
+    "x": 845,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8722,8 +9682,8 @@
   },
   "gun_44": {
    "frame": {
-    "x": 520,
-    "y": 1417,
+    "x": 910,
+    "y": 1520,
     "w": 64,
     "h": 32
    },
@@ -8742,8 +9702,8 @@
   },
   "gun_45": {
    "frame": {
-    "x": 585,
-    "y": 1417,
+    "x": 0,
+    "y": 1553,
     "w": 128,
     "h": 32
    },
@@ -8762,8 +9722,8 @@
   },
   "gun_46": {
    "frame": {
-    "x": 714,
-    "y": 1417,
+    "x": 129,
+    "y": 1553,
     "w": 128,
     "h": 32
    },
@@ -8782,8 +9742,8 @@
   },
   "gun_47": {
    "frame": {
-    "x": 843,
-    "y": 1417,
+    "x": 258,
+    "y": 1553,
     "w": 128,
     "h": 32
    },
@@ -8802,8 +9762,8 @@
   },
   "gun_48": {
    "frame": {
-    "x": 0,
-    "y": 1450,
+    "x": 387,
+    "y": 1553,
     "w": 128,
     "h": 32
    },
@@ -8822,8 +9782,8 @@
   },
   "gun_49": {
    "frame": {
-    "x": 129,
-    "y": 1450,
+    "x": 516,
+    "y": 1553,
     "w": 128,
     "h": 32
    },
@@ -8842,8 +9802,8 @@
   },
   "gun_5": {
    "frame": {
-    "x": 258,
-    "y": 1450,
+    "x": 645,
+    "y": 1553,
     "w": 64,
     "h": 32
    },
@@ -8862,8 +9822,8 @@
   },
   "gun_50": {
    "frame": {
-    "x": 323,
-    "y": 1450,
+    "x": 710,
+    "y": 1553,
     "w": 128,
     "h": 32
    },
@@ -8882,8 +9842,8 @@
   },
   "gun_6": {
    "frame": {
-    "x": 452,
-    "y": 1450,
+    "x": 839,
+    "y": 1553,
     "w": 64,
     "h": 32
    },
@@ -8902,8 +9862,8 @@
   },
   "gun_7": {
    "frame": {
-    "x": 517,
-    "y": 1450,
+    "x": 904,
+    "y": 1553,
     "w": 64,
     "h": 32
    },
@@ -8922,8 +9882,8 @@
   },
   "gun_8": {
    "frame": {
-    "x": 582,
-    "y": 1450,
+    "x": 0,
+    "y": 1586,
     "w": 64,
     "h": 32
    },
@@ -8942,8 +9902,8 @@
   },
   "gun_9": {
    "frame": {
-    "x": 647,
-    "y": 1450,
+    "x": 65,
+    "y": 1586,
     "w": 64,
     "h": 32
    },
@@ -8962,8 +9922,8 @@
   },
   "item_emerald": {
    "frame": {
-    "x": 712,
-    "y": 1450,
+    "x": 130,
+    "y": 1586,
     "w": 24,
     "h": 32
    },
@@ -8982,8 +9942,8 @@
   },
   "item_fire_opal": {
    "frame": {
-    "x": 737,
-    "y": 1450,
+    "x": 155,
+    "y": 1586,
     "w": 40,
     "h": 32
    },
@@ -9002,8 +9962,8 @@
   },
   "item_gear": {
    "frame": {
-    "x": 778,
-    "y": 1450,
+    "x": 196,
+    "y": 1586,
     "w": 32,
     "h": 32
    },
@@ -9022,8 +9982,8 @@
   },
   "item_rations": {
    "frame": {
-    "x": 811,
-    "y": 1450,
+    "x": 229,
+    "y": 1586,
     "w": 30,
     "h": 32
    },
@@ -9042,8 +10002,8 @@
   },
   "op_f_death_0": {
    "frame": {
-    "x": 842,
-    "y": 1450,
+    "x": 260,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9062,8 +10022,8 @@
   },
   "op_f_death_1": {
    "frame": {
-    "x": 899,
-    "y": 1450,
+    "x": 317,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9082,8 +10042,8 @@
   },
   "op_f_death_2": {
    "frame": {
-    "x": 956,
-    "y": 1450,
+    "x": 374,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9102,8 +10062,8 @@
   },
   "op_f_death_3": {
    "frame": {
-    "x": 0,
-    "y": 1483,
+    "x": 431,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9122,8 +10082,8 @@
   },
   "op_f_death_4": {
    "frame": {
-    "x": 57,
-    "y": 1483,
+    "x": 488,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9142,8 +10102,8 @@
   },
   "op_f_death_5": {
    "frame": {
-    "x": 114,
-    "y": 1483,
+    "x": 545,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9162,8 +10122,8 @@
   },
   "op_m_death_0": {
    "frame": {
-    "x": 171,
-    "y": 1483,
+    "x": 602,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9182,8 +10142,8 @@
   },
   "op_m_death_1": {
    "frame": {
-    "x": 228,
-    "y": 1483,
+    "x": 659,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9202,8 +10162,8 @@
   },
   "op_m_death_2": {
    "frame": {
-    "x": 285,
-    "y": 1483,
+    "x": 716,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9222,8 +10182,8 @@
   },
   "op_m_death_3": {
    "frame": {
-    "x": 342,
-    "y": 1483,
+    "x": 773,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9242,8 +10202,8 @@
   },
   "op_m_death_4": {
    "frame": {
-    "x": 399,
-    "y": 1483,
+    "x": 830,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9262,8 +10222,28 @@
   },
   "op_m_death_5": {
    "frame": {
-    "x": 456,
-    "y": 1483,
+    "x": 887,
+    "y": 1586,
+    "w": 56,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 32
+   }
+  },
+  "raider_b_dead_0": {
+   "frame": {
+    "x": 944,
+    "y": 1586,
     "w": 56,
     "h": 32
    },
@@ -9282,8 +10262,28 @@
   },
   "raider_dead_0": {
    "frame": {
-    "x": 513,
-    "y": 1483,
+    "x": 0,
+    "y": 1619,
+    "w": 56,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 32
+   }
+  },
+  "scav_b_dead_0": {
+   "frame": {
+    "x": 57,
+    "y": 1619,
     "w": 56,
     "h": 32
    },
@@ -9302,8 +10302,28 @@
   },
   "scav_dead_0": {
    "frame": {
-    "x": 570,
-    "y": 1483,
+    "x": 114,
+    "y": 1619,
+    "w": 56,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 32
+   }
+  },
+  "security_b_dead_0": {
+   "frame": {
+    "x": 171,
+    "y": 1619,
     "w": 56,
     "h": 32
    },
@@ -9322,8 +10342,8 @@
   },
   "security_dead_0": {
    "frame": {
-    "x": 627,
-    "y": 1483,
+    "x": 228,
+    "y": 1619,
     "w": 56,
     "h": 32
    },
@@ -9342,8 +10362,8 @@
   },
   "ship_crate_y": {
    "frame": {
-    "x": 684,
-    "y": 1483,
+    "x": 285,
+    "y": 1619,
     "w": 32,
     "h": 32
    },
@@ -9362,8 +10382,8 @@
   },
   "ship_vent2": {
    "frame": {
-    "x": 717,
-    "y": 1483,
+    "x": 318,
+    "y": 1619,
     "w": 30,
     "h": 32
    },
@@ -9380,10 +10400,30 @@
     "h": 32
    }
   },
+  "soldier_b_dead_0": {
+   "frame": {
+    "x": 349,
+    "y": 1619,
+    "w": 56,
+    "h": 32
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 56,
+    "h": 32
+   },
+   "sourceSize": {
+    "w": 56,
+    "h": 32
+   }
+  },
   "soldier_dead_0": {
    "frame": {
-    "x": 748,
-    "y": 1483,
+    "x": 406,
+    "y": 1619,
     "w": 56,
     "h": 32
    },
@@ -9402,8 +10442,8 @@
   },
   "wall_face": {
    "frame": {
-    "x": 805,
-    "y": 1483,
+    "x": 463,
+    "y": 1619,
     "w": 32,
     "h": 32
    },
@@ -9422,8 +10462,8 @@
   },
   "wall_top": {
    "frame": {
-    "x": 838,
-    "y": 1483,
+    "x": 496,
+    "y": 1619,
     "w": 32,
     "h": 32
    },
@@ -9442,8 +10482,8 @@
   },
   "item_coinroll": {
    "frame": {
-    "x": 871,
-    "y": 1483,
+    "x": 529,
+    "y": 1619,
     "w": 25,
     "h": 31
    },
@@ -9462,8 +10502,8 @@
   },
   "item_cryptdrive": {
    "frame": {
-    "x": 897,
-    "y": 1483,
+    "x": 555,
+    "y": 1619,
     "w": 32,
     "h": 31
    },
@@ -9482,8 +10522,8 @@
   },
   "ship_plant": {
    "frame": {
-    "x": 930,
-    "y": 1483,
+    "x": 588,
+    "y": 1619,
     "w": 16,
     "h": 31
    },
@@ -9502,8 +10542,8 @@
   },
   "ship_vent": {
    "frame": {
-    "x": 947,
-    "y": 1483,
+    "x": 605,
+    "y": 1619,
     "w": 30,
     "h": 31
    },
@@ -9522,8 +10562,8 @@
   },
   "item_ammo_9x18": {
    "frame": {
-    "x": 978,
-    "y": 1483,
+    "x": 636,
+    "y": 1619,
     "w": 22,
     "h": 30
    },
@@ -9542,8 +10582,8 @@
   },
   "item_iridium": {
    "frame": {
-    "x": 0,
-    "y": 1516,
+    "x": 659,
+    "y": 1619,
     "w": 29,
     "h": 30
    },
@@ -9562,8 +10602,8 @@
   },
   "ship_poster4": {
    "frame": {
-    "x": 30,
-    "y": 1516,
+    "x": 689,
+    "y": 1619,
     "w": 23,
     "h": 30
    },
@@ -9582,8 +10622,8 @@
   },
   "ship_shelf": {
    "frame": {
-    "x": 54,
-    "y": 1516,
+    "x": 713,
+    "y": 1619,
     "w": 30,
     "h": 30
    },
@@ -9602,8 +10642,8 @@
   },
   "item_ammo_12slug": {
    "frame": {
-    "x": 85,
-    "y": 1516,
+    "x": 744,
+    "y": 1619,
     "w": 40,
     "h": 29
    },
@@ -9622,8 +10662,8 @@
   },
   "ship_plant2": {
    "frame": {
-    "x": 126,
-    "y": 1516,
+    "x": 785,
+    "y": 1619,
     "w": 21,
     "h": 29
    },
@@ -9642,8 +10682,8 @@
   },
   "ship_poster": {
    "frame": {
-    "x": 148,
-    "y": 1516,
+    "x": 807,
+    "y": 1619,
     "w": 22,
     "h": 29
    },
@@ -9662,8 +10702,8 @@
   },
   "med_stool": {
    "frame": {
-    "x": 171,
-    "y": 1516,
+    "x": 830,
+    "y": 1619,
     "w": 16,
     "h": 28
    },
@@ -9682,8 +10722,8 @@
   },
   "merc_case2": {
    "frame": {
-    "x": 188,
-    "y": 1516,
+    "x": 847,
+    "y": 1619,
     "w": 40,
     "h": 28
    },
@@ -9702,8 +10742,8 @@
   },
   "ship_chair3": {
    "frame": {
-    "x": 229,
-    "y": 1516,
+    "x": 888,
+    "y": 1619,
     "w": 19,
     "h": 28
    },
@@ -9722,8 +10762,8 @@
   },
   "ship_bucket": {
    "frame": {
-    "x": 249,
-    "y": 1516,
+    "x": 908,
+    "y": 1619,
     "w": 20,
     "h": 27
    },
@@ -9742,8 +10782,8 @@
   },
   "box_olive": {
    "frame": {
-    "x": 270,
-    "y": 1516,
+    "x": 929,
+    "y": 1619,
     "w": 30,
     "h": 26
    },
@@ -9762,8 +10802,8 @@
   },
   "med_monitor": {
    "frame": {
-    "x": 301,
-    "y": 1516,
+    "x": 960,
+    "y": 1619,
     "w": 32,
     "h": 26
    },
@@ -9782,8 +10822,8 @@
   },
   "merc_ammo": {
    "frame": {
-    "x": 334,
-    "y": 1516,
+    "x": 993,
+    "y": 1619,
     "w": 20,
     "h": 26
    },
@@ -9802,8 +10842,8 @@
   },
   "merc_case": {
    "frame": {
-    "x": 355,
-    "y": 1516,
+    "x": 0,
+    "y": 1652,
     "w": 38,
     "h": 26
    },
@@ -9822,8 +10862,8 @@
   },
   "merc_tripod": {
    "frame": {
-    "x": 394,
-    "y": 1516,
+    "x": 39,
+    "y": 1652,
     "w": 39,
     "h": 26
    },
@@ -9842,8 +10882,8 @@
   },
   "box_red": {
    "frame": {
-    "x": 434,
-    "y": 1516,
+    "x": 79,
+    "y": 1652,
     "w": 32,
     "h": 25
    },
@@ -9862,8 +10902,8 @@
   },
   "item_keycard": {
    "frame": {
-    "x": 467,
-    "y": 1516,
+    "x": 112,
+    "y": 1652,
     "w": 32,
     "h": 25
    },
@@ -9882,8 +10922,8 @@
   },
   "ship_cab2": {
    "frame": {
-    "x": 500,
-    "y": 1516,
+    "x": 145,
+    "y": 1652,
     "w": 24,
     "h": 25
    },
@@ -9902,8 +10942,8 @@
   },
   "box_dark": {
    "frame": {
-    "x": 525,
-    "y": 1516,
+    "x": 170,
+    "y": 1652,
     "w": 31,
     "h": 24
    },
@@ -9922,8 +10962,8 @@
   },
   "item_ammo_9x18_ap": {
    "frame": {
-    "x": 557,
-    "y": 1516,
+    "x": 202,
+    "y": 1652,
     "w": 34,
     "h": 24
    },
@@ -9942,8 +10982,8 @@
   },
   "item_cigs": {
    "frame": {
-    "x": 592,
-    "y": 1516,
+    "x": 237,
+    "y": 1652,
     "w": 15,
     "h": 24
    },
@@ -9962,8 +11002,8 @@
   },
   "item_ribcage": {
    "frame": {
-    "x": 608,
-    "y": 1516,
+    "x": 253,
+    "y": 1652,
     "w": 50,
     "h": 24
    },
@@ -9982,8 +11022,8 @@
   },
   "med_crate": {
    "frame": {
-    "x": 659,
-    "y": 1516,
+    "x": 304,
+    "y": 1652,
     "w": 34,
     "h": 24
    },
@@ -10002,8 +11042,8 @@
   },
   "merc_ammo2": {
    "frame": {
-    "x": 694,
-    "y": 1516,
+    "x": 339,
+    "y": 1652,
     "w": 9,
     "h": 24
    },
@@ -10022,8 +11062,8 @@
   },
   "smug_box": {
    "frame": {
-    "x": 704,
-    "y": 1516,
+    "x": 349,
+    "y": 1652,
     "w": 25,
     "h": 24
    },
@@ -10042,8 +11082,8 @@
   },
   "smug_goods": {
    "frame": {
-    "x": 730,
-    "y": 1516,
+    "x": 375,
+    "y": 1652,
     "w": 49,
     "h": 24
    },
@@ -10062,8 +11102,8 @@
   },
   "hack_box": {
    "frame": {
-    "x": 780,
-    "y": 1516,
+    "x": 425,
+    "y": 1652,
     "w": 22,
     "h": 23
    },
@@ -10082,8 +11122,8 @@
   },
   "item_coin": {
    "frame": {
-    "x": 803,
-    "y": 1516,
+    "x": 448,
+    "y": 1652,
     "w": 25,
     "h": 23
    },
@@ -10102,8 +11142,8 @@
   },
   "hack_drone": {
    "frame": {
-    "x": 829,
-    "y": 1516,
+    "x": 474,
+    "y": 1652,
     "w": 30,
     "h": 22
    },
@@ -10122,8 +11162,8 @@
   },
   "ship_bin": {
    "frame": {
-    "x": 860,
-    "y": 1516,
+    "x": 505,
+    "y": 1652,
     "w": 16,
     "h": 22
    },
@@ -10142,8 +11182,8 @@
   },
   "ship_dartboard": {
    "frame": {
-    "x": 877,
-    "y": 1516,
+    "x": 522,
+    "y": 1652,
     "w": 22,
     "h": 22
    },
@@ -10162,8 +11202,8 @@
   },
   "ship_poster2": {
    "frame": {
-    "x": 900,
-    "y": 1516,
+    "x": 545,
+    "y": 1652,
     "w": 10,
     "h": 22
    },
@@ -10182,8 +11222,8 @@
   },
   "ship_poster3": {
    "frame": {
-    "x": 911,
-    "y": 1516,
+    "x": 556,
+    "y": 1652,
     "w": 8,
     "h": 22
    },
@@ -10202,8 +11242,8 @@
   },
   "ship_toolbox": {
    "frame": {
-    "x": 920,
-    "y": 1516,
+    "x": 565,
+    "y": 1652,
     "w": 33,
     "h": 22
    },
@@ -10222,8 +11262,8 @@
   },
   "smug_bottles": {
    "frame": {
-    "x": 954,
-    "y": 1516,
+    "x": 599,
+    "y": 1652,
     "w": 10,
     "h": 22
    },
@@ -10242,8 +11282,8 @@
   },
   "deco_specimen": {
    "frame": {
-    "x": 965,
-    "y": 1516,
+    "x": 610,
+    "y": 1652,
     "w": 17,
     "h": 21
    },
@@ -10262,8 +11302,8 @@
   },
   "fx_blood_2": {
    "frame": {
-    "x": 983,
-    "y": 1516,
+    "x": 628,
+    "y": 1652,
     "w": 17,
     "h": 21
    },
@@ -10282,8 +11322,8 @@
   },
   "item_kedr": {
    "frame": {
-    "x": 0,
-    "y": 1547,
+    "x": 646,
+    "y": 1652,
     "w": 27,
     "h": 21
    },
@@ -10302,8 +11342,8 @@
   },
   "med_kit": {
    "frame": {
-    "x": 28,
-    "y": 1547,
+    "x": 674,
+    "y": 1652,
     "w": 24,
     "h": 21
    },
@@ -10322,8 +11362,8 @@
   },
   "deco_painting": {
    "frame": {
-    "x": 53,
-    "y": 1547,
+    "x": 699,
+    "y": 1652,
     "w": 15,
     "h": 20
    },
@@ -10342,8 +11382,8 @@
   },
   "fx_smoke_1": {
    "frame": {
-    "x": 69,
-    "y": 1547,
+    "x": 715,
+    "y": 1652,
     "w": 25,
     "h": 20
    },
@@ -10362,8 +11402,8 @@
   },
   "trade_box": {
    "frame": {
-    "x": 95,
-    "y": 1547,
+    "x": 741,
+    "y": 1652,
     "w": 18,
     "h": 20
    },
@@ -10382,8 +11422,8 @@
   },
   "item_svk": {
    "frame": {
-    "x": 114,
-    "y": 1547,
+    "x": 760,
+    "y": 1652,
     "w": 81,
     "h": 19
    },
@@ -10402,8 +11442,8 @@
   },
   "med_gurney": {
    "frame": {
-    "x": 196,
-    "y": 1547,
+    "x": 842,
+    "y": 1652,
     "w": 40,
     "h": 19
    },
@@ -10422,8 +11462,8 @@
   },
   "deco_landscape": {
    "frame": {
-    "x": 237,
-    "y": 1547,
+    "x": 883,
+    "y": 1652,
     "w": 19,
     "h": 18
    },
@@ -10442,8 +11482,8 @@
   },
   "deco_oxygen": {
    "frame": {
-    "x": 257,
-    "y": 1547,
+    "x": 903,
+    "y": 1652,
     "w": 7,
     "h": 18
    },
@@ -10462,8 +11502,8 @@
   },
   "deco_wrench": {
    "frame": {
-    "x": 265,
-    "y": 1547,
+    "x": 911,
+    "y": 1652,
     "w": 10,
     "h": 18
    },
@@ -10482,8 +11522,8 @@
   },
   "item_vektor": {
    "frame": {
-    "x": 276,
-    "y": 1547,
+    "x": 922,
+    "y": 1652,
     "w": 55,
     "h": 18
    },
@@ -10502,8 +11542,8 @@
   },
   "ship_stool": {
    "frame": {
-    "x": 332,
-    "y": 1547,
+    "x": 978,
+    "y": 1652,
     "w": 13,
     "h": 18
    },
@@ -10522,8 +11562,8 @@
   },
   "deco_idol": {
    "frame": {
-    "x": 346,
-    "y": 1547,
+    "x": 992,
+    "y": 1652,
     "w": 11,
     "h": 17
    },
@@ -10542,8 +11582,8 @@
   },
   "deco_quartz": {
    "frame": {
-    "x": 358,
-    "y": 1547,
+    "x": 1004,
+    "y": 1652,
     "w": 17,
     "h": 17
    },
@@ -10562,8 +11602,8 @@
   },
   "fx_smoke_0": {
    "frame": {
-    "x": 376,
-    "y": 1547,
+    "x": 0,
+    "y": 1679,
     "w": 20,
     "h": 17
    },
@@ -10582,8 +11622,8 @@
   },
   "fx_smoke_2": {
    "frame": {
-    "x": 397,
-    "y": 1547,
+    "x": 21,
+    "y": 1679,
     "w": 26,
     "h": 17
    },
@@ -10602,8 +11642,8 @@
   },
   "item_akr74": {
    "frame": {
-    "x": 424,
-    "y": 1547,
+    "x": 48,
+    "y": 1679,
     "w": 58,
     "h": 17
    },
@@ -10622,8 +11662,8 @@
   },
   "item_mosin": {
    "frame": {
-    "x": 483,
-    "y": 1547,
+    "x": 107,
+    "y": 1679,
     "w": 77,
     "h": 17
    },
@@ -10642,8 +11682,8 @@
   },
   "deco_crystal": {
    "frame": {
-    "x": 561,
-    "y": 1547,
+    "x": 185,
+    "y": 1679,
     "w": 13,
     "h": 16
    },
@@ -10662,8 +11702,8 @@
   },
   "deco_fungus": {
    "frame": {
-    "x": 575,
-    "y": 1547,
+    "x": 199,
+    "y": 1679,
     "w": 11,
     "h": 16
    },
@@ -10682,8 +11722,8 @@
   },
   "deco_multitool": {
    "frame": {
-    "x": 587,
-    "y": 1547,
+    "x": 211,
+    "y": 1679,
     "w": 14,
     "h": 16
    },
@@ -10702,8 +11742,8 @@
   },
   "deco_ore": {
    "frame": {
-    "x": 602,
-    "y": 1547,
+    "x": 226,
+    "y": 1679,
     "w": 18,
     "h": 16
    },
@@ -10722,8 +11762,8 @@
   },
   "deco_vodka": {
    "frame": {
-    "x": 621,
-    "y": 1547,
+    "x": 245,
+    "y": 1679,
     "w": 6,
     "h": 16
    },
@@ -10742,8 +11782,8 @@
   },
   "item_ppd41": {
    "frame": {
-    "x": 628,
-    "y": 1547,
+    "x": 252,
+    "y": 1679,
     "w": 55,
     "h": 16
    },
@@ -10762,8 +11802,8 @@
   },
   "deco_beast_skull": {
    "frame": {
-    "x": 684,
-    "y": 1547,
+    "x": 308,
+    "y": 1679,
     "w": 16,
     "h": 15
    },
@@ -10782,8 +11822,8 @@
   },
   "deco_chalice": {
    "frame": {
-    "x": 701,
-    "y": 1547,
+    "x": 325,
+    "y": 1679,
     "w": 8,
     "h": 15
    },
@@ -10802,8 +11842,8 @@
   },
   "deco_reagent": {
    "frame": {
-    "x": 710,
-    "y": 1547,
+    "x": 334,
+    "y": 1679,
     "w": 7,
     "h": 15
    },
@@ -10822,8 +11862,8 @@
   },
   "deco_rustcap": {
    "frame": {
-    "x": 718,
-    "y": 1547,
+    "x": 342,
+    "y": 1679,
     "w": 14,
     "h": 15
    },
@@ -10842,8 +11882,8 @@
   },
   "deco_egg": {
    "frame": {
-    "x": 733,
-    "y": 1547,
+    "x": 357,
+    "y": 1679,
     "w": 14,
     "h": 14
    },
@@ -10862,8 +11902,8 @@
   },
   "deco_radio": {
    "frame": {
-    "x": 748,
-    "y": 1547,
+    "x": 372,
+    "y": 1679,
     "w": 12,
     "h": 14
    },
@@ -10882,8 +11922,8 @@
   },
   "deco_tablet": {
    "frame": {
-    "x": 761,
-    "y": 1547,
+    "x": 385,
+    "y": 1679,
     "w": 9,
     "h": 14
    },
@@ -10902,8 +11942,8 @@
   },
   "item_pm9": {
    "frame": {
-    "x": 771,
-    "y": 1547,
+    "x": 395,
+    "y": 1679,
     "w": 22,
     "h": 14
    },
@@ -10922,8 +11962,8 @@
   },
   "item_sp5": {
    "frame": {
-    "x": 794,
-    "y": 1547,
+    "x": 418,
+    "y": 1679,
     "w": 19,
     "h": 14
    },
@@ -10942,8 +11982,8 @@
   },
   "deco_antibiotics": {
    "frame": {
-    "x": 814,
-    "y": 1547,
+    "x": 438,
+    "y": 1679,
     "w": 7,
     "h": 13
    },
@@ -10962,8 +12002,8 @@
   },
   "deco_bone": {
    "frame": {
-    "x": 822,
-    "y": 1547,
+    "x": 446,
+    "y": 1679,
     "w": 16,
     "h": 13
    },
@@ -10982,8 +12022,8 @@
   },
   "deco_compass": {
    "frame": {
-    "x": 839,
-    "y": 1547,
+    "x": 463,
+    "y": 1679,
     "w": 8,
     "h": 13
    },
@@ -11002,8 +12042,8 @@
   },
   "deco_crown": {
    "frame": {
-    "x": 848,
-    "y": 1547,
+    "x": 472,
+    "y": 1679,
     "w": 13,
     "h": 13
    },
@@ -11022,8 +12062,8 @@
   },
   "deco_geiger": {
    "frame": {
-    "x": 862,
-    "y": 1547,
+    "x": 486,
+    "y": 1679,
     "w": 13,
     "h": 13
    },
@@ -11042,8 +12082,8 @@
   },
   "deco_jewelbox": {
    "frame": {
-    "x": 876,
-    "y": 1547,
+    "x": 500,
+    "y": 1679,
     "w": 14,
     "h": 13
    },
@@ -11062,8 +12102,8 @@
   },
   "item_skv": {
    "frame": {
-    "x": 891,
-    "y": 1547,
+    "x": 515,
+    "y": 1679,
     "w": 60,
     "h": 13
    },
@@ -11082,8 +12122,8 @@
   },
   "item_toz12": {
    "frame": {
-    "x": 952,
-    "y": 1547,
+    "x": 576,
+    "y": 1679,
     "w": 62,
     "h": 13
    },
@@ -11102,8 +12142,8 @@
   },
   "deco_camera": {
    "frame": {
-    "x": 0,
-    "y": 1569,
+    "x": 639,
+    "y": 1679,
     "w": 13,
     "h": 12
    },
@@ -11122,8 +12162,8 @@
   },
   "deco_milk": {
    "frame": {
-    "x": 14,
-    "y": 1569,
+    "x": 653,
+    "y": 1679,
     "w": 7,
     "h": 12
    },
@@ -11142,8 +12182,8 @@
   },
   "deco_skull": {
    "frame": {
-    "x": 22,
-    "y": 1569,
+    "x": 661,
+    "y": 1679,
     "w": 13,
     "h": 12
    },
@@ -11162,8 +12202,8 @@
   },
   "deco_stew": {
    "frame": {
-    "x": 36,
-    "y": 1569,
+    "x": 675,
+    "y": 1679,
     "w": 8,
     "h": 12
    },
@@ -11182,8 +12222,8 @@
   },
   "deco_coin": {
    "frame": {
-    "x": 45,
-    "y": 1569,
+    "x": 684,
+    "y": 1679,
     "w": 9,
     "h": 11
    },
@@ -11202,8 +12242,8 @@
   },
   "deco_rations": {
    "frame": {
-    "x": 55,
-    "y": 1569,
+    "x": 694,
+    "y": 1679,
     "w": 10,
     "h": 11
    },
@@ -11222,8 +12262,8 @@
   },
   "deco_tape": {
    "frame": {
-    "x": 66,
-    "y": 1569,
+    "x": 705,
+    "y": 1679,
     "w": 13,
     "h": 11
    },
@@ -11242,8 +12282,8 @@
   },
   "item_obrez": {
    "frame": {
-    "x": 80,
-    "y": 1569,
+    "x": 719,
+    "y": 1679,
     "w": 31,
     "h": 11
    },
@@ -11262,8 +12302,8 @@
   },
   "deco_cigs": {
    "frame": {
-    "x": 112,
-    "y": 1569,
+    "x": 751,
+    "y": 1679,
     "w": 6,
     "h": 10
    },
@@ -11282,8 +12322,8 @@
   },
   "fx_blood_1": {
    "frame": {
-    "x": 119,
-    "y": 1569,
+    "x": 758,
+    "y": 1679,
     "w": 21,
     "h": 10
    },
@@ -11302,8 +12342,8 @@
   },
   "fx_flash_0": {
    "frame": {
-    "x": 141,
-    "y": 1569,
+    "x": 780,
+    "y": 1679,
     "w": 10,
     "h": 8
    },
@@ -11322,8 +12362,8 @@
   },
   "fx_flash_2": {
    "frame": {
-    "x": 152,
-    "y": 1569,
+    "x": 791,
+    "y": 1679,
     "w": 12,
     "h": 8
    },
@@ -11342,8 +12382,8 @@
   },
   "fx_blood_0": {
    "frame": {
-    "x": 165,
-    "y": 1569,
+    "x": 804,
+    "y": 1679,
     "w": 13,
     "h": 7
    },
@@ -11362,8 +12402,8 @@
   },
   "fx_flash_1": {
    "frame": {
-    "x": 179,
-    "y": 1569,
+    "x": 818,
+    "y": 1679,
     "w": 14,
     "h": 7
    },
@@ -11629,6 +12669,25 @@
   "scav_dead": [
    "scav_dead_0"
   ],
+  "scav_b_walk": [
+   "scav_b_walk_0",
+   "scav_b_walk_1",
+   "scav_b_walk_2",
+   "scav_b_walk_3",
+   "scav_b_walk_4",
+   "scav_b_walk_5"
+  ],
+  "scav_b_walk_flash": [
+   "scav_b_walk_flash_0",
+   "scav_b_walk_flash_1",
+   "scav_b_walk_flash_2",
+   "scav_b_walk_flash_3",
+   "scav_b_walk_flash_4",
+   "scav_b_walk_flash_5"
+  ],
+  "scav_b_dead": [
+   "scav_b_dead_0"
+  ],
   "raider_walk": [
    "raider_walk_0",
    "raider_walk_1",
@@ -11647,6 +12706,25 @@
   ],
   "raider_dead": [
    "raider_dead_0"
+  ],
+  "raider_b_walk": [
+   "raider_b_walk_0",
+   "raider_b_walk_1",
+   "raider_b_walk_2",
+   "raider_b_walk_3",
+   "raider_b_walk_4",
+   "raider_b_walk_5"
+  ],
+  "raider_b_walk_flash": [
+   "raider_b_walk_flash_0",
+   "raider_b_walk_flash_1",
+   "raider_b_walk_flash_2",
+   "raider_b_walk_flash_3",
+   "raider_b_walk_flash_4",
+   "raider_b_walk_flash_5"
+  ],
+  "raider_b_dead": [
+   "raider_b_dead_0"
   ],
   "soldier_walk": [
    "soldier_walk_0",
@@ -11667,6 +12745,25 @@
   "soldier_dead": [
    "soldier_dead_0"
   ],
+  "soldier_b_walk": [
+   "soldier_b_walk_0",
+   "soldier_b_walk_1",
+   "soldier_b_walk_2",
+   "soldier_b_walk_3",
+   "soldier_b_walk_4",
+   "soldier_b_walk_5"
+  ],
+  "soldier_b_walk_flash": [
+   "soldier_b_walk_flash_0",
+   "soldier_b_walk_flash_1",
+   "soldier_b_walk_flash_2",
+   "soldier_b_walk_flash_3",
+   "soldier_b_walk_flash_4",
+   "soldier_b_walk_flash_5"
+  ],
+  "soldier_b_dead": [
+   "soldier_b_dead_0"
+  ],
   "security_walk": [
    "security_walk_0",
    "security_walk_1",
@@ -11685,6 +12782,25 @@
   ],
   "security_dead": [
    "security_dead_0"
+  ],
+  "security_b_walk": [
+   "security_b_walk_0",
+   "security_b_walk_1",
+   "security_b_walk_2",
+   "security_b_walk_3",
+   "security_b_walk_4",
+   "security_b_walk_5"
+  ],
+  "security_b_walk_flash": [
+   "security_b_walk_flash_0",
+   "security_b_walk_flash_1",
+   "security_b_walk_flash_2",
+   "security_b_walk_flash_3",
+   "security_b_walk_flash_4",
+   "security_b_walk_flash_5"
+  ],
+  "security_b_dead": [
+   "security_b_dead_0"
   ],
   "fx_flash": [
    "fx_flash_0",

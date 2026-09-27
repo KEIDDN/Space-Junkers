@@ -1,4 +1,4 @@
-import { anim } from '../../engine/assets';
+import { anim, hasAnim } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import type { EnemyDef } from '../../data/enemies';
 import { ITEMS, defaultAmmo, type ArmorDef, type WeaponItemDef } from '../../data/items';
@@ -107,10 +107,12 @@ export class Enemy implements Hittable {
     this.x = x;
     this.y = y;
     this.hp = def.hp;
+    // Each faction has two looks; a squad is never a row of clones.
+    const look = Math.random() < 0.45 && hasAnim(`${def.anim}_b_walk`) ? `${def.anim}_b` : def.anim;
     this.view = new ActorView({
-      walk: anim(`${def.anim}_walk`),
-      flash: anim(`${def.anim}_walk_flash`),
-      death: anim(`${def.anim}_dead`),
+      walk: anim(`${look}_walk`),
+      flash: anim(`${look}_walk_flash`),
+      death: anim(`${look}_dead`),
     });
     this.weaponItem = def.weapons[Math.floor(Math.random() * def.weapons.length)];
     const gun = WEAPONS[(ITEMS[this.weaponItem] as WeaponItemDef).weapon];
@@ -237,7 +239,8 @@ export class Enemy implements Hittable {
     this.ky += dirY * knockback;
     this.view.hitFlash();
     this.view.flinch(dirX);
-    this.stagger = blocked ? 0.08 : 0.16;
+    // Heavier hits knock them off their aim for longer: a rifle round rocks them, a pistol stings.
+    this.stagger = Math.max(this.stagger, blocked ? 0.08 : Math.min(0.42, 0.12 + amount / 150));
     this.edge = 1;
     this.suppression = Math.min(1, this.suppression + 0.3);
     if (this.hp <= 0) {
