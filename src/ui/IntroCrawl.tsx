@@ -45,24 +45,28 @@ export function IntroCrawl({ onDone }: { onDone: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [line, chars]);
 
+  /** Finish the line being typed, or go on to the next. */
+  const advance = () => {
+    if (line >= INTRO.length) return finish();
+    if (chars < INTRO[line].length) setChars(INTRO[line].length);
+    else {
+      setLine((l) => l + 1);
+      setChars(0);
+    }
+  };
+
   useEffect(() => {
     const skip = (e: KeyboardEvent) => {
       if (e.code === 'Escape') finish();
-      else if (line < INTRO.length) {
-        if (chars < INTRO[line].length) setChars(INTRO[line].length);
-        else {
-          setLine((l) => l + 1);
-          setChars(0);
-        }
-      }
+      else advance();
     };
     window.addEventListener('keydown', skip);
     return () => window.removeEventListener('keydown', skip);
   });
 
   return (
-    <div className="screen intro-crawl" data-nav-scope="intro" onClick={() => finish()}>
-      <div className="intro-lines">
+    <div className="screen intro-crawl" data-nav-scope="intro" onClick={advance}>
+      <div className="intro-lines" data-nav="" data-nav-default="">
         {INTRO.slice(0, line + 1).map((l, i) => (
           <div key={i} className={`intro-line ${i === INTRO.length - 1 ? 'last' : ''}`}>
             {i < line ? l : l.slice(0, chars)}
@@ -70,7 +74,7 @@ export function IntroCrawl({ onDone }: { onDone: () => void }) {
           </div>
         ))}
       </div>
-      <button className="intro-skip link" data-nav-default onClick={(e) => { e.stopPropagation(); finish(); }}>SKIP <Key a="back" /></button>
+      <button className="intro-skip link" onClick={(e) => { e.stopPropagation(); finish(); }}>SKIP <Key a="back" /></button>
     </div>
   );
 }

@@ -84,6 +84,10 @@ const GLYPHS: Record<string, string[]> = {
   ' ': ['..', '..', '..', '..', '..'],
 };
 
+/** Every letter the stencil font can cut. */
+export const SIGN_LETTERS: ReadonlySet<string> = new Set(Object.keys(GLYPHS));
+
+
 function textWidth(text: string): number {
   let w = 0;
   for (const ch of text) w += (GLYPHS[ch]?.[0].length ?? 3) + 1;
