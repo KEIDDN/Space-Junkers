@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Operator } from '../core/profile';
 import { audio } from '../engine/audio';
 import { useProfile } from '../state/profileStore';
-import { useSettings } from '../state/settingsStore';
 import { AtlasSprite } from './AtlasSprite';
+import { SettingsRows } from './Settings';
 
 const OPERATORS: { id: Operator; callsign: string; portrait: string; line: string }[] = [
   { id: 'm', callsign: 'VOLK', portrait: 'portrait_m', line: 'Ex-miner. Doesn\'t talk about the collapse at Shaft 9.' },
@@ -47,8 +47,6 @@ export function TitleScreen({ onContinue, onRange }: Props) {
   const stats = useProfile((s) => s.stats);
   const credits = useProfile((s) => s.credits);
   const resetProfile = useProfile((s) => s.resetProfile);
-  const volume = useSettings((s) => s.volume);
-  const setVolume = useSettings((s) => s.setVolume);
   const [picking, setPicking] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
 
@@ -74,7 +72,7 @@ export function TitleScreen({ onContinue, onRange }: Props) {
           <div className="title-menu">
             {started && (
               <button className="menu-btn big" onPointerEnter={hover} onClick={() => { audio.ui('click'); onContinue(); }}>
-                CONTINUE <span className="dim">· DAY {useProfile.getState().day} · {credits.toLocaleString()} CR · {stats.extractions} EXTRACTIONS</span>
+                CONTINUE <span className="dim">· DAY {useProfile.getState().day} · {credits.toLocaleString()} CR · {stats.extractions} EXTRACTION{stats.extractions === 1 ? '' : 'S'}</span>
               </button>
             )}
             <button className="menu-btn big" onPointerEnter={hover} onClick={() => {
@@ -85,11 +83,7 @@ export function TitleScreen({ onContinue, onRange }: Props) {
               {confirmWipe ? 'NEW GAME: THIS ERASES YOUR SAVE. CLICK AGAIN' : 'NEW GAME'}
             </button>
             <button className="menu-btn" onPointerEnter={hover} onClick={() => { audio.ui('click'); onRange(); }}>GUNPLAY RANGE</button>
-            <label className="setting">
-              <span>VOLUME</span>
-              <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => { setVolume(Number(e.target.value)); audio.setMasterVolume(Number(e.target.value)); }} />
-              <span className="dim">{Math.round(volume * 100)}</span>
-            </label>
+            <SettingsRows />
           </div>
         ) : (
           <div className="title-pick">

@@ -11,6 +11,7 @@ import { facilityName } from '../data/themes';
 import { Hud } from './Hud';
 import { TacticalMap } from './TacticalMap';
 import { TerminalView } from './TerminalView';
+import { ControlsList, SettingsRows } from './Settings';
 import { RaidInventory } from './inventory/InventoryScreen';
 import { Results } from './Results';
 
@@ -35,19 +36,14 @@ export function settleRaid(status: 'extracted' | 'dead'): void {
 }
 
 function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onResume: () => void; onAbandon: () => void }) {
-  const volume = useSettings((s) => s.volume);
-  const setVolume = useSettings((s) => s.setVolume);
   const [confirm, setConfirm] = useState(false);
   return (
     <div className="pause-screen">
       <div className="panel pause-panel">
         <div className="panel-title">SIGNAL HOLD <span className="dim">// PAUSED</span></div>
         <button className="menu-btn" onClick={onResume} onPointerEnter={() => audio.ui('hover')}>RESUME</button>
-        <label className="setting">
-          <span>VOLUME</span>
-          <input type="range" min={0} max={1} step={0.05} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
-          <span className="dim">{Math.round(volume * 100)}</span>
-        </label>
+        <SettingsRows />
+        <ControlsList />
         {!confirm ? (
           <button className="menu-btn danger" onClick={() => { audio.ui('click'); setConfirm(true); }} onPointerEnter={() => audio.ui('hover')}>
             {facility ? 'ABANDON RAID' : 'LEAVE RANGE'}
@@ -93,6 +89,11 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
     gameRef.current?.setVolume(volume);
     audio.setMasterVolume(volume);
   }, [volume]);
+
+  const shake = useSettings((s) => s.shake);
+  useEffect(() => {
+    gameRef.current?.setShake(shake);
+  }, [shake]);
 
   useEffect(() => {
     if (gameRef.current) gameRef.current.paused = paused;

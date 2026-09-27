@@ -161,6 +161,24 @@ function Feed() {
   );
 }
 
+/** First raid only: the keys that matter, for half a minute. */
+function FirstRaidHint() {
+  const first = useProfile((s) => s.stats.raids <= 1);
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const id = window.setTimeout(() => setShow(false), 30000);
+    return () => window.clearTimeout(id);
+  }, []);
+  if (!first || !show) return null;
+  return (
+    <div className="hud-hint crt-text">
+      <div><b>WASD</b> MOVE · <b>SHIFT</b> SPRINT · <b>C</b> SNEAK · <b>F</b> FLASHLIGHT · <b>R</b> RELOAD</div>
+      <div><b>E</b> SEARCH / USE · <b>TAB</b> BAG · <b>M</b> MAP · <b>3–6</b> MEDS · <b>ESC</b> PAUSE</div>
+      <div className="dim">Find the shuttle pad or the lift. Loot is only yours once you're out.</div>
+    </div>
+  );
+}
+
 export function Hud() {
   const hostiles = useHud((s) => s.hostiles);
   const dead = useHud((s) => s.dead);
@@ -214,6 +232,7 @@ export function Hud() {
       )}
 
       {exfil && <div className="hud-exfil crt-text">{exfil}</div>}
+      {facility && !inventoryOpen && countdown === null && <FirstRaidHint />}
       <Feed />
 
       {countdown !== null && !dead && (

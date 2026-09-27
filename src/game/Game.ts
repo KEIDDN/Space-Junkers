@@ -18,6 +18,7 @@ import type { Operator } from '../core/profile';
 import { useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
 import { syncHud } from '../state/hudStore';
+import { useSettings } from '../state/settingsStore';
 import { Enemy } from './ai/Enemy';
 import { Grenades, fragDamage } from './combat/grenades';
 import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
@@ -177,6 +178,10 @@ export class Game {
     if (e?.alive) this.onBulletActor({ dx: 1, dy: 0, damage: 999, pen: 9, knockback: 50 } as Bullet, e, e.x, e.y, false);
   }
 
+  setShake(v: number): void {
+    if (this.camera) this.camera.shakeScale = v;
+  }
+
   setVolume(v: number): void {
     this.audio.volume = v;
     this.audio.setMasterVolume(v);
@@ -235,6 +240,7 @@ export class Game {
     this.surveyTimer = 0;
     this.terminalAt = null;
     this.camera = new Camera(this.map.pixelWidth, this.map.pixelHeight);
+    this.camera.shakeScale = useSettings.getState().shake;
     const map = this.map;
     this.audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
     this.audio.startAmbience('facility');

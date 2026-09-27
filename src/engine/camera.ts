@@ -32,9 +32,12 @@ export class Camera {
     this.y = y;
   }
 
+  /** Player preference: how strongly shake is felt (0 = never). */
+  shakeScale = 1;
+
   /** Add screen shake. 0..1, stacks up to 1. */
   shake(amount: number): void {
-    this.trauma = Math.min(1, this.trauma + amount);
+    this.trauma = Math.min(1, this.trauma + amount * this.shakeScale);
   }
 
   /** Push the view in a direction (e.g. opposite of a gunshot). */

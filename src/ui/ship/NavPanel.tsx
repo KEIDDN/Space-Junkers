@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DESTINATIONS, DESTINATION } from '../../data/destinations';
-import { travelCost } from '../../core/upgrades';
+import { jumpCost } from '../../core/upgrades';
 import { audio } from '../../engine/audio';
 import { useProfile } from '../../state/profileStore';
 import { shipActions } from '../../state/shipActions';
@@ -26,7 +26,7 @@ export function NavPanel() {
   const d = DESTINATION[sel];
   const isUnlocked = unlocked.includes(sel);
   const here = course?.destination === sel;
-  const cost = travelCost({ upgrades }, d.cost);
+  const { cost, onTab } = jumpCost({ upgrades, credits }, sel, d.cost);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -86,12 +86,18 @@ export function NavPanel() {
                 <div className="tt-row"><span>DANGER</span><Danger n={d.danger} /></div>
                 <div className="tt-row"><span>SALVAGE</span><span>{d.loot}</span></div>
                 <div className="tt-row"><span>HOSTILES</span><span>{d.hostiles}</span></div>
-                <div className="tt-row"><span>FUEL</span><span className={credits < cost ? 'bad' : 'warn'}>{cost.toLocaleString()} CR{cost < d.cost ? ' (OVERHAULED)' : ''}</span></div>
+                <div className="tt-row">
+                  <span>FUEL</span>
+                  {onTab
+                    ? <span className="ok">ON FEDYA'S TAB</span>
+                    : <span className={credits < cost ? 'bad' : 'warn'}>{cost.toLocaleString()} CR{cost < d.cost ? ' (OVERHAULED)' : ''}</span>}
+                </div>
+                {onTab && <div className="dim small">"You're broke, kid. Tikhaya's close. Pay me when you're not."</div>}
                 {here ? (
                   <div className="ok nav-status">IN ORBIT. THE AIRLOCK IS READY.</div>
                 ) : (
                   <button className="deploy" onClick={jump} disabled={credits < cost}>
-                    [ SET COURSE · {cost.toLocaleString()} CR ]
+                    [ SET COURSE · {onTab ? 'ON THE TAB' : `${cost.toLocaleString()} CR`} ]
                   </button>
                 )}
                 {error && <div className="bad small">{error}</div>}

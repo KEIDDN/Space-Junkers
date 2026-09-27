@@ -3,7 +3,7 @@ import { ITEMS } from '../data/items';
 import { UPGRADE, UPGRADES } from '../data/upgrades';
 import { addToGrid, createItem, findInGrid } from './inventory';
 import { newProfile, STASH_BASE_ROWS, type Profile } from './profile';
-import { install, repair, repairCost, travelCost, upgradeStatus } from './upgrades';
+import { install, jumpCost, repair, repairCost, travelCost, upgradeStatus } from './upgrades';
 
 function give(p: Profile, id: string, n = 1): Profile {
   let stash = p.stash;
@@ -50,5 +50,14 @@ describe('upgrades', () => {
     if (!r.ok) return;
     expect(findInGrid(r.profile.stash, vest.uid)!.item.dur).toBe(70);
     expect(r.profile.credits).toBe(10000 - cost);
+  });
+});
+
+describe('jumpCost', () => {
+  it('flies a broke operator home for free, and only home', () => {
+    expect(jumpCost({ upgrades: [], credits: 100 }, 'tikhaya', 250)).toEqual({ cost: 0, onTab: true });
+    expect(jumpCost({ upgrades: [], credits: 100 }, 'merzlota', 900)).toEqual({ cost: 900, onTab: false });
+    expect(jumpCost({ upgrades: [], credits: 5000 }, 'tikhaya', 250)).toEqual({ cost: 250, onTab: false });
+    expect(jumpCost({ upgrades: ['reactor'], credits: 200 }, 'tikhaya', 250)).toEqual({ cost: 175, onTab: false });
   });
 });

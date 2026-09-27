@@ -2,7 +2,7 @@ import type { CrewId } from '../data/crew';
 import { DESTINATION } from '../data/destinations';
 import { buy, sell } from '../core/economy';
 import { accept, turnIn } from '../core/quests';
-import { install, repair, travelCost } from '../core/upgrades';
+import { install, repair, jumpCost } from '../core/upgrades';
 import { audio } from '../engine/audio';
 import { randomSeed } from '../engine/rng';
 import { getProfile, useProfile } from './profileStore';
@@ -47,7 +47,7 @@ export const shipActions = {
     const d = DESTINATION[destination];
     if (!d || !p.destinations.includes(destination)) return { ok: false, error: 'No coordinates for that.' };
     if (p.course?.destination === destination) return { ok: false, error: 'Already there.' };
-    const cost = travelCost(p, d.cost);
+    const { cost } = jumpCost(p, destination, d.cost);
     if (p.credits < cost) return { ok: false, error: 'Not enough Credits for fuel.' };
     useProfile.getState().apply({ credits: p.credits - cost, course: { destination, seed: randomSeed() } });
     shipUi.patch({ jumping: true });

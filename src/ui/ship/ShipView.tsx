@@ -66,7 +66,8 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
     const scene = new ShipScene(operator, lastPos.current);
     void scene.init(hostRef.current!).catch((err) => console.error('Ship init failed', err));
     return () => {
-      lastPos.current = scene.position;
+      // A scene torn down before it was built (StrictMode, a fast rebuild) has no position to keep.
+      lastPos.current = scene.position ?? lastPos.current;
       scene.destroy();
     };
   }, [operator, upgrades]);

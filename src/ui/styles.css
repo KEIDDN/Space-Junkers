@@ -238,8 +238,9 @@ button { font-family: var(--mono); }
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   background: rgba(4, 4, 6, 0.72); line-height: 1.3; z-index: 20;
 }
-.pause-panel { width: 340px; display: flex; flex-direction: column; gap: 10px; }
+.pause-panel { width: 440px; display: flex; flex-direction: column; gap: 10px; }
 .setting { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.setting > span:first-child { min-width: 104px; }
 .setting input { flex: 1; accent-color: var(--warn); }
 .confirm { display: flex; flex-direction: column; gap: 8px; }
 .confirm-row { display: flex; gap: 8px; }
@@ -647,3 +648,18 @@ button { font-family: var(--mono); }
 .term-line { margin: 4px 0; min-height: 1.2em; }
 .term-cursor { animation: blink 0.6s steps(2) infinite; }
 .term-foot { margin-top: 10px; font-size: 11px; letter-spacing: 0.12em; color: rgba(125, 255, 154, 0.5); }
+
+/* ---------- Controls reference ---------- */
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; margin: 6px 0; font-size: 11px; }
+.controls-row { display: flex; gap: 8px; align-items: baseline; text-align: left; white-space: nowrap; }
+.controls-row .key {
+  min-width: 52px; color: var(--text); letter-spacing: 0.06em;
+  border: 1px solid var(--edge); padding: 0 4px; background: rgba(0, 0, 0, 0.3); text-align: center;
+}
+.hud-hint {
+  position: absolute; left: 50%; top: 104px; transform: translateX(-50%); text-align: center;
+  font-size: 12px; letter-spacing: 0.08em; color: var(--text); background: rgba(0, 0, 0, 0.45);
+  padding: 6px 12px; border: 1px solid var(--edge); animation: hint-fade 30s linear forwards;
+}
+.hud-hint b { color: var(--warn); font-weight: normal; }
+@keyframes hint-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }

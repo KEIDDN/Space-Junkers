@@ -120,6 +120,41 @@ function commit(ws: Workspace | null): boolean {
   return true;
 }
 
+/** Every instance the raid knows about: carried, in containers, on the ground. */
+function allItems(s: RaidState): ItemInstance[] {
+  const out = loadoutItems(s.loadout);
+  for (const g of Object.values(s.containers)) {
+    for (const p of g.items) {
+      out.push(p.item);
+      for (const q of p.item.contents?.items ?? []) out.push(q.item);
+    }
+  }
+  return out;
+}
+
+/**
+ * Run an inventory operation without laundering provenance: when something you brought is
+ * split, unloaded or merged, the resulting stacks count as brought too (never "found in raid").
+ */
+function keepProvenance(sources: (string | null)[], op: () => boolean): boolean {
+  const before = useRaid.getState();
+  if (!sources.some((u) => u && before.brought.includes(u))) return op();
+  const prev = new Map(allItems(before).map((i) => [i.uid, i.qty]));
+  const ok = op();
+  if (!ok) return ok;
+  const after = useRaid.getState();
+  const brought = new Set(after.brought);
+  let changed = false;
+  for (const it of allItems(after)) {
+    const q = prev.get(it.uid);
+    if (brought.has(it.uid) || (q !== undefined && it.qty <= q)) continue;
+    brought.add(it.uid);
+    changed = true;
+  }
+  if (changed) useRaid.setState({ brought: [...brought] });
+  return ok;
+}
+
 export const raid = {
   start(mode: RaidMode, seed: number, destination: string, loadout: Loadout): void {
     commands.length = 0;
@@ -212,23 +247,23 @@ export const raid = {
   // --- Inventory operations (UI) --------------------------------------------
 
   move(uid: string, to: Target): boolean {
-    return commit(moveItem(workspace(useRaid.getState()), uid, to));
+    return keepProvenance([uid], () => commit(moveItem(workspace(useRaid.getState()), uid, to)));
   },
 
   quickMove(uid: string, order: GridKey[], equip = false): boolean {
-    return commit(quickMove(workspace(useRaid.getState()), uid, order, equip));
+    return keepProvenance([uid], () => commit(quickMove(workspace(useRaid.getState()), uid, order, equip)));
   },
 
   split(uid: string, qty: number, to: { grid: GridKey; x: number; y: number }): boolean {
-    return commit(splitStack(workspace(useRaid.getState()), uid, qty, to, newUid()));
+    return keepProvenance([uid], () => commit(splitStack(workspace(useRaid.getState()), uid, qty, to, newUid())));
   },
 
   load(weaponUid: string, ammoUid: string): boolean {
-    return commit(loadWeapon(workspace(useRaid.getState()), weaponUid, ammoUid, newUid));
+    return keepProvenance([weaponUid, ammoUid], () => commit(loadWeapon(workspace(useRaid.getState()), weaponUid, ammoUid, newUid)));
   },
 
   unload(uid: string): boolean {
-    return commit(unloadWeapon(workspace(useRaid.getState()), uid, ['pockets', 'backpack'], newUid));
+    return keepProvenance([uid], () => commit(unloadWeapon(workspace(useRaid.getState()), uid, ['pockets', 'backpack'], newUid)));
   },
 
   /** Take an item out of the inventory entirely (dropping it on the ground). */
@@ -266,12 +301,19 @@ export const raid = {
     return r.taken;
   },
 
-  /** Put rounds/items into carried grids. Returns whatever didn't fit. */
-  give(item: ItemInstance): ItemInstance | null {
-    const s = useRaid.getState();
-    const r = loadoutAdd(s.loadout, item);
-    useRaid.setState({ loadout: r.loadout });
-    return r.rest;
+  /**
+   * Put rounds/items into carried grids. Returns whatever didn't fit.
+   * @param from the item they came out of (a weapon), whose provenance they keep.
+   */
+  give(item: ItemInstance, from: string | null = null): ItemInstance | null {
+    let rest: ItemInstance | null = null;
+    keepProvenance([from], () => {
+      const r = loadoutAdd(useRaid.getState().loadout, item);
+      useRaid.setState({ loadout: r.loadout });
+      rest = r.rest;
+      return true;
+    });
+    return rest;
   },
 
   /** Consume one charge/instance of a consumable. Pooled kits lose `drain` points instead. */
@@ -303,6 +345,11 @@ export const raid = {
     if (!it) return false;
     commands.push({ type: 'drop', item: it });
     return true;
+  },
+
+  /** Leave an item that isn't in the inventory (overflow) on the ground at the player's feet. */
+  dropItem(item: ItemInstance): void {
+    commands.push({ type: 'drop', item });
   },
 
   /** Use a consumable from the inventory. */

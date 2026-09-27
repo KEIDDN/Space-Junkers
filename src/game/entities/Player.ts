@@ -386,8 +386,11 @@ export class Player implements Hittable {
     if (!pick) return false;
     if (pick !== w.ammoId) {
       if (w.ammo > 0 && w.ammoId) {
-        const rest = raid.give(createItem(w.ammoId, { qty: w.ammo }));
-        if (rest) this.notice('NO ROOM FOR UNLOADED ROUNDS. DROPPED', 'warn');
+        const rest = raid.give(createItem(w.ammoId, { qty: w.ammo }), this.arms[this.current]?.uid ?? null);
+        if (rest) {
+          raid.dropItem(rest);
+          this.notice('NO ROOM FOR UNLOADED ROUNDS. DROPPED', 'warn');
+        }
       }
       w.ammo = 0;
       w.ammoId = pick;

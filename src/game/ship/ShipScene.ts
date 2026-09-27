@@ -47,6 +47,7 @@ export class ShipScene {
   private bobbers: { s: Sprite; y: number; t: number }[] = [];
   private px = 0;
   private py = 0;
+  private placed = false;
   private vx = 0;
   private vy = 0;
   private time = 0;
@@ -56,8 +57,9 @@ export class ShipScene {
   /** @param start where the operator stands (keeps position when the ship is rebuilt). */
   constructor(private operator: 'm' | 'f', private start?: { x: number; y: number }) {}
 
-  get position(): { x: number; y: number } {
-    return { x: this.px, y: this.py };
+  /** Where the operator stands, once the ship is built (null before that). */
+  get position(): { x: number; y: number } | null {
+    return this.placed ? { x: this.px, y: this.py } : null;
   }
 
   async init(host: HTMLElement): Promise<void> {
@@ -179,6 +181,7 @@ export class ShipScene {
     this.actors.addChild(this.player.container);
     this.px = this.start?.x ?? L.spawn.x;
     this.py = this.start?.y ?? L.spawn.y;
+    this.placed = true;
 
     this.lighting = new Lighting(this.app.renderer, map);
     audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));

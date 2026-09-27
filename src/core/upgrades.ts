@@ -55,6 +55,19 @@ export function travelCost(p: Pick<Profile, 'upgrades'>, base: number): number {
   return p.upgrades.includes('reactor') ? Math.round(base * 0.7) : base;
 }
 
+/** The home moon every operator can always get back to. */
+export const FALLBACK_DESTINATION = 'tikhaya';
+
+/**
+ * What a jump actually costs. Nobody is ever stranded: when you can't pay for the short
+ * hop to the home moon, Fedya flies you there on his tab.
+ */
+export function jumpCost(p: Pick<Profile, 'upgrades' | 'credits'>, destination: string, base: number): { cost: number; onTab: boolean } {
+  const cost = travelCost(p, base);
+  if (destination === FALLBACK_DESTINATION && p.credits < cost) return { cost: 0, onTab: true };
+  return { cost, onTab: false };
+}
+
 // ---------------------------------------------------------------------------
 // Armor repair at Molot's bench
 
