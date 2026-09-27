@@ -2,13 +2,16 @@
 """
 Space Junkers character pipeline.
 
-Characters are layered, hand-animated sprites from the Liberated Pixel Cup (LPC) and the
+Characters move with hand-animated bodies from the Liberated Pixel Cup (LPC) and the
 Universal LPC Spritesheet Character Generator (see ASSET_SOURCES.md for authors and
-licenses). Every layer (a body, a coat, a helmet, a pack) is drawn on the same 64x64
-grid for the same frames, so any combination stays aligned in every animation.
+licenses): bodies, clothes and armour, every layer on the same 64x64 grid for the same
+frames. Everything that gives a character its identity is drawn for this game in
+sj_heads.py: heads and faces at adult proportions, hair, helmets, hoods, masks, scarves,
+and the packs. They are placed on the neck of every LPC frame, so they move with it.
 
 This script
-  * recolours each layer onto the game's palette (worn olive, canvas, gunmetal, rust),
+  * recolours each LPC layer onto the game's palette (charcoal drab, canvas, gunmetal, rust),
+  * places the drawn heads, headgear and packs on every frame,
   * builds the animations the game needs from the LPC ones, including the gun-carrying
     walk: the torso of the LPC two-handed hold over the legs of the walk and run cycles,
   * packs one texture atlas of layer "sets": a base (body, head and clothes), hair, and
@@ -37,6 +40,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sj_heads as heads  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "Assets" / "LPC"
 OUT = ROOT / "public" / "assets"
@@ -56,6 +62,7 @@ RAMPS: dict[str, list[str]] = {
     "olive": ["#0e100c", "#1a1e16", "#282e22", "#384030", "#4c5641", "#657056"],
     "drab": ["#100e0b", "#1e1a15", "#2d271f", "#3f372b", "#554a3a", "#6f6350"],
     "khaki": ["#14110b", "#282218", "#403727", "#5a4f39", "#76694c", "#948764"],
+    "suit": ["#0b0b0a", "#161613", "#23221e", "#32302a", "#46433a", "#5e5a4e"],
     "worker": ["#0c0e12", "#181d25", "#252d39", "#34404f", "#4a5768", "#66758a"],
     "grey": ["#0c0d0f", "#191b1e", "#282b2f", "#3a3e43", "#52575d", "#70757a"],
     "black": ["#050607", "#0c0e10", "#14171a", "#1c2024", "#262b30", "#353c42"],
@@ -75,13 +82,8 @@ RAMPS: dict[str, list[str]] = {
 
 # Skin and hair use the LPC artists' own ramps (exact colour-for-colour remaps).
 LPC_SKIN_BASE = ["#271920", "#99423c", "#cc8665", "#e4a47c", "#f9d5ba", "#faece7"]
-SKIN = {
-    "light": ["#271920", "#8c4541", "#b88068", "#cf9c7f", "#e0bfa6", "#ead7cc"],
-    "olive": ["#271920", "#442725", "#7f4c31", "#ae6b3f", "#d38b59", "#e4a47c"],
-    "bronze": ["#1b120f", "#3b2419", "#613a26", "#865133", "#a86a43", "#c38657"],
-    "brown": ["#170f0d", "#2f1d16", "#4d2d20", "#6a3f2b", "#865238", "#a06a48"],
-    "black": ["#0d0908", "#1e1310", "#2f1e19", "#432b22", "#57392d", "#6e4a3b"],
-}
+# Body skin (necks, hands) follows the drawn heads' tones, so a face and its hands match.
+SKIN = {name: ["#1a1214", n, sh, b, hi, hi] for name, (hi, b, sh, n) in heads.SKIN.items()}
 LPC_HAIR_BASE = ["#260d14", "#6a1108", "#a42600", "#bf4000", "#e55600", "#ff8a00"]
 HAIR = {
     "black": ["#050404", "#0c0a0a", "#151212", "#211c1b", "#2f2927", "#403836"],
@@ -135,12 +137,14 @@ def fit(kind: str, male: str, thin: str | None = None, muscular: str | None = No
     return male
 
 
-def base_layers(kind: str, skin: str, head: str | None = None, eyes: str = "brown") -> list[dict]:
-    head = head or ("female" if kind == "female" else "male")
-    return [
-        L(body_path(kind), skin=skin),
-        L(f"head/heads/human/{head}", skin=skin, eyes=eyes),
-    ]
+def base_layers(kind: str, skin: str) -> list[dict]:
+    """The LPC body only: its head is replaced by a drawn one (sj_heads.py)."""
+    return [L(body_path(kind), skin=skin)]
+
+
+def D(*drawings: dict, skin: str = "light", hair: str = "darkbrown", **ink: str) -> dict:
+    """A drawn head stack (sj_heads.py) and the tones it is inked in."""
+    return {"stack": list(drawings), "pal": {**heads.tones(skin, hair), **ink}}
 
 
 def pants(kind: str, ramp: str) -> dict:
@@ -179,39 +183,44 @@ CREW = ["walk", "idle", "spellcast", "emote", "sit", "kneel"]
 
 
 def operator(kind: str) -> dict:
-    skin = "light" if kind == "male" else "olive"
+    # A salvage operator's padded coverall: charcoal drab, gloves, a worn belt. The face
+    # is drawn (sj_heads.py): Volk cropped and stubbled, Zorya with her hair knotted back
+    # and the red scarf.
+    if kind == "male":
+        head = D(heads.BARE_SHORT, heads.STUBBLE, skin="light", hair="darkbrown")
+    else:
+        head = D(heads.BARE_BUN, heads.SCARF, skin="olive", hair="brown")
     return {
         "body": kind,
         "anims": HOLD + UNARMED,
-        "layers": base_layers(kind, skin, eyes="grey" if kind == "male" else "brown")
-        + [pants(kind, "worker"), boots(kind), shirt(kind, "worker"), gloves(kind), belt(kind)],
+        "layers": base_layers(kind, "light" if kind == "male" else "olive")
+        + [pants(kind, "suit"), boots(kind), shirt(kind, "suit"), gloves(kind), belt(kind)],
+        "heads": [head],
     }
 
 
 SETS: dict[str, dict] = {
-    # --- Operators (the player). Hair is its own set so a helmet can hide it.
+    # --- Operators (the player). Headgear is drawn over the face and covers the hair.
     "op_m": operator("male"),
     "op_f": operator("female"),
-    "hair_op_m": {"body": "male", "anims": HOLD + UNARMED, "layers": [L("hair/buzzcut/adult", hair="darkbrown")]},
-    "hair_op_f": {"body": "female", "anims": HOLD + UNARMED, "layers": [L("hair/bangs_bun/adult", hair="brown")]},
 }
 
 # --- Equipment: one set per item and body. The game shows the set for what is worn.
 GEAR: dict[str, list[dict]] = {
     # Helmets
-    "respcap": [L("hat/cloth/bandana/adult", all="khaki"), L("facial/masks/plain/adult", all="grey")],
-    "k6helmet": [L("hat/helmet/kettle/adult", all="olivesteel")],
-    "zaslon": [L("hat/helmet/xeon/adult", all="steel", white="#7fe3e6")],
+    "respcap": [D(heads.RESPCAP)],
+    "k6helmet": [D(heads.K6)],
+    "zaslon": [D(heads.ZASLON)],
     # Body armour
     "vest_ps2": [L("torso/clothes/vest/male", all="khaki")],
     "vest_zhuk": [L("torso/armour/leather/male", warm="olive", neutral="steel")],
     "vest_granit": [L("torso/armour/plate/male", neutral="steel", warm="rust"),
                     L("shoulders/pauldrons/male", all="steel")],
-    # Backpacks
-    "sack": [L("backpack/backpack/{pack}", all="khaki")],
-    "daypack": [L("backpack/backpack/{pack}", all="olive"), L("backpack/straps/{pack}", all="black")],
-    "turist": [L("backpack/squarepack/{pack}", all="tan")],
-    "raidpack": [L("backpack/jetpack/{pack}", neutral="olivesteel", warm="rust")],
+    # Backpacks: drawn (sj_heads.py), each a size up from the last.
+    "sack": [{"pack": heads.SACK}],
+    "daypack": [{"pack": heads.RD54}],
+    "turist": [{"pack": heads.TURIST}],
+    "raidpack": [{"pack": heads.BETA7}],
 }
 # The female frame has no vest: soft armour is her leather cover, plate carriers are plate.
 GEAR_FEMALE: dict[str, list[dict]] = {
@@ -229,6 +238,8 @@ def gear_layers(item: str, kind: str) -> list[dict]:
     out = []
     src = GEAR_FEMALE.get(item, GEAR[item]) if kind == "female" else GEAR[item]
     for l in src:
+        if "stack" in l or "pack" in l:
+            continue
         path = l["path"].format(kind="female" if kind == "female" else "male", thin=thin, pack=pack)
         out.append({"path": path, "paint": l["paint"]})
     return out
@@ -236,73 +247,85 @@ def gear_layers(item: str, kind: str) -> list[dict]:
 
 for item in GEAR:
     for kind, suffix in (("male", "m"), ("female", "f")):
-        SETS[f"g_{item}_{suffix}"] = {"body": kind, "anims": HOLD + UNARMED, "layers": gear_layers(item, kind), "flash": True}
+        drawn = [l for l in GEAR[item] if "stack" in l]
+        packs = [l["pack"] for l in GEAR[item] if "pack" in l]
+        SETS[f"g_{item}_{suffix}"] = {"body": kind, "anims": HOLD + UNARMED, "layers": gear_layers(item, kind),
+                                      "heads": drawn, "pack": packs[0] if packs else None, "flash": True}
 
 # --- Enemy factions: the clothes they wear under whatever armour they carry. Two looks each.
 ENEMY_BASES: dict[str, dict] = {
-    # Rags, hoods and gas masks.
-    "scav_a": {"body": "male", "layers": base_layers("male", "bronze", eyes="dark") + [
+    # Scavengers: rags, a hood, a gas mask.
+    "scav_a": {"body": "male", "layers": base_layers("male", "bronze") + [
         pants("male", "drab"), boots("male", "leather"), shirt("male", "drab"), trench("leather")],
-        "head": [L("hat/cloth/hood/adult", all="drab"), L("facial/masks/plain/adult", all="grey")]},
-    "scav_b": {"body": "female", "layers": base_layers("female", "light", eyes="grey") + [
+        "face": D(heads.BARE_SHORT, heads.STUBBLE, skin="bronze", hair="black"),
+        "head": D(heads.HOOD, heads.GASMASK, A="#5a4f3d", a="#443b2d", b="#2f281f")},
+    "scav_b": {"body": "female", "layers": base_layers("female", "light") + [
         pants("female", "drab"), boots("female", "leather"), shirt("female", "khaki"), belt("female")],
-        "head": [L("hat/cloth/hood/adult", all="khaki"), L("facial/masks/plain/adult", all="black")]},
+        "face": D(heads.BARE_BUN, skin="light", hair="darkbrown"),
+        "head": D(heads.HOOD, heads.FACEWRAP, A="#6f6350", a="#554a3a", b="#3a3226", W="#1c1d1f", X="#2c2d30")},
     # Salvage gangs: red rags, bandanas, leather.
-    "raider_a": {"body": "male", "layers": base_layers("male", "olive", eyes="dark") + [
-        pants("male", "black"), boots("male"), shirt("male", "maroon"), jacket("leather"),
-        L("facial/masks/plain/adult", all="red")],
-        "head": [L("hat/cloth/bandana/adult", all="red")]},
-    "raider_b": {"body": "female", "layers": base_layers("female", "brown", eyes="dark") + [
+    "raider_a": {"body": "male", "layers": base_layers("male", "olive") + [
+        pants("male", "black"), boots("male"), shirt("male", "maroon"), jacket("leather")],
+        "face": D(heads.BARE_SHORT, heads.BANDANA_FACE, skin="olive", hair="black", W="#7a2117", X="#4d140e"),
+        "head": D(heads.BANDANA_CAP, W="#8f2619", X="#5a170f")},
+    "raider_b": {"body": "female", "layers": base_layers("female", "brown") + [
         pants("female", "black"), boots("female"), shirt("female", "red"),
         L("torso/armour/leather/female", all="black")],
-        "head": [L("hair/bangsshort/adult", hair="black"), L("hat/cloth/bandana/adult", all="red")]},
-    # Garrison: olive drab, webbing.
-    "soldier_a": {"body": "male", "layers": base_layers("male", "light", eyes="grey") + [
+        "face": D(heads.BARE_BUN, heads.BANDANA_FACE, skin="brown", hair="black", W="#7a2117", X="#4d140e"),
+        "head": D(heads.BANDANA_CAP, W="#2a2a2a", X="#161616")},
+    # Garrison: olive drab, a field cap with the star, an ushanka.
+    "soldier_a": {"body": "male", "layers": base_layers("male", "light") + [
         pants("male", "olive"), boots("male"), shirt("male", "olive"), belt("male", "olive"), gloves("male", "olive")],
-        "head": [L("hair/buzzcut/adult", hair="darkbrown")]},
-    "soldier_b": {"body": "male", "layers": base_layers("male", "bronze", eyes="dark") + [
-        pants("male", "olive"), boots("male"), jacket("olive"), belt("male", "leather"), gloves("male"),
-        L("beards/beard/trimmed", hair="black")],
-        "head": [L("hair/buzzcut/adult", hair="black")]},
-    # Corporate security: black, visored.
-    "security_a": {"body": "male", "layers": base_layers("male", "light", eyes="grey") + [
+        "face": D(heads.BARE_SHORT, skin="light", hair="darkbrown"),
+        "head": D(heads.PILOTKA)},
+    "soldier_b": {"body": "male", "layers": base_layers("male", "bronze") + [
+        pants("male", "olive"), boots("male"), jacket("olive"), belt("male", "leather"), gloves("male")],
+        "face": D(heads.BARE_SHORT, heads.BEARD, skin="bronze", hair="black"),
+        "head": D(heads.USHANKA)},
+    # Corporate security: black, balaclavas, lit goggles.
+    "security_a": {"body": "male", "layers": base_layers("male", "light") + [
         pants("male", "black"), boots("male"), shirt("male", "black"), gloves("male"), belt("male", "black")],
-        "head": [L("hair/buzzcut/adult", hair="grey")]},
-    "security_b": {"body": "female", "layers": base_layers("female", "light", eyes="grey") + [
+        "face": D(heads.BARE_SHORT, skin="light", hair="grey"),
+        "head": D(heads.BALACLAVA)},
+    "security_b": {"body": "female", "layers": base_layers("female", "light") + [
         pants("female", "black"), boots("female"), shirt("female", "black"), gloves("female"), belt("female", "black")],
-        "head": [L("hair/bangs_bun/adult", hair="black")]},
+        "face": D(heads.BARE_BUN, skin="light", hair="black"),
+        "head": D(heads.BALACLAVA)},
 }
 for name, spec in ENEMY_BASES.items():
-    SETS[f"en_{name}"] = {"body": spec["body"], "layers": spec["layers"], "anims": HOLD, "flash": True}
+    SETS[f"en_{name}"] = {"body": spec["body"], "layers": spec["layers"], "heads": [spec["face"]], "anims": HOLD, "flash": True}
     # What they wear on their heads is its own sheet: a helmet replaces it.
-    SETS[f"en_{name}_h"] = {"body": spec["body"], "layers": spec["head"], "anims": HOLD, "flash": True}
+    SETS[f"en_{name}_h"] = {"body": spec["body"], "layers": [], "heads": [spec["head"]], "anims": HOLD, "flash": True}
 
 # --- Crew of the Lastochka. Each keeps the identity of their portrait.
 CREW_SETS: dict[str, dict] = {
-    # Red hood, face wrapped, a pack of other people's goods.
-    "smuggler": {"body": "male", "layers": base_layers("male", "olive", eyes="dark") + [
+    # Lis: red hood, face wrapped, amber goggles, a pack of other people's goods.
+    "smuggler": {"body": "male", "layers": base_layers("male", "olive") + [
         pants("male", "black"), boots("male", "leather"), shirt("male", "black"), trench("maroon"),
-        gloves("male", "leather"), L("backpack/squarepack/male", all="leather"),
-        L("hat/cloth/hood/adult", all="red"), L("facial/masks/plain/adult", all="black")]},
-    # White coat over dark clothes, hair in a bun, a red belt.
-    "medic": {"body": "female", "layers": base_layers("female", "light", eyes="brown") + [
+        gloves("male", "leather"), L("backpack/squarepack/male", all="leather")],
+        "heads": [D(heads.BARE_SHORT, heads.HOOD, heads.FACEWRAP, heads.GOGGLES_SLIT, skin="olive", hair="black",
+                    A="#8f2619", a="#6a1b12", b="#43110b", W="#141416", X="#232327", G="#d99a3a")]},
+    # Doc: white coat over dark clothes, hair in a knot, a red belt.
+    "medic": {"body": "female", "layers": base_layers("female", "light") + [
         pants("female", "black"), boots("female"), shirt("female", "black"),
-        L("torso/clothes/robe/female", all="white"), belt("female", "red"), L("hair/bangs_bun/adult", hair="brown")]},
-    # Bald, Black, heavy: a veteran in scarred plate and rust-red webbing, in shades.
-    "merc": {"body": "muscular", "layers": base_layers("muscular", "black", eyes="dark") + [
+        L("torso/clothes/robe/female", all="white"), belt("female", "red")],
+        "heads": [D(heads.BARE_BUN, heads.COLLAR, skin="light", hair="brown", W="#1d1f22", X="#2c2f33")]},
+    # Molot: bald, Black, heavy: a veteran in scarred plate and rust-red webbing, in shades.
+    "merc": {"body": "muscular", "layers": base_layers("muscular", "black") + [
         pants("muscular", "black"), boots("muscular"), L("torso/aprons/suspenders/male", all="rust"),
         L("arms/armour/plate/male", neutral="gunmetal", warm="rust"), L("shoulders/bauldron/male", all="gunmetal"),
-        L("shoulders/pauldrons/male", all="gunmetal"), gloves("muscular"),
-        L("beards/beard/5oclock_shadow", hair="black"), L("facial/glasses/shades/adult", all="black")]},
-    # An old trader in a canvas hood and coat, with a grey beard and round glasses.
-    "trader": {"body": "male", "layers": base_layers("male", "light", head="male_elderly", eyes="grey") + [
+        L("shoulders/pauldrons/male", all="gunmetal"), gloves("muscular")],
+        "heads": [D(heads.BARE_BALD, heads.SHADES, heads.SCARF, skin="black", hair="black")]},
+    # Fedya: an old trader in a canvas hood and coat, a grey beard, round red goggles.
+    "trader": {"body": "male", "layers": base_layers("male", "grey") + [
         pants("male", "drab"), boots("male", "leather"), shirt("male", "drab"), trench("khaki"),
-        L("backpack/backpack/male", all="leather"), L("beards/beard/winter", hair="grey"),
-        L("hat/cloth/hood/adult", all="tan"), L("facial/glasses/round/adult", neutral="steel", warm="amber")]},
-    # Young, dark hoodie with teal trim, dark hair.
-    "hacker": {"body": "male", "layers": base_layers("male", "light", eyes="grey") + [
-        pants("male", "black"), boots("male"), shirt("male", "teal"), jacket("black"),
-        L("hair/messy2/adult", hair="raven")]},
+        L("backpack/backpack/male", all="leather")],
+        "heads": [D(heads.BARE_SHORT, heads.BEARD, heads.HOOD, heads.GOGGLES_ROUND, skin="grey", hair="grey",
+                    A="#8c7a57", a="#6b5c40", b="#4a3f2c")]},
+    # Shura: young, a dark hoodie, dark hair with a dyed streak, headphones.
+    "hacker": {"body": "male", "layers": base_layers("male", "light") + [
+        pants("male", "black"), boots("male"), shirt("male", "teal"), jacket("black")],
+        "heads": [D(heads.BARE_MESSY, heads.HEADPHONES, skin="light", hair="raven", c="#2f9b9a")]},
 }
 for name, spec in CREW_SETS.items():
     SETS[f"crew_{name}"] = {**spec, "anims": CREW}
@@ -637,6 +660,235 @@ def composite(layers: list[dict], body: str, anim: str) -> list[list[np.ndarray]
     return out
 
 
+# ---------------------------------------------------------------------------
+# Drawn heads
+# ---------------------------------------------------------------------------
+
+LPC_HEAD = {"male": "head/heads/human/male", "muscular": "head/heads/human/male", "female": "head/heads/human/female"}
+VIEW = {0: "u", 1: "l", 2: "d", 3: "r"}
+_anchors: dict[tuple, list[list[tuple | None]]] = {}
+_head_masks: dict[tuple, list[list[np.ndarray]]] = {}
+
+
+def head_anchors(body: str, anim: str) -> list[list[tuple | None]]:
+    """Where the LPC head sits in each frame [dir][i]: (x0, x1, y0, y1), or None."""
+    key = (body, anim)
+    if key not in _anchors:
+        out = []
+        masks = []
+        for fs in composite([L(LPC_HEAD[body], skin="light")], body, anim):
+            row = []
+            mrow = []
+            for f in fs:
+                ys, xs = np.where(f[:, :, 3] > 0)
+                row.append((int(xs.min()), int(xs.max()), int(ys.min()), int(ys.max())) if len(ys) else None)
+                mrow.append(f[:, :, 3] > 0)
+            out.append(row)
+            masks.append(mrow)
+        _anchors[key] = out
+        _head_masks[key] = masks
+    return _anchors[key]
+
+
+# The LPC head's chin sits this far above the bottom of its box (the neck); the drawn neck
+# goes there. Sideways, the drawn head sits a pixel toward the face.
+NECK_SINK = 1
+SIDE_LEAN = 1
+
+
+_SKIN_RGB = {hexrgb(c) for ramp in SKIN.values() for c in ramp[1:]}
+COLLAR = (24, 23, 21)
+
+
+def hide_neck(frame: np.ndarray, body: str, anim: str, d: int, i: int) -> None:
+    """Bare skin the LPC head used to cover (the neck, the upper back in a fall) becomes collar."""
+    head_anchors(body, anim)
+    mask = _head_masks[(body, anim)][d][i] & (frame[:, :, 3] > 0)
+    ys, xs = np.where(mask)
+    for y, x in zip(ys, xs):
+        if tuple(int(v) for v in frame[y, x, :3]) in _SKIN_RGB:
+            frame[y, x, :3] = COLLAR
+
+
+def paste_heads(frame: np.ndarray, drawn: list[dict], body: str, anim: str, d: int, i: int) -> None:
+    box = head_anchors(body, anim)[d][i]
+    if box is None:
+        return
+    x0, x1, y0, y1 = box
+    view = VIEW[d]
+    flip = False
+    if anim == "die":
+        # Falling forward: the face goes down, then only the crown shows; the last frame
+        # lies with the head toward the camera.
+        view = "d" if i < 4 else "u"
+        flip = i == 5
+    for spec in drawn:
+        img = heads.stack_image(spec["stack"], view, spec["pal"])
+        if flip:
+            img = img[::-1]
+        c = heads.CANVAS
+        cx = (x0 + x1 + 1) // 2 + (SIDE_LEAN if view == "r" else -SIDE_LEAN if view == "l" else 0)
+        if anim == "die" and i >= 4:
+            # Lying down: centre the head on where the LPC one was.
+            neck = heads.NECK_Y if not flip else heads.CANVAS_H - 1 - heads.NECK_Y
+            top = (y0 + y1) // 2 - (neck - 5 if not flip else neck + 5)
+        else:
+            top = y1 - NECK_SINK - heads.NECK_Y
+        left = cx - c // 2
+        paste_at(frame, img, top, left)
+
+
+def paste_at(dst: np.ndarray, src: np.ndarray, top: int, left: int) -> None:
+    h, w = src.shape[:2]
+    for yy in range(h):
+        y = top + yy
+        if not 0 <= y < FRAME:
+            continue
+        for xx in range(w):
+            x = left + xx
+            if 0 <= x < FRAME and src[yy, xx, 3]:
+                dst[y, x] = src[yy, xx]
+
+
+def despeckle(f: np.ndarray) -> None:
+    """Drop lone pixels (strays in the source sheets, once hidden by the big LPC heads)."""
+    a = f[:, :, 3] > 0
+    n = np.zeros(a.shape, np.int8)
+    n[1:] += a[:-1]
+    n[:-1] += a[1:]
+    n[:, 1:] += a[:, :-1]
+    n[:, :-1] += a[:, 1:]
+    f[a & (n == 0)] = 0
+
+
+_head_sil: dict[str, np.ndarray] = {}
+
+
+def head_silhouette(view: str) -> np.ndarray:
+    """Where any bare head is, on the head canvas (packs stay behind it)."""
+    if view not in _head_sil:
+        v = "r" if view == "l" else view
+        m = np.zeros((heads.CANVAS_H, heads.CANVAS), bool)
+        for bare in (heads.BARE_SHORT, heads.BARE_BUN):
+            m |= heads.stack_image([bare], v, heads.tones("light"))[:, :, 3] > 0
+        _head_sil[view] = m[:, ::-1] if view == "l" else m
+    return _head_sil[view]
+
+
+_body_sil: dict[tuple, list[list[np.ndarray]]] = {}
+
+
+def body_silhouette(body: str, anim: str, d: int, i: int) -> np.ndarray:
+    key = (body, anim)
+    if key not in _body_sil:
+        shirt_path = fit(body, "torso/clothes/longsleeve/longsleeve/male", "torso/clothes/longsleeve/longsleeve/female")
+        dirs = composite([L(body_path(body), skin="light"), L(shirt_path, all="grey")], body, anim)
+        _body_sil[key] = [[f[:, :, 3] > 0 for f in fs] for fs in dirs]
+    return _body_sil[key][d][i]
+
+
+def clear_face(frame: np.ndarray, body: str, anim: str, d: int, i: int) -> None:
+    box = head_anchors(body, anim)[d][i]
+    if box is None or (anim == "die" and i >= 4):
+        return
+    x0, x1, y0, y1 = box
+    view = VIEW[d] if anim != "die" else "d"
+    cx = (x0 + x1 + 1) // 2 + (SIDE_LEAN if view == "r" else -SIDE_LEAN if view == "l" else 0)
+    top = y1 - NECK_SINK - heads.NECK_Y
+    left = cx - heads.CANVAS // 2
+    hs = head_silhouette(view)
+    for yy in range(heads.NECK_Y - 1):  # the neck itself goes under the collar
+        for xx in range(hs.shape[1]):
+            y, x = top + yy, left + xx
+            if hs[yy, xx] and 0 <= y < FRAME and 0 <= x < FRAME:
+                frame[y, x] = 0
+
+
+def paste_pack(frame: np.ndarray, pack: dict, body: str, anim: str, d: int, i: int) -> None:
+    """A pack on the operator's back: over the body from behind, around it from the front."""
+    box = head_anchors(body, anim)[d][i]
+    if box is None:
+        return
+    x0, x1, y0, y1 = box
+    view = VIEW[d]
+    flip = False
+    if anim == "die":
+        view = "d" if i < 4 else "u"
+        flip = i == 5
+    cx = (x0 + x1 + 1) // 2 + (SIDE_LEAN if view == "r" else -SIDE_LEAN if view == "l" else 0)
+    neck = y1 - NECK_SINK
+    img = heads.pack_image(pack, view)
+    h, w = img.shape[:2]
+    if view in ("u", "d"):
+        left = cx - w // 2
+        top = neck - pack["neck"]["u"]
+    else:
+        top = neck - pack["neck"]["r"]
+        left = cx - pack["back"] - w + 1 if view == "r" else cx + pack["back"]
+    if anim == "die" and i >= 4:
+        mid = (y0 + y1) // 2
+        if flip:
+            img = img[::-1]
+            top = mid - h - 1
+        else:
+            top = mid - 2
+    layer = np.zeros((FRAME, FRAME, 4), np.uint8)
+    paste_at(layer, img, top, left)
+    # The head is always in front of the pack; from the front, so is the body.
+    hs = head_silhouette(view if not (anim == "die" and i >= 4) else "u")
+    if flip:
+        hs = hs[::-1]
+    hm = np.zeros((FRAME, FRAME), bool)
+    htop = y1 - NECK_SINK - heads.NECK_Y if not (anim == "die" and i >= 4) else None
+    if htop is None:
+        n = heads.NECK_Y if not flip else heads.CANVAS_H - 1 - heads.NECK_Y
+        htop = (y0 + y1) // 2 - (n - 5 if not flip else n + 5)
+    hleft = cx - heads.CANVAS // 2
+    for yy in range(hs.shape[0]):
+        for xx in range(hs.shape[1]):
+            if hs[yy, xx] and 0 <= htop + yy < FRAME and 0 <= hleft + xx < FRAME:
+                hm[htop + yy, hleft + xx] = True
+    hide = hm
+    if view == "d":
+        hide = hide | body_silhouette(body, anim, d, i)
+    layer[hide] = 0
+    if view == "d" and not (anim == "die" and i >= 4) and pack.get("straps"):
+        st = heads.straps_image(pack)
+        paste_at(layer, st, neck + 1, cx - st.shape[1] // 2)
+    paste(frame, layer)
+
+
+_frames: dict[tuple, list[list[np.ndarray]]] = {}
+
+
+def frames_of(name: str, anim: str) -> list[list[np.ndarray]]:
+    """All frames [dir][i] of one set's animation: its LPC layers, then its drawn heads."""
+    key = (name, anim)
+    if key not in _frames:
+        spec = SETS[name]
+        dirs = composite(spec["layers"], spec["body"], anim)
+        for fs in dirs:
+            for f in fs:
+                despeckle(f)
+        if spec.get("heads"):
+            for d, fs in enumerate(dirs):
+                for i, f in enumerate(fs):
+                    if spec["layers"]:
+                        hide_neck(f, spec["body"], anim, d, i)
+                    paste_heads(f, spec["heads"], spec["body"], anim, d, i)
+        if name.startswith("g_") and spec["layers"]:
+            # Worn over the body, but never over the face.
+            for d, fs in enumerate(dirs):
+                for i, f in enumerate(fs):
+                    clear_face(f, spec["body"], anim, d, i)
+        if spec.get("pack"):
+            for d, fs in enumerate(dirs):
+                for i, f in enumerate(fs):
+                    paste_pack(f, spec["pack"], spec["body"], anim, d, i)
+        _frames[key] = dirs
+    return _frames[key]
+
+
 def flash(a: np.ndarray) -> np.ndarray:
     out = np.zeros_like(a)
     m = a[:, :, 3] > 0
@@ -716,7 +968,7 @@ def build() -> None:
     anims: dict[str, list[str]] = {}
     for name, spec in SETS.items():
         for anim in spec["anims"]:
-            dirs = composite(spec["layers"], spec["body"], anim)
+            dirs = frames_of(name, anim)
             for d, fs in enumerate(dirs):
                 key = f"c:{name}:{anim}" + ("" if anim == "die" else f":{d}")
                 names = []
@@ -739,15 +991,8 @@ def still(sets: list[str], anim: str, d: int, i: int) -> np.ndarray:
     """One frame of several sets stacked (for pictures made from the sheets)."""
     out = np.zeros((FRAME, FRAME, 4), np.uint8)
     for name in sets:
-        spec = SETS[name]
-        paste(out, composite(spec["layers"], spec["body"], anim)[d][i])
+        paste(out, frames_of(name, anim)[d][i])
     return out
-
-
-def portrait(op: str) -> np.ndarray:
-    """The operator's ID photo: head and shoulders, facing the camera, at 2x."""
-    f = still([f"op_{op}", f"hair_op_{op}"], "idle", 2, 0)[6:40, 14:50]
-    return np.kron(f, np.ones((2, 2, 1), np.uint8))
 
 
 def corpse() -> np.ndarray:

@@ -48,7 +48,6 @@ describe('character atlas', () => {
   it('has both operators, armed and aboard ship', () => {
     for (const op of ['m', 'f']) {
       hasSet(`op_${op}`, [...armed, 'walk', 'idle']);
-      hasSet(`hair_op_${op}`, [...armed, 'walk', 'idle']);
     }
   });
   it('draws every helmet, armour and pack on both operators', () => {
