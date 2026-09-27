@@ -23,6 +23,8 @@ interface StaticLight {
 
 interface FlashLight {
   sprite: Sprite;
+  /** Walls stop a muzzle flash: it lights the room it happens in, not the next one. */
+  mask: Graphics;
   life: number;
   maxLife: number;
   intensity: number;
@@ -50,6 +52,7 @@ export class Lighting {
   private cone: Sprite;
   private personal: Sprite;
   private poly: number[] = [];
+  private flashPoly: number[] = [];
   private levels: Float32Array;
   private px = 0;
   private py = 0;
@@ -121,10 +124,15 @@ export class Lighting {
       const sprite = new Sprite(radialTexture());
       sprite.anchor.set(0.5);
       sprite.blendMode = 'add';
-      this.world.addChild(sprite);
-      f = { sprite, life: 0, maxLife: 0, intensity: 0 };
+      const mask = new Graphics();
+      sprite.mask = mask;
+      this.world.addChild(sprite, mask);
+      f = { sprite, mask, life: 0, maxLife: 0, intensity: 0 };
       this.flashes.push(f);
     }
+    visibilityPolygon(this.map, x, y, radius, FLASH_RAYS, 10, this.flashPoly);
+    f.mask.clear().poly(this.flashPoly).fill({ color: 0xffffff });
+    f.mask.visible = true;
     f.sprite.visible = true;
     f.sprite.position.set(x, y);
     f.sprite.scale.set((radius * 2) / RADIAL_SIZE);
@@ -152,14 +160,16 @@ export class Lighting {
           if (s.burst > 0) {
             s.burst--;
             s.on = !s.on;
-            s.timer = s.on ? 0.04 + Math.random() * 0.1 : 0.03 + Math.random() * 0.07;
+            s.timer = s.on ? 0.05 + Math.random() * 0.12 : 0.04 + Math.random() * 0.08;
           } else {
+            // Long steady stretches between stutters: a tube failing, not a strobe.
             s.on = true;
-            s.burst = 2 + Math.floor(Math.random() * 5) * 2;
-            s.timer = 2 + Math.random() * 7;
+            s.burst = 2 + Math.floor(Math.random() * 3) * 2;
+            s.timer = 4 + Math.random() * 10;
           }
         }
-        level = s.on ? 1 : 0.15;
+        // The tube never goes fully dark: the filaments glow on through a stutter.
+        level = s.on ? 1 : 0.32;
       }
       s.sprite.alpha = d.intensity * level;
       // Cull offscreen lights.
@@ -171,7 +181,7 @@ export class Lighting {
       if (f.life <= 0) continue;
       f.life -= dt;
       f.sprite.alpha = f.intensity * Math.max(0, f.life / f.maxLife);
-      if (f.life <= 0) f.sprite.visible = false;
+      if (f.life <= 0) f.sprite.visible = f.mask.visible = false;
     }
 
     // Player light, occluded by walls.
@@ -192,7 +202,8 @@ export class Lighting {
 
   destroy(): void {
     // Baked light textures belong to this instance; collect them before the sprites go.
-    const baked = this.statics.map((s) => s.sprite.texture);
+    // (Room fills share one texture, kept for the next run.)
+    const baked = this.statics.filter((s) => !s.def.area).map((s) => s.sprite.texture);
     this.scene.destroy({ children: true });
     for (const t of baked) t.destroy(true);
     this.rt.destroy(true);
@@ -201,17 +212,27 @@ export class Lighting {
   // ---------------------------------------------------------------------------
 
   private addStatic(def: LightDef): void {
-    // Bake the occluded light into its own texture once.
+    if (def.area) {
+      this.addFill(def, def.area);
+      return;
+    }
+    // Bake the occluded light into its own texture once. The shadows are cast from a few
+    // points across the lamp and averaged: a real tube is not a point, so shadow edges
+    // get a soft penumbra instead of a ruler-straight line.
     const size = Math.ceil(def.radius * 2);
     const tmp = new Container();
-    const light = new Sprite(radialTexture());
-    light.width = light.height = size;
-    light.tint = def.color;
-    const mask = new Graphics();
-    const pts = visibilityPolygon(this.map, def.x, def.y, def.radius, 240, 16);
-    mask.poly(pts.map((v, i) => (i % 2 === 0 ? v - def.x : v - def.y) + def.radius)).fill({ color: 0xffffff });
-    light.mask = mask;
-    tmp.addChild(light, mask);
+    for (const [ox, oy] of PENUMBRA) {
+      const light = new Sprite(radialTexture());
+      light.width = light.height = size;
+      light.tint = def.color;
+      light.alpha = 1 / PENUMBRA.length;
+      light.blendMode = 'add';
+      const mask = new Graphics();
+      const pts = visibilityPolygon(this.map, def.x + ox, def.y + oy, def.radius, 240, 16);
+      mask.poly(pts.map((v, i) => (i % 2 === 0 ? v - def.x : v - def.y) + def.radius)).fill({ color: 0xffffff });
+      light.mask = mask;
+      tmp.addChild(light, mask);
+    }
     const rt = RenderTexture.create({ width: size, height: size });
     this.renderer.render({ container: tmp, target: rt, clear: true });
     tmp.destroy({ children: true });
@@ -239,7 +260,37 @@ export class Lighting {
       }
     }
   }
+
+  /** A room's bounce light: a feathered fill over its floor (see LightDef.area). */
+  private addFill(def: LightDef, a: { x: number; y: number; w: number; h: number }): void {
+    const sprite = new Sprite(fillTexture());
+    sprite.position.set(a.x, a.y);
+    sprite.width = a.w;
+    sprite.height = a.h;
+    sprite.tint = def.color;
+    sprite.blendMode = 'add';
+    this.world.addChild(sprite);
+    this.statics.push({ def, sprite, on: true, timer: 0, burst: 0, phase: 0 });
+    // Gameplay light levels: the fill is dimmer toward the edges, like the texture.
+    const tx0 = Math.floor(a.x / TILE);
+    const ty0 = Math.floor(a.y / TILE);
+    for (let ty = ty0; ty * TILE < a.y + a.h; ty++) {
+      for (let tx = tx0; tx * TILE < a.x + a.w; tx++) {
+        if (tx < 0 || ty < 0 || tx >= this.map.width || ty >= this.map.height) continue;
+        const nx = ((tx + 0.5) * TILE - a.x) / a.w * 2 - 1;
+        const ny = ((ty + 0.5) * TILE - a.y) / a.h * 2 - 1;
+        const k = Math.max(0, 1 - Math.hypot(nx * 0.7, ny * 0.7));
+        const i = ty * this.map.width + tx;
+        this.levels[i] = Math.min(1, this.levels[i] + def.intensity * k);
+      }
+    }
+  }
 }
+
+/** Shadow-casting points across a lamp (px offsets): averaged for a soft penumbra. */
+const PENUMBRA: [number, number][] = [[0, 0], [-5, 2], [5, 2], [0, 5]];
+/** Rays cast for a muzzle flash's occlusion: coarse, it lasts a few frames. */
+const FLASH_RAYS = 56;
 
 function rgb(r: number, g: number, b: number): number {
   const c = (v: number) => Math.max(0, Math.min(255, Math.round(v * 255)));
@@ -271,6 +322,37 @@ function radialTexture(): Texture {
   g.putImageData(img, 0, 0);
   radialTex = Texture.from(c);
   return radialTex;
+}
+
+const FILL_W = 64;
+const FILL_H = 48;
+let fillTex: Texture | null = null;
+
+/** Room fill: brightest in the middle, rolling off softly well before the walls. */
+function fillTexture(): Texture {
+  if (fillTex) return fillTex;
+  const c = document.createElement('canvas');
+  c.width = FILL_W;
+  c.height = FILL_H;
+  const g = c.getContext('2d')!;
+  const img = g.createImageData(FILL_W, FILL_H);
+  const feather = (t: number) => Math.min(1, t / 0.16);
+  for (let y = 0; y < FILL_H; y++) {
+    for (let x = 0; x < FILL_W; x++) {
+      const u = (x + 0.5) / FILL_W;
+      const v = (y + 0.5) / FILL_H;
+      const edge = feather(Math.min(u, 1 - u)) * feather(Math.min(v, 1 - v));
+      const centre = 1 - Math.min(1, Math.hypot((u - 0.5) * 1.3, (v - 0.55) * 1.3));
+      const k = band(edge * (0.35 + 0.65 * centre));
+      const i = (y * FILL_W + x) * 4;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = Math.round(k * 255);
+      img.data[i + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  fillTex = Texture.from(c);
+  fillTex.source.scaleMode = 'linear';
+  return fillTex;
 }
 
 const CONE_LEN = 128;

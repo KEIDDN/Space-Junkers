@@ -5,6 +5,8 @@ import { audio } from '../../engine/audio';
 import { ShipScene } from '../../game/ship/ShipScene';
 import { useProfile } from '../../state/profileStore';
 import { shipUi, useShip } from '../../state/shipStore';
+import { ship } from '../../state/shipOps';
+import { RESERVE_GUN, RESERVE_PACK } from '../../core/reserve';
 import { ShipInventory } from '../inventory/ShipInventory';
 import { AirlockPanel } from './AirlockPanel';
 import { BoardPanel } from './BoardPanel';
@@ -29,7 +31,7 @@ function ShipHud() {
         <div className="dim small">DAY {day} · {course ? `IN ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING OVER OTETS'}</div>
       </div>
       <div className="hud-tr crt-text">
-        <div className="label">CREDITS</div>
+        <div className="label">KOSMORUBLI <span className="dim">// КР</span></div>
         <div className="big-mid">{credits.toLocaleString()}</div>
       </div>
       {notices.length > 0 && !panel && (
@@ -61,6 +63,16 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
   // Handing in a story contract changes someone's corner of the ship.
   const story = useProfile((s) => Object.entries(s.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id).sort().join());
   const lastPos = useRef<{ x: number; y: number } | undefined>(undefined);
+
+  useEffect(() => {
+    // Back aboard with nothing to shoot or carry with: the ship's reserve fills the gap.
+    const issued = ship.stockReserve();
+    if (issued.length) {
+      const what = [issued.includes(RESERVE_GUN) && 'a crew-issue SP-5 with a box of rounds', issued.includes(RESERVE_PACK) && 'a canvas sack']
+        .filter(Boolean).join(' and ');
+      useProfile.setState((s) => ({ notices: [...s.notices, `SHIP RESERVE: Molot left ${what} in your locker. "Bring back better."`] }));
+    }
+  }, []);
 
   useEffect(() => {
     // TAB opens the stash here; never let it move browser focus. ESC with nothing open is the menu.

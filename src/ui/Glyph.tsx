@@ -23,9 +23,9 @@ const KB_UI: Record<UiGlyph, string> = {
 
 /** Face and shoulder names per controller family, indexed by standard button. */
 const PAD_NAMES: Record<PadFamily, string[]> = {
-  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'VIEW', 'MENU', 'L3', 'R3', '↑', '↓', '←', '→'],
-  playstation: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'CREATE', 'OPTIONS', 'L3', 'R3', '↑', '↓', '←', '→'],
-  nintendo: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'L3', 'R3', '↑', '↓', '←', '→'],
+  xbox: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'VIEW', 'MENU', 'L3', 'R3', '↑', '↓', '←', '→', 'HOME', ''],
+  playstation: ['✕', '○', '□', '△', 'L1', 'R1', 'L2', 'R2', 'CREATE', 'OPTIONS', 'L3', 'R3', '↑', '↓', '←', '→', 'PS', 'TOUCHPAD'],
+  nintendo: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'L3', 'R3', '↑', '↓', '←', '→', 'HOME', ''],
 };
 
 const FACE_TONE: Record<PadFamily, string[]> = {
@@ -39,6 +39,14 @@ const PAD_UI: Record<UiGlyph, number | string> = {
   navigate: '✚', scroll: 'RS', move: 'LS', aim: 'RS', mapHold: BTN.VIEW, weapons: BTN.Y, quick: '✚',
 };
 
+/**
+ * The map: the touchpad on a PlayStation pad, a held view button on the others.
+ * Returns the button and whether it is held.
+ */
+function mapButton(family: PadFamily): { b: number; hold: boolean } {
+  return family === 'playstation' ? { b: BTN.TOUCHPAD, hold: false } : { b: BTN.VIEW, hold: true };
+}
+
 /** Label text for an action on the current device (for places that can't render a glyph). */
 export function glyphText(id: GlyphId, device: 'kbm' | 'pad', family: PadFamily): string {
   if (device === 'kbm') {
@@ -47,7 +55,10 @@ export function glyphText(id: GlyphId, device: 'kbm' | 'pad', family: PadFamily)
     return keyLabel(KEY_BINDS[id as Action][0]);
   }
   if (id === 'inventory') return PAD_NAMES[family][BTN.VIEW];
-  if (id === 'map') return `HOLD ${PAD_NAMES[family][BTN.VIEW]}`;
+  if (id === 'map' || id === 'mapHold') {
+    const m = mapButton(family);
+    return `${m.hold ? 'HOLD ' : ''}${PAD_NAMES[family][m.b]}`;
+  }
   const b = id in PAD_UI ? PAD_UI[id as UiGlyph] : PAD_BINDS[id as Action];
   if (typeof b === 'string') return b;
   return b === undefined ? '?' : PAD_NAMES[family][b];
@@ -62,14 +73,16 @@ export function Key({ a, hold }: { a: GlyphId; hold?: boolean }) {
   if (device === 'kbm') {
     return <span className="glyph key-cap">{hold && <span className="glyph-hold">HOLD</span>}{text}</span>;
   }
-  const b = a === 'inventory' || a === 'map' ? BTN.VIEW : a in PAD_UI ? PAD_UI[a as UiGlyph] : PAD_BINDS[a as Action];
+  const isMap = a === 'map' || a === 'mapHold';
+  const map = mapButton(family);
+  const b = isMap ? map.b : a === 'inventory' ? BTN.VIEW : a in PAD_UI ? PAD_UI[a as UiGlyph] : PAD_BINDS[a as Action];
   const face = typeof b === 'number' && b <= 3;
   const shoulder = typeof b === 'number' && b >= 4 && b <= 7;
   const tone = face ? FACE_TONE[family][b as number] : undefined;
-  const label = a === 'map' ? PAD_NAMES[family][BTN.VIEW] : text;
+  const label = isMap ? PAD_NAMES[family][map.b] : text;
   return (
     <span className={`glyph pad-btn ${face ? 'face' : shoulder ? 'shoulder' : 'misc'}`} style={tone ? { ['--tone' as string]: tone } : undefined}>
-      {(hold || a === 'map') && <span className="glyph-hold">HOLD</span>}
+      {(hold || (isMap && map.hold)) && <span className="glyph-hold">HOLD</span>}
       <span className="pad-label">{label}</span>
     </span>
   );

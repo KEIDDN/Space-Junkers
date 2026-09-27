@@ -95,7 +95,7 @@ export function buy(p: Profile, crew: CrewId, index: number): TradeResult {
   const bought = p.purchases[key] ?? 0;
   if (entry.limit !== undefined && bought >= entry.limit) return { ok: false, error: 'Sold out until the next run.' };
   const price = buyPrice(crew, entry, level);
-  if (p.credits < price) return { ok: false, error: 'Not enough Credits.' };
+  if (p.credits < price) return { ok: false, error: 'Not enough kosmorubli.' };
   const d = itemDef(entry.item);
   const item = createItem(entry.item, {
     qty: entry.qty ?? 1,

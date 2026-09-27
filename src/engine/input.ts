@@ -1,9 +1,9 @@
 import { AIM_DEADZONE, KEY_BINDS, MOVE_DEADZONE, PAD_BINDS, TRIGGER_OFF, TRIGGER_ON, VIEW_HOLD, type Action } from './actions';
 import { VIEW_H, VIEW_W } from './config';
-import { BTN, padShared, padTouched, readPad, shapeStick, type PadFrame } from './pad';
+import { BTN, PAD_BUTTON_COUNT, padShared, padTouched, readPad, shapeStick, type PadFrame } from './pad';
 import { noteDevice } from '../state/deviceStore';
 
-const PAD_BUTTONS = 17;
+const PAD_BUTTONS = PAD_BUTTON_COUNT;
 
 /**
  * Keyboard, mouse and controller, polled by the game loop and read as actions
@@ -91,8 +91,13 @@ export class Input {
       if (this.sprintIdle > 0.18 || this.padHeld(BTN.RT) || this.padHeld(BTN.LT) || captured) this.sprintLatch = false;
     }
 
-    // View: a tap is the bag, a hold is the map.
-    if (this.padPressed.has(BTN.VIEW)) {
+    // PlayStation: the touchpad is the map, Create the bag. Other pads share the view
+    // button: a tap is the bag, a hold is the map. (A PlayStation pad whose touchpad the
+    // browser doesn't report falls back to the hold.)
+    if (f.touchpad && this.padPressed.has(BTN.TOUCHPAD)) this.synth.add('map');
+    if (f.touchpad && this.padPressed.has(BTN.VIEW)) {
+      if (!captured) this.synth.add('inventory');
+    } else if (this.padPressed.has(BTN.VIEW)) {
       this.viewT = 0;
       this.viewMapSent = false;
     }

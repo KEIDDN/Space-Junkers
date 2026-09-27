@@ -73,7 +73,7 @@ export function ShipInventory({ onClose, sell, sellPrice, repair, repairPrice, s
         <GridPanel
           gridKey="stash"
           title={title}
-          meta={<span className="inv-meta">{gridValue(stash).toLocaleString()} CR STORED</span>}
+          meta={<span className="inv-meta">{gridValue(stash).toLocaleString()} KR STORED</span>}
           actions={
             <>
               <button className="btn" data-pad-shortcut="LT" onClick={() => audio.ui(ship.sortStash() ? 'drop' : 'error')}>SORT <ByDevice kbm={null} pad={<Key a="steady" />} /></button>
@@ -83,7 +83,7 @@ export function ShipInventory({ onClose, sell, sellPrice, repair, repairPrice, s
                 </button>
               )}
               <span className="grow" />
-              <span className="credits">{credits.toLocaleString()} <small>CR</small></span>
+              <span className="credits">{credits.toLocaleString()} <small>KR</small></span>
               <button className="btn" onClick={() => { audio.ui('close'); onClose(); }}>CLOSE <Key a="back" /></button>
             </>
           }

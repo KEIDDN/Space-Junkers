@@ -29,8 +29,8 @@ export function RecordPanel({ onQuit }: { onQuit: () => void }) {
     ['K.I.A. / M.I.A.', String(s.deaths)],
     ['SURVIVAL RATE', s.raids ? `${survival}%` : '—'],
     ['HOSTILES NEUTRALISED', String(s.kills)],
-    ['CREDITS EARNED', `${s.creditsEarned.toLocaleString()} CR`],
-    ['BEST HAUL', `${s.bestHaul.toLocaleString()} CR`],
+    ['CREDITS EARNED', `${s.creditsEarned.toLocaleString()} KR`],
+    ['BEST HAUL', `${s.bestHaul.toLocaleString()} KR`],
   ];
   const pick = (t: typeof tab) => {
     setTab(t);

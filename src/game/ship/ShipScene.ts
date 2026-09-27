@@ -1,5 +1,5 @@
 import { Application, Container, Graphics, Sprite, type Ticker } from 'pixi.js';
-import { anim, loadAssets, tex } from '../../engine/assets';
+import { loadAssets, tex } from '../../engine/assets';
 import { audio } from '../../engine/audio';
 import { Camera } from '../../engine/camera';
 import { MAX_DT, TILE, VIEW_H, VIEW_W } from '../../engine/config';
@@ -10,6 +10,7 @@ import { useProfile } from '../../state/profileStore';
 import { buildShip, type ShipInteractable, type ShipLayout } from '../../data/shipLayout';
 import { shipUi, useShip } from '../../state/shipStore';
 import { ActorView } from '../entities/ActorView';
+import { operatorLook } from '../entities/look';
 import { Lighting } from '../render/lighting';
 import { AmbientFx } from '../fx/ambient';
 import { Effects } from '../fx/effects';
@@ -62,6 +63,7 @@ export class ShipScene {
   private time = 0;
   private starField: { x: number; y: number; b: number; tw: number }[] = [];
   private jumpT = -1;
+  private kit: unknown = null;
 
   /** @param start where the operator stands (keeps position when the ship is rebuilt). */
   constructor(private operator: 'm' | 'f', private start?: { x: number; y: number }) {}
@@ -199,7 +201,7 @@ export class ShipScene {
       this.crew.push(a);
       this.actors.addChild(a.container);
     }
-    this.player = new ActorView({ walk: anim(`op_${this.operator}_walk_unarmed`), death: anim(`op_${this.operator}_death`) });
+    this.player = new ActorView(operatorLook(this.operator, useProfile.getState().loadout));
     this.player.setWeapon(null);
     this.actors.addChild(this.player.container);
     this.px = this.start?.x ?? L.spawn.x;
@@ -252,8 +254,14 @@ export class ShipScene {
     this.vy = (pos.y - this.py) / dt;
     this.px = pos.x;
     this.py = pos.y;
-    const facing = Math.abs(this.vx) > 4 ? (this.vx > 0 ? 0 : Math.PI) : this.lastFacing;
+    const facing = Math.hypot(this.vx, this.vy) > 4 ? Math.atan2(this.vy, this.vx) : this.lastFacing;
     this.lastFacing = facing;
+    // Kit put on or taken off at the stash shows on the operator straight away.
+    const kit = useProfile.getState().loadout;
+    if (kit !== this.kit) {
+      this.kit = kit;
+      this.player.setLook(operatorLook(this.operator, kit));
+    }
     this.player.update(dt, this.px, this.py, facing, moved, false, 0);
     if (this.player.stepped) audio.step(this.px, this.py, 'plate', 1, true);
 

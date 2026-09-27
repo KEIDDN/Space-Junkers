@@ -25,6 +25,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+import build_characters as characters
+
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "Assets"
 OUT = ROOT / "public" / "assets"
@@ -40,17 +42,13 @@ TILES = "Tileset spaceship.png"
 # Manifest. Rects are (x0, y0, x1, y1) in source-sheet pixels.
 # ---------------------------------------------------------------------------
 
-MALE_WALK = [(31, 228, 94, 310), (117, 228, 174, 310), (201, 228, 258, 309),
-             (285, 228, 342, 311), (371, 228, 428, 310), (463, 228, 521, 310)]
-MALE_DEATH = [(127, 634, 223, 684), (234, 633, 328, 684), (342, 635, 425, 682),
-              (436, 635, 527, 684), (541, 633, 636, 681), (646, 645, 740, 687)]
-FEMALE_WALK = [(823, 225, 877, 310), (912, 226, 969, 310), (1002, 226, 1054, 310),
-               (1088, 226, 1140, 310), (1171, 225, 1227, 310), (1261, 227, 1317, 310)]
-FEMALE_DEATH = [(914, 636, 1006, 686), (1024, 637, 1115, 686), (1129, 637, 1216, 683),
-                (1229, 637, 1314, 682), (1329, 637, 1416, 681), (1425, 648, 1521, 686)]
 
-PORTRAIT_MALE = (114, 713, 173, 790)
-PORTRAIT_FEMALE = (823, 718, 875, 799)
+
+
+
+
+
+
 
 FX_FLASH = [(33, 947, 61, 962), (76, 947, 104, 961), (117, 947, 144, 962)]
 FX_SMOKE = [(159, 940, 199, 974), (212, 933, 262, 973), (289, 938, 340, 972)]
@@ -167,16 +165,6 @@ DOOR_LEAVES = (158, 37, 231, 92)
 
 # --- Crew (NPCs.png) --------------------------------------------------------
 NPCS = "NPCs.png"
-# Column x-ranges of each crew member's four animation frames, and the y-range of each animation row.
-CREW_COLUMNS = {
-    "smuggler": [(66, 140), (140, 208), (208, 272), (272, 340)],
-    "medic": [(384, 446), (446, 510), (510, 574), (574, 640)],
-    "merc": [(666, 734), (734, 798), (798, 862), (862, 928)],
-    "trader": [(962, 1034), (1034, 1104), (1104, 1172), (1172, 1242)],
-    "hacker": [(1276, 1340), (1340, 1400), (1400, 1460), (1460, 1520)],
-}
-CREW_ROWS = {"idle": (238, 322), "walk": (320, 408), "run": (404, 496), "talk": (492, 584),
-             "interact": (580, 674), "sit": (670, 768)}
 CREW_PORTRAITS = {
     "smuggler": (64, 45, 310, 236), "medic": (399, 45, 601, 236), "merc": (670, 45, 925, 236),
     "trader": (976, 45, 1233, 236), "hacker": (1287, 45, 1490, 236),
@@ -234,14 +222,9 @@ WALL_FACE_END_R = (527, 12, 628, 92)
 WALL_FACE_END_L = (648, 12, 740, 92)
 WALL_FACE_H = 42  # px: taller than a tile, so the wall rises above the floor line
 
-# Unarmed walk (ship): row 2 of the character sheet.
-MALE_WALK_UNARMED = [(118, 125, 173, 208), (201, 125, 255, 209), (285, 125, 340, 209), (374, 125, 428, 208),
-                     (466, 125, 522, 208), (561, 126, 614, 208)]
-FEMALE_WALK_UNARMED = [(915, 128, 968, 210), (1001, 127, 1054, 209), (1085, 128, 1138, 210),
-                       (1171, 128, 1226, 210), (1263, 128, 1316, 210), (1350, 128, 1403, 210)]
 
-CHAR_CELL = (48, 48)
-DEATH_CELL = (56, 32)
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -264,6 +247,10 @@ DECO_ITEMS = {
     "deco_rations": ("rations", 0.32), "deco_oxygen": ("oxygen", 0.34), "deco_multitool": ("multitool", 0.3),
     "deco_ore": ("iron_ore", 0.4), "deco_crystal": ("cryo", 0.4), "deco_quartz": ("frost_quartz", 0.4),
     "deco_bone": ("bone", 0.34), "deco_rustcap": ("rustcap", 0.36), "deco_coin": ("coinroll", 0.34),
+    # What people leave where they work: paperwork, drives, dressings, spent ammo tins, parts.
+    "deco_orders": ("orders", 0.3), "deco_datachip": ("datachip", 0.26), "deco_hdd": ("hdd", 0.26),
+    "deco_bandage": ("bandage", 0.28), "deco_pills": ("pills", 0.3), "deco_ammo": ("ammo_545", 0.3),
+    "deco_cable": ("cable", 0.34), "deco_gear": ("gear", 0.3), "deco_battery": ("battery", 0.28),
 }
 
 
@@ -365,34 +352,6 @@ WALL_VARIANTS = {
 }
 
 
-def silhouette(img: Image.Image) -> Image.Image:
-    arr = np.array(img)
-    arr[:, :, :3] = np.where(arr[:, :, 3:4] > 0, 255, 0)
-    return Image.fromarray(arr, "RGBA")
-
-
-def place_in_cell(img: Image.Image, cell: tuple[int, int], align_top_fraction: float | None) -> Image.Image:
-    """
-    Put a trimmed sprite into a fixed cell, feet on the bottom row.
-    Horizontal alignment uses the head/torso centre (top part of the sprite) so walk
-    cycles don't jitter when legs swing; pass None to centre on the bounding box.
-    """
-    cw, ch = cell
-    a = np.array(img)[:, :, 3] > 0
-    if align_top_fraction is not None:
-        rows = max(1, int(img.height * align_top_fraction))
-        xs = np.where(a[:rows])[1]
-        ref_x = float(xs.mean()) if xs.size else img.width / 2
-    else:
-        ref_x = img.width / 2
-    out = Image.new("RGBA", cell, (0, 0, 0, 0))
-    ox = round(cw / 2 - ref_x)
-    oy = ch - 1 - img.height
-    out.paste(img, (ox, oy), img)  # paste clips safely if the sprite overhangs the cell
-    return out
-
-
-
 def largest_blob(img: Image.Image) -> Image.Image:
     """Keep only the largest opaque connected region (drops labels and neighbours' edges)."""
     arr = np.array(img)
@@ -435,198 +394,6 @@ def to_pixels_fit_w(img: Image.Image, width: int) -> Image.Image:
 # dome helmet or hood over the hair. Two looks per faction, so a squad isn't clones.
 # ---------------------------------------------------------------------------
 
-ENEMY_FACTIONS = ("scav", "raider", "soldier", "security")
-
-def _hsv(a):
-    rgb = a[..., :3].astype(np.float32) / 255
-    mx = rgb.max(-1); mn = rgb.min(-1); d = mx - mn
-    h = np.zeros_like(mx)
-    r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
-    m = d > 1e-6
-    rr = m & (mx == r); gg = m & (mx == g) & ~rr; bb = m & ~rr & ~gg
-    h[rr] = ((g - b)[rr] / d[rr]) % 6
-    h[gg] = ((b - r)[gg] / d[gg]) + 2
-    h[bb] = ((r - g)[bb] / d[bb]) + 4
-    return h * 60, np.where(mx > 0, d / np.maximum(mx, 1e-6), 0), mx
-
-def lum(a):
-    return (a[..., :3].astype(np.float32) @ np.array([0.299, 0.587, 0.114])) / 255
-
-def paint(a, mask, color, gain=1.0):
-    """Recolour masked pixels to a palette colour, keeping their shading."""
-    L = lum(a)[..., None]
-    c = np.array(color, np.float32)[None, None, :]
-    out = np.clip(c * (0.3 + 1.5 * L) * gain, 0, 255)
-    a[..., :3] = np.where(mask[..., None], out, a[..., :3])
-
-def flat(a, mask, color):
-    a[..., :3] = np.where(mask[..., None], np.array(color, np.uint8)[None, None, :], a[..., :3])
-    a[..., 3] = np.where(mask, 255, a[..., 3])
-
-def regions(a, female):
-    alpha = a[..., 3] > 0
-    h, s, v = _hsv(a)
-    ys, xs = np.where(alpha)
-    top, left = ys.min(), xs.min()
-    Y, X = np.mgrid[0:a.shape[0], 0:a.shape[1]]
-    # The big chibi head sits at the front (left) top of the figure; the pack is behind it.
-    hb = alpha & (Y < top + (16 if female else 15)) & (X < left + (17 if female else 19))
-    red = alpha & ((h < 22) | (h > 335)) & (s > 0.45) & (v > 0.3)
-    skin = hb & (h > 8) & (h < 42) & (s > 0.28) & (v > 0.5)
-    dark = hb & (v < 0.24)
-    return dict(alpha=alpha, head=hb, red=red, skin=skin, dark=dark, h=h, s=s, v=v, top=top, left=left, Y=Y, X=X)
-
-def star(a, cx, cy, color):
-    pts = [(0, -2), (-1, -1), (0, -1), (1, -1), (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0), (-1, 1), (1, 1), (-1, 2), (1, 2)]
-    for dx, dy in pts:
-        a[cy + dy, cx + dx, :3] = color
-        a[cy + dy, cx + dx, 3] = 255
-
-def dilate(mask, n=1):
-    m = mask.copy()
-    for _ in range(n):
-        m = m | np.roll(m, 1, 0) | np.roll(m, -1, 0) | np.roll(m, 1, 1) | np.roll(m, -1, 1)
-    return m
-
-def edge(mask):
-    """Mask pixels touching something outside the mask."""
-    inner = mask & np.roll(mask, 1, 0) & np.roll(mask, -1, 0) & np.roll(mask, 1, 1) & np.roll(mask, -1, 1)
-    return mask & ~inner
-
-def dome(a, mask, color):
-    """Shade a head covering as a lit dome: light from the top-left, four tones and an outline."""
-    if not mask.any():
-        return
-    ys, xs = np.where(mask)
-    y0, y1, x0, x1 = ys.min(), ys.max(), xs.min(), xs.max()
-    Y, X = np.mgrid[0:a.shape[0], 0:a.shape[1]]
-    ny = (Y - y0) / max(1, y1 - y0)
-    nx = (X - x0) / max(1, x1 - x0)
-    t = 0.6 * ny + 0.4 * nx
-    tones = [1.35, 1.0, 0.72, 0.5]
-    idx = np.clip((t * 4).astype(int), 0, 3)
-    # A highlight arc near the top-left.
-    hl = mask & (ny < 0.3) & (nx < 0.55) & (nx > 0.12)
-    c = np.array(color, np.float32)
-    shade = np.array(tones, np.float32)[idx][..., None] * c[None, None, :]
-    shade = np.where(hl[..., None], c * 1.55, shade)
-    out = np.clip(shade, 0, 255).astype(np.uint8)
-    a[..., :3] = np.where(mask[..., None], out, a[..., :3])
-    ol = edge(mask)
-    a[..., :3] = np.where(ol[..., None], (c * 0.32).astype(np.uint8), a[..., :3])
-
-def put(a, y, x, color):
-    if 0 <= y < a.shape[0] and 0 <= x < a.shape[1]:
-        a[y, x, :3] = color
-        a[y, x, 3] = 255
-
-def plus(a, cy, cx, color):
-    for dy, dx in ((0, 0), (-1, 0), (1, 0), (0, -1), (0, 1)):
-        put(a, cy + dy, cx + dx, color)
-
-def enemy_frame(img: Image.Image, faction: str, female: bool) -> Image.Image:
-    """Dress an operator walk frame as a faction enemy (see ENEMY_FACTIONS)."""
-    a = np.array(img).copy()
-    R = regions(a, female)
-    alpha, head, red, skin, top, left, Y, X = R['alpha'], R['head'], R['red'], R['skin'], R['top'], R['left'], R['Y'], R['X']
-    body = alpha & ~head
-    if female:
-        # The red scarf at the neck takes the faction's collar colour, not the accent.
-        scarf = red & (Y >= top + 11) & (Y <= top + 20)
-        collar = {'scav': (120, 100, 70), 'raider': (170, 50, 30), 'soldier': (70, 80, 50), 'security': (46, 50, 64)}[faction]
-        paint(a, scarf, collar)
-        red = red & ~scarf
-        body = alpha & ~head
-        # Headgear for the women is drawn as a proper dome over the hair: an ellipse from
-        # the crown down to the brim just above the eyes. The bun comes off.
-        sk = np.where(skin)[0]
-        brim = (sk.min() - 1) if len(sk) else top + 11
-        hairish = head & ~skin & (Y >= top + 3) & (Y <= brim)
-        hx = np.where(hairish)[1]
-        x0, x1 = (hx.min(), hx.max()) if len(hx) else (left, left + 14)
-        cx, rx, ry = (x0 + x1) / 2, (x1 - x0) / 2 + 0.6, brim - (top + 2) + 0.4
-        dome_m = (((X - cx) / rx) ** 2 + ((Y - brim) / ry) ** 2 <= 1) & (Y <= brim)
-        bun = alpha & (Y < top + 3) & ~dome_m
-        hair = dome_m
-        covered = dome_m
-    if faction == 'scav':
-        paint(a, body & ~red, (112, 98, 80))
-        paint(a, body & red, (150, 126, 80))
-        if not female:
-            visor = R['dark'] & (Y >= top + 8) & (X < left + 13)
-            hood = head & ~visor
-            # The hood hangs a pixel wider than the dome it covers.
-            rim = dilate(head & (Y < top + 12), 1) & ~alpha & (X > left + 1)
-            a[..., 3] = np.where(rim, 255, a[..., 3])
-            dome(a, hood | rim, (112, 92, 64))
-            flat(a, visor, (40, 42, 44))
-            for dx in (0, 3):  # two round lenses
-                put(a, top + 9, left + 7 + dx, (120, 150, 140))
-                put(a, top + 10, left + 7 + dx, (60, 80, 74))
-            for dy in range(3):  # filter canister
-                for dx in range(3):
-                    put(a, top + 13 + dy, left + 5 + dx, (74, 76, 72) if (dy, dx) != (1, 1) else (140, 144, 136))
-        else:
-            a[..., 3] = np.where(bun, 0, a[..., 3])
-            rim = dilate(covered, 1) & ~covered & (Y <= brim + 1) & (X > cx - 2)
-            hood = covered | rim
-            a[..., 3] = np.where(hood, 255, a[..., 3])
-            dome(a, hood, (112, 92, 64))
-            flat(a, skin, (40, 42, 44))
-            ys = np.where(skin)[0]
-            if len(ys):
-                fy = ys.min()
-                put(a, fy, left + 4, (120, 150, 140))
-                for dy in range(2):
-                    for dx in range(2):
-                        put(a, fy + 2 + dy, left + 2 + dx, (80, 82, 78))
-    elif faction == 'raider':
-        paint(a, body & ~red, (84, 64, 52))
-        paint(a, body & red, (218, 98, 36), 0.9)
-        if not female:
-            paint(a, head & ~R['dark'] & ~red, (162, 44, 30))
-            paint(a, head & red, (36, 30, 28))
-        else:
-            # A dark scarf pulled up over nose and mouth.
-            band = skin & (Y >= brim + 3)
-            flat(a, band, (44, 34, 30))
-            flat(a, band & (Y == brim + 3), (170, 50, 30))
-            paint(a, head & red, (44, 34, 30))
-    elif faction == 'soldier':
-        paint(a, body & ~red, (84, 96, 62))
-        paint(a, body & red, (62, 70, 44))
-        if not female:
-            paint(a, head & ~R['dark'], (92, 104, 68))
-            star(a, left + 12, top + 6, (196, 40, 32))
-        else:
-            a[..., 3] = np.where(bun, 0, a[..., 3])
-            a[..., 3] = np.where(hair, 255, a[..., 3])
-            dome(a, hair, (92, 104, 68))
-            ys, xs = np.where(hair)
-            plus(a, int(ys.mean()), int(xs.mean()) + 1, (196, 40, 32))
-    elif faction == 'security':
-        paint(a, body & ~red, (56, 62, 78))
-        paint(a, body & red, (110, 200, 232), 0.8)
-        if not female:
-            visor = R['dark'] & (Y >= top + 8) & (X < left + 13)
-            paint(a, head & ~visor, (62, 66, 78))
-            flat(a, visor & (Y == top + 10), (120, 220, 255))
-            flat(a, visor & (Y == top + 11), (36, 90, 116))
-        else:
-            a[..., 3] = np.where(bun, 0, a[..., 3])
-            a[..., 3] = np.where(hair, 255, a[..., 3])
-            dome(a, hair, (60, 64, 78))
-            # Balaclava under the helmet, and a lit visor across the eyes.
-            face = skin | (head & (Y > brim) & (Y <= brim + 4) & (X < cx))
-            flat(a, face & alpha, (34, 38, 48))
-            flat(a, (Y == brim + 1) & (X >= x0 - 1) & (X < cx) & alpha, (120, 220, 255))
-    return Image.fromarray(a, "RGBA")
-
-
-
-# ---------------------------------------------------------------------------
-# Build
-# ---------------------------------------------------------------------------
 
 def build() -> None:
     frames: dict[str, Image.Image] = {}
@@ -640,25 +407,15 @@ def build() -> None:
             keys.append(key)
         anims[name] = keys
 
-    # Player operators
-    for op, walk, death in (("m", MALE_WALK, MALE_DEATH), ("f", FEMALE_WALK, FEMALE_DEATH)):
-        add_anim(f"op_{op}_walk", [place_in_cell(to_pixels(crop(CHAR, r)), CHAR_CELL, 0.4) for r in walk])
-        add_anim(f"op_{op}_death", [place_in_cell(to_pixels(crop(CHAR, r)), DEATH_CELL, None) for r in death])
+    # Characters are layered LPC sheets (tools/build_characters.py, their own atlas). The
+    # operator's ID photo and a corpse for searchable remains come from the same sheets.
+    for op in ("m", "f"):
+        frames[f"portrait_{op}"] = Image.fromarray(characters.portrait(op), "RGBA")
+    frames["remains"] = Image.fromarray(characters.corpse(), "RGBA")
 
-
-    # Operators, unarmed (ship)
-    for op, walk in (("m", MALE_WALK_UNARMED), ("f", FEMALE_WALK_UNARMED)):
-        add_anim(f"op_{op}_walk_unarmed", [place_in_cell(to_pixels(crop(CHAR, r)), CHAR_CELL, 0.4) for r in walk])
-
-    # Crew
-    for crew, cols in CREW_COLUMNS.items():
-        for anim_name, (y0, y1) in CREW_ROWS.items():
-            imgs = []
-            for (x0, x1) in cols:
-                cell = largest_blob(sheet(NPCS).crop((x0, y0, x1, y1)))
-                imgs.append(place_in_cell(to_pixels(cell), CHAR_CELL, 0.4))
-            add_anim(f"crew_{crew}_{anim_name}", imgs)
-        frames[f"portrait_{crew}"] = to_pixels(crop(NPCS, CREW_PORTRAITS[crew], pad=0))
+    # Crew portraits (dialogue)
+    for crew, rect in CREW_PORTRAITS.items():
+        frames[f"portrait_{crew}"] = to_pixels(crop(NPCS, rect, pad=0))
     for key, rect in CREW_PROPS.items():
         frames[key] = to_pixels(largest_blob(crop(NPCS, rect)))
 
@@ -681,19 +438,6 @@ def build() -> None:
     for key, rect in FLOOR_TILES.items():
         plate = resample(strip_haze(crop(TILES, rect, pad=0)), (TILE * 2, TILE * 2))
         frames[f"{key}_2x"] = tint(plate, (0.72, 0.72, 0.74), desat=0.15)
-
-    # Enemy factions: two looks each (male body "", female body "_b").
-    for faction in ENEMY_FACTIONS:
-        for suffix, base, female in (("", MALE_WALK, False), ("_b", FEMALE_WALK, True)):
-            walk = [enemy_frame(place_in_cell(to_pixels(crop(CHAR, r)), CHAR_CELL, 0.4), faction, female) for r in base]
-            add_anim(f"{faction}{suffix}_walk", walk)
-            add_anim(f"{faction}{suffix}_walk_flash", [silhouette(im) for im in walk])
-            # Corpse: first walk frame rotated onto its side (exact 90deg keeps pixels crisp).
-            corpse = trim(walk[0]).rotate(90, expand=True)
-            add_anim(f"{faction}{suffix}_dead", [place_in_cell(corpse, DEATH_CELL, None)])
-
-    frames["portrait_m"] = to_pixels(crop(CHAR, PORTRAIT_MALE))
-    frames["portrait_f"] = to_pixels(crop(CHAR, PORTRAIT_FEMALE))
 
     # Effects
     add_anim("fx_flash", [to_pixels(crop(CHAR, r)) for r in FX_FLASH])

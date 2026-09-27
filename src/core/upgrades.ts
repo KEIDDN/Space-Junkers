@@ -33,7 +33,7 @@ export function install(p: Profile, id: string): InstallResult {
   const st = upgradeStatus(p, id);
   if (st === 'installed') return { ok: false, error: 'Already done.' };
   if (st === 'locked') return { ok: false, error: 'Needs other work first.' };
-  if (p.credits < u.cost) return { ok: false, error: 'Not enough Credits.' };
+  if (p.credits < u.cost) return { ok: false, error: 'Not enough kosmorubli.' };
   let stash = p.stash;
   for (const [itemId, n] of u.items) {
     if (countInGrid(stash, itemId) < n) return { ok: false, error: `Missing ${itemDef(itemId).name}.` };
@@ -87,7 +87,7 @@ export function repair(p: Profile, uid: string): InstallResult {
   if (!loc) return { ok: false, error: 'Item not found.' };
   const cost = repairCost(loc.item);
   if (cost === null) return { ok: false, error: 'Nothing to fix.' };
-  if (p.credits < cost) return { ok: false, error: 'Not enough Credits.' };
+  if (p.credits < cost) return { ok: false, error: 'Not enough kosmorubli.' };
   const d = itemDef(loc.item.id) as ArmorDef;
   const next = updateItem(ws, { ...loc.item, dur: d.durability });
   return { ok: true, profile: { ...p, credits: p.credits - cost, stash: next.stash!, loadout: next.loadout } };

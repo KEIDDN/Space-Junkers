@@ -867,6 +867,23 @@ export class AudioService {
     if (weight > 1.3 && Math.random() < 0.5) this.click(out, t + 0.03, 3800 + Math.random() * 1200, 0.12);
   }
 
+  /**
+   * Kit moving with the body on a footfall: webbing and a pack shifting, plates knocking
+   * in a heavy carrier. Quiet, under the boot; more of it at a run.
+   * @param plates 0 (none) .. 1 (full plate)
+   */
+  gearStep(x: number, y: number, plates: number, pack: boolean, weight = 1, own = false): void {
+    if (weight < 0.5 || (!pack && plates <= 0)) return;
+    const bus = this.spatialBus(x, y, (own ? 0.1 : 0.35) * weight);
+    if (!bus) return;
+    const { ctx, out, muffle } = bus;
+    const t = ctx.currentTime;
+    const lp = muffleHz(muffle);
+    const r = (a: number, b: number) => a + Math.random() * (b - a);
+    if (pack && Math.random() < 0.55) this.take(out, 'cloth', t + r(0.02, 0.05), 0.16 * weight, r(1.25, 1.5), lp);
+    if (plates > 0 && Math.random() < 0.3 + plates * 0.4) this.take(out, 'plate', t + r(0.01, 0.03), 0.045 * plates * weight, r(1.55, 1.85), lp);
+  }
+
   sfx(kind: Sfx, x = this.listenerX, y = this.listenerY, gainMul = 1): void {
     const gains: Record<Sfx, number> = {
       dryfire: 0.45, switch: 0.4, step: 0.14, casing: 0.12,

@@ -664,10 +664,11 @@ button { font-family: var(--mono); }
 .hud-hint {
   position: absolute; left: 50%; top: 104px; transform: translateX(-50%); text-align: center;
   font-size: 12px; letter-spacing: 0.08em; color: var(--text); background: rgba(0, 0, 0, 0.45);
-  padding: 6px 12px; border: 1px solid var(--edge); animation: hint-fade 30s linear forwards;
+  padding: 6px 12px; border: 1px solid var(--edge); animation: hint-fade 14s linear forwards;
 }
 .hud-hint b { color: var(--warn); font-weight: normal; }
 @keyframes hint-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+.hud-entry { margin-top: 4px; animation: hint-fade 7s linear forwards; }
 
 /* ---------- Scene covers (between places) ---------- */
 .scene-cover {

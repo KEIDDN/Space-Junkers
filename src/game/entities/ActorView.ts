@@ -1,23 +1,35 @@
-import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
 import { tex } from '../../engine/assets';
 import { GUN_HEIGHT } from '../../engine/config';
 import type { ReloadStyle, WeaponArchetype, WeaponDef } from '../../data/weapons';
+import { DIR_DOWN, DIR_LEFT, DIR_RIGHT, DIR_UP, LayeredSprite, dirOf, type Dir } from './layers';
 
-/** Distance from the chest pivot to the grip, along the aim direction. */
-const HOLD_DIST = 4;
-/** Pixels walked per animation frame (longer strides when sprinting). */
+/** Distance from the hands to the grip, along the aim direction. */
+const HOLD_DIST = 3;
+/**
+ * Pixels walked per frame of the walk and run cycles, so the feet plant instead of
+ * sliding: eight frames make two steps.
+ */
 const STRIDE = 7;
+const RUN_STRIDE = 10;
 const RECOIL_RETURN = 22;
 /** How fast poses blend (1/s). Heavier guns settle slower. */
 const POSE_RATE = 16;
-const TURN_TIME = 0.07;
-
-export interface ActorFrames {
-  walk: Texture[];
-  /** Optional white silhouettes matching `walk`, for hit flashes. */
-  flash?: Texture[];
-  death: Texture[];
-}
+/** A turn right round passes through facing the camera for this long. */
+const TURN_TIME = 0.06;
+/** Death: seconds per frame of the collapse, and the frame the body hits the floor. */
+const DIE_FRAME = 0.1;
+const DIE_LAND = 4;
+/**
+ * Where the hands are in the two-handed carry, per facing (px from the feet): the gun
+ * pivots here. Measured on the hold frames of the character sheets.
+ */
+const HANDS: Record<Dir, { x: number; y: number }> = {
+  [DIR_UP]: { x: 2, y: -GUN_HEIGHT - 2 },
+  [DIR_LEFT]: { x: -7, y: -GUN_HEIGHT },
+  [DIR_DOWN]: { x: -1, y: -GUN_HEIGHT - 1 },
+  [DIR_RIGHT]: { x: 7, y: -GUN_HEIGHT },
+};
 
 export type Gait = 'sneak' | 'walk' | 'run' | 'sprint';
 
@@ -79,12 +91,18 @@ function bump(t: number, a: number, b: number): number {
 export class ActorView {
   readonly container = new Container();
   private shadow: Graphics;
-  private body: Sprite;
+  /** The body: a stack of aligned character sheets (body, armour, pack, hair, helmet). */
+  private body: LayeredSprite;
   private gun = new Sprite();
   /** Whatever the free hand carries: a fresh magazine, shells, a round. */
   private hand = new Graphics();
   private weapon: WeaponDef | null = null;
+  /** Carry a weapon pose even with no gun drawn (the ship: hands free, so no). */
+  private armed = false;
   private facingRight = false;
+  private dir: Dir = DIR_DOWN;
+  /** The row actually drawn (differs from `dir` mid-turn). */
+  private shown: Dir = DIR_DOWN;
   private aim = 0;
   private recoil = 0;
   private climb = 0;
@@ -93,8 +111,6 @@ export class ActorView {
   private stride = 0;
   private idleTime = Math.random() * 3;
   private deathTime = -1;
-  /** Physical fall (enemies): which way, and whether the body has hit the floor. */
-  private fallDir = 1;
   private landed = false;
   private flinchT = 0;
   private flinchX = 0;
@@ -106,7 +122,6 @@ export class ActorView {
   private dist = HOLD_DIST;
   private roll = 1;
   private lift = 0;
-  private crouch = 0;
   private pulseT = 0;
   private pulseKind: 'round' | 'rack' | 'jolt' = 'jolt';
   private lastAction: HandAction['kind'] | null = null;
@@ -123,17 +138,22 @@ export class ActorView {
   /** Animation moments this frame (cleared every update). */
   readonly events: AnimEvent[] = [];
 
-  constructor(private frames: ActorFrames) {
-    this.shadow = new Graphics().ellipse(0, 0, 9, 3).fill({ color: 0x000000, alpha: 0.35 });
-    this.body = new Sprite(frames.walk[0]);
-    this.body.anchor.set(0.5, 1);
-    this.body.y = 1;
+  /** @param look character sheets to stack, bottom to top (see `look.ts`) */
+  constructor(look: string[]) {
+    this.shadow = new Graphics().ellipse(0, 0, 10, 3.5).fill({ color: 0x000000, alpha: 0.38 });
+    this.body = new LayeredSprite(look);
     this.gun.visible = false;
-    this.container.addChild(this.shadow, this.body, this.gun, this.hand);
+    this.container.addChild(this.shadow, this.body.container, this.gun, this.hand);
+  }
+
+  /** Change what the character wears (equipment shows on the body). */
+  setLook(look: string[]): void {
+    this.body.setLayers(look);
   }
 
   setWeapon(def: WeaponDef | null): void {
     this.weapon = def;
+    this.armed = !!def;
     this.gun.visible = !!def;
     this.recoil = 0;
     this.climb = 0;
@@ -162,24 +182,19 @@ export class ActorView {
   }
 
   /**
-   * Die. Painted death animations play as-is; single-frame corpses topple over physically,
-   * away from the shot, and let go of their gun.
+   * Die: the body folds and goes down (the sheets' own collapse), and the gun is let go,
+   * skidding away from the shot.
    */
   playDeath(dirX = 0, dirY = 0): void {
     this.deathTime = 0;
     this.hand.clear();
-    this.body.scale.set(this.facingRight ? -1 : 1, 1);
-    if (this.frames.death.length > 1) {
-      this.gun.visible = false;
-      this.body.texture = this.frames.death[0];
-      return;
-    }
-    this.fallDir = dirX > 0.05 ? 1 : dirX < -0.05 ? -1 : Math.random() < 0.5 ? -1 : 1;
-    this.body.texture = this.frames.walk[0];
-    this.body.y = 1;
+    this.body.container.rotation = 0;
+    this.body.container.x = 0;
+    this.body.show('die', DIR_DOWN, 0);
     if (this.weapon) {
       const sp = 60 + Math.random() * 50;
-      this.dropped = { vx: dirX * sp + (Math.random() - 0.5) * 30, vy: dirY * sp * 0.6 + (Math.random() - 0.5) * 20, spin: (Math.random() - 0.5) * 18, t: 0 };
+      const kx = dirX || (Math.random() - 0.5);
+      this.dropped = { vx: kx * sp + (Math.random() - 0.5) * 30, vy: dirY * sp * 0.6 + (Math.random() - 0.5) * 20, spin: (Math.random() - 0.5) * 18, t: 0 };
     }
   }
 
@@ -204,51 +219,57 @@ export class ActorView {
 
     if (this.deathTime >= 0) {
       this.deathTime += dt;
-      if (this.frames.death.length > 1) {
-        const f = Math.min(this.frames.death.length - 1, Math.floor(this.deathTime / 0.09));
-        this.body.texture = this.frames.death[f];
-      } else {
-        this.updateFall(dt);
-      }
+      this.updateDeath(dt);
       return;
     }
 
     this.aim = aim;
     const cos = Math.cos(aim);
     // Hysteresis avoids flip-flopping when aiming straight up/down.
-    const wasRight = this.facingRight;
     if (cos > 0.08) this.facingRight = true;
     else if (cos < -0.08) this.facingRight = false;
-    if (wasRight !== this.facingRight) this.turnT = TURN_TIME;
+    const dir = dirOf(aim, this.dir);
+    if (dir !== this.dir) {
+      // Turning right round: a beat facing the camera (or the side) on the way.
+      if ((dir ^ this.dir) === 2) this.turnT = TURN_TIME;
+      this.dir = dir;
+    }
     this.turnT = Math.max(0, this.turnT - dt);
+    this.shown = this.turnT > 0 ? (this.dir === DIR_LEFT || this.dir === DIR_RIGHT ? DIR_DOWN : this.facingRight ? DIR_RIGHT : DIR_LEFT) : this.dir;
 
-    // --- Body: walk cycle driven by distance, so feet don't slide.
-    const sprint = p.gait === 'sprint';
-    const stride = STRIDE * (sprint ? 1.35 : p.gait === 'sneak' ? 0.8 : 1);
-    if (moved > 0.01) {
+    // --- Body: which animation, and the frame from distance walked so feet don't slide.
+    const act = p.action;
+    const kneel = act?.kind === 'search' || (act?.kind === 'heal' && !act.quick);
+    const armed = this.armed;
+    const sprint = p.gait === 'sprint' && armed && this.body.has('holdrun');
+    let name: string;
+    let frame = 0;
+    if (kneel && this.body.has('kneel')) {
+      name = 'kneel';
+      this.stride = 0;
+    } else if (moved > 0.01) {
+      name = sprint ? 'holdrun' : armed ? 'hold' : 'walk';
+      const stride = sprint ? RUN_STRIDE : STRIDE;
       this.stride += moved * (backwards ? -1 : 1);
-      const n = this.frames.walk.length;
-      const f = (((Math.floor(this.stride / stride) % n) + n) % n);
-      if (f !== this.frame && (f === 1 || f === 4)) {
+      const k = (((Math.floor(this.stride / stride) % 8) + 8) % 8);
+      // The walk sheets start with a standing frame; the run is all stride.
+      frame = sprint ? k : k + 1;
+      if (frame !== this.frame && (k === 0 || k === 4)) {
         this.stepped = true;
         this.events.push('step');
       }
-      this.frame = f;
     } else {
-      this.frame = 0;
+      name = armed ? 'holdidle' : 'idle';
+      // Breathing: shoulders settle and lift, slower when relaxed.
+      frame = Math.sin(this.idleTime * (p.raise > 0.9 ? 2.4 : 1.8)) > 0.2 ? 1 : 0;
+      this.stride = 0;
     }
+    if (!this.body.has(name)) name = armed ? 'hold' : 'walk';
+    this.frame = frame;
     this.idleTime += dt;
-    const flashing = this.flashTime > 0 && this.frames.flash;
+    const flashing = this.flashTime > 0;
     this.flashTime -= dt;
-    this.body.texture = flashing ? this.frames.flash![this.frame] : this.frames.walk[this.frame];
-
-    // Crouch when sneaking or working with the hands low; a squat reads at this size.
-    const busyLow = p.action?.kind === 'search' || (p.action?.kind === 'heal' && !p.action.quick);
-    this.crouch = approach(this.crouch, p.gait === 'sneak' ? 1 : busyLow ? 0.6 : 0, 14, dt);
-    const sy = 1 - this.crouch * 0.09;
-    // Turning: a thin in-between for a couple of frames instead of an instant mirror.
-    const turn = this.turnT > 0 ? 0.55 : 1;
-    this.body.scale.set((this.facingRight ? -1 : 1) * turn * (1 + this.crouch * 0.04), sy);
+    this.body.show(name, this.shown, frame, flashing);
 
     // Flinch: brief shove and tilt, decaying.
     let bx = 0;
@@ -257,61 +278,39 @@ export class ActorView {
       this.flinchT = Math.max(0, this.flinchT - dt);
       const k = this.flinchT / 0.13;
       bx = this.flinchX * 2 * k;
-      rot = this.flinchX * 0.14 * k;
+      rot = this.flinchX * 0.1 * k;
     }
     // Heavy weapons shove the shoulder back.
     const shove = this.weapon && (this.weapon.archetype === 'shotgun' || this.weapon.archetype === 'marksman') ? this.recoil * 0.25 : 0;
     bx -= Math.cos(this.drawnAngle) * shove;
-    this.body.x = Math.round(bx);
-    this.body.rotation = rot;
-
-    // Vertical: breathing when still, a dip on each footfall when moving, deeper when sprinting.
-    let by = 1;
-    if (moved > 0.01) {
-      const phase = (((this.stride / stride) % 1) + 1) % 1;
-      by = 1 - (sprint ? Math.round(Math.abs(Math.sin(phase * Math.PI)) * 1.4) : phase > 0.5 ? 1 : 0);
-    } else {
-      by = Math.sin(this.idleTime * (p.raise > 0.9 ? 2.4 : 1.9)) > 0.55 ? 0 : 1;
-    }
-    this.body.y = by;
-    this.shadow.scale.set(1 + this.crouch * 0.1, 1);
+    this.body.container.x = Math.round(bx);
+    this.body.container.rotation = rot;
+    this.shadow.scale.set(kneel ? 1.15 : 1, 1);
 
     this.updateGun(dt, p, moved);
   }
 
-  /** Topple: a beat of stagger, then gravity, a bounce, and stillness. The gun skids away. */
-  private updateFall(dt: number): void {
+  /** The collapse, the thud, the gun skidding off, and the body settling into shadow. */
+  private updateDeath(dt: number): void {
     const t = this.deathTime;
-    const dir = this.fallDir;
-    const full = Math.PI / 2;
-    let rot: number;
-    if (t < 0.07) rot = -dir * 0.12 * (t / 0.07); // knocked back on the heels
-    else if (t < 0.36) {
-      const k = (t - 0.07) / 0.29;
-      rot = dir * (full + 0.14) * k * k; // falls faster and faster
-    } else if (t < 0.5) {
-      const k = (t - 0.36) / 0.14;
-      rot = dir * (full + 0.14 - 0.22 * Math.sin(k * Math.PI)); // bounces off the floor
-    } else rot = dir * full;
-    if (t >= 0.36 && !this.landed) {
+    const f = Math.min(5, Math.floor(t / DIE_FRAME));
+    this.body.show('die', DIR_DOWN, f);
+    if (f >= DIE_LAND && !this.landed) {
       this.landed = true;
       this.thudded = true;
       this.events.push('thud');
     }
-    this.body.rotation = rot;
-    this.body.x = 0;
-    this.body.y = t > 0.36 ? 3 : 1;
-    // Settle into shadow.
-    const dark = Math.min(1, Math.max(0, (t - 0.5) / 1.5));
+    const dark = Math.min(1, Math.max(0, (t - 0.8) / 1.5));
     const c = Math.round(255 - dark * 80);
-    this.body.tint = (c << 16) | (Math.round(c * 0.95) << 8) | Math.round(c * 0.92);
+    const tint = (c << 16) | (Math.round(c * 0.95) << 8) | Math.round(c * 0.92);
+    for (const s of this.body.container.children) (s as Sprite).tint = tint;
 
     const d = this.dropped;
     if (d && this.weapon) {
       d.t += dt;
-      const f = Math.exp(-5 * dt);
-      d.vx *= f;
-      d.vy *= f;
+      const k = Math.exp(-5 * dt);
+      d.vx *= k;
+      d.vy *= k;
       this.gun.visible = true;
       this.gun.x += d.vx * dt;
       // Falls from hand height to the floor in the first moments.
@@ -452,9 +451,11 @@ export class ActorView {
     const cos = Math.cos(world);
     const sin = Math.sin(world);
     const d = this.dist - this.recoil;
-    // The hands ride with the body: breathing, footfalls, crouching.
-    const gx = cos * d + this.body.x;
-    const gy = -GUN_HEIGHT + sin * d + this.lift + (this.body.y - 1) + this.crouch * 1.5;
+    // The hands ride with the body: breathing, footfalls, kneeling.
+    const hands = HANDS[this.shown];
+    const drop = this.body.torsoDrop('hold');
+    const gx = hands.x + cos * d + this.body.container.x;
+    const gy = hands.y + sin * d + this.lift + drop;
     this.gun.position.set(Math.round(gx), Math.round(gy));
     this.gun.rotation = world;
     this.gun.scale.set(1, (this.facingRight ? 1 : -1) * Math.max(0.5, this.roll));
@@ -462,8 +463,8 @@ export class ActorView {
     this.drawnX = gx;
     this.drawnY = gy;
     this.drawHand(act, gx, gy, world);
-    // Aiming up: gun goes behind the body.
-    const behind = sin < -0.45;
+    // Facing away: the gun is in front of them, behind the body from here.
+    const behind = this.shown === DIR_UP;
     const idx = this.container.getChildIndex(this.gun);
     const want = behind ? 1 : 2;
     if (idx !== want) this.container.setChildIndex(this.gun, want);
@@ -480,7 +481,7 @@ export class ActorView {
     if (!def) return;
     const face = this.facingRight ? 1 : -1;
     // Belt pouch (start) and the gun's feed point (end): a little ahead of the grip, below it.
-    const belt = { x: this.body.x - 2 * face, y: -8 + (this.body.y - 1) };
+    const belt = { x: this.body.container.x - 3 * face, y: -GUN_HEIGHT + 4 + this.body.torsoDrop('hold') };
     // Pistols take the magazine through the grip; long guns forward of it.
     const ahead = def.archetype === 'pistol' ? 0 : def.archetype === 'marksman' ? 8 : def.archetype === 'shotgun' ? 5 : 6;
     const feed = { x: gx + Math.cos(angle) * ahead, y: gy + Math.sin(angle) * ahead + 2 };

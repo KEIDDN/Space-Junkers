@@ -76,15 +76,15 @@ export function Results({ onContinue }: { onContinue: () => void }) {
                 <span style={{ color: RARITY_COLOR[d.rarity] }}>{d.name}</span>
                 {it.qty > 1 && <span className="dim">×{it.qty}</span>}
                 <span className="grow" />
-                <span>{itemValueDeep(it).toLocaleString()} CR</span>
+                <span>{itemValueDeep(it).toLocaleString()} KR</span>
               </div>
             );
           })}
         </div>
         <div className="results-total">
           {extracted
-            ? <>HAUL: <span className="warn">{total.toLocaleString()} CR</span> <span className="dim small">· carried home to the ship</span></>
-            : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{total.toLocaleString()} CR</span></>}
+            ? <>HAUL: <span className="warn">{total.toLocaleString()} KR</span> <span className="dim small">· carried home to the ship</span></>
+            : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{total.toLocaleString()} KR</span></>}
         </div>
         {progressed.length > 0 && (
           <div className="results-contracts">

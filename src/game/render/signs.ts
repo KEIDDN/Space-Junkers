@@ -80,6 +80,7 @@ const GLYPHS: Record<string, string[]> = {
   '.': ['.', '.', '.', '.', '#'],
   '·': ['.', '.', '#', '.', '.'],
   '!': ['#', '#', '#', '.', '#'],
+  ':': ['.', '#', '.', '#', '.'],
   ' ': ['..', '..', '..', '..', '..'],
 };
 
@@ -174,6 +175,22 @@ export function signTexture(main: string, sub: string | null, style: SignStyle):
 }
 
 /** What each kind of room says over its door. */
+/**
+ * A second plate: what the room was for, in the voice of whoever ran it. Hung on the far
+ * side of the back wall from the room's name.
+ */
+export const ROOM_NOTICES: Record<string, { ru: string; en: string; style: keyof typeof SIGN_STYLES }> = {
+  storage: { ru: 'НЕ КУРИТЬ', en: 'NO SMOKING', style: 'warn' },
+  reactor: { ru: 'РАДИАЦИЯ', en: 'RADIATION', style: 'danger' },
+  armory: { ru: 'БОЕПРИПАСЫ', en: 'AMMUNITION', style: 'warn' },
+  workshop: { ru: 'ОСТОРОЖНО', en: 'CAUTION', style: 'warn' },
+  servers: { ru: 'ТИШИНА', en: 'SILENCE', style: 'plain' },
+  medbay: { ru: 'СТЕРИЛЬНО', en: 'STERILE', style: 'medical' },
+  barracks: { ru: 'ОТБОЙ 22:00', en: 'LIGHTS OUT 22:00', style: 'plain' },
+  mess: { ru: 'МОЙ РУКИ', en: 'WASH HANDS', style: 'plain' },
+  office: { ru: 'ПЛАН - ЗАКОН', en: 'THE PLAN IS LAW', style: 'plain' },
+};
+
 export const ROOM_SIGNS: Record<string, { ru: string; en: string; style: keyof typeof SIGN_STYLES }> = {
   entry: { ru: 'ШЛЮЗ', en: 'AIRLOCK', style: 'plain' },
   exfil: { ru: 'ПОСАДКА', en: 'LANDING PAD', style: 'warn' },

@@ -216,11 +216,33 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   // --- Furnish
   const mix = opts.enemies ?? { scavenger: 1 };
   cells.forEach((c, i) => furnishRoom(map, rng, c, i, maxDepth, danger, cells, mix, theme, plan));
+  wearCorridors(map, new Rng(seed ^ 0x5eed), cells.map((c) => c.room));
   const liftExit = map.exits.find((e) => e.kind === 'lift');
   if (liftExit && plan.breakerAt) liftExit.breaker = plan.breakerAt;
 
   for (const c of cells) map.rooms.push(c.room);
   return map;
+}
+
+/**
+ * Corridors are where people passed, not where they worked: scuffs and old stains on the
+ * deck, a dropped cable, a tin kicked against the wall. Flat, underfoot, never in the way.
+ * (Its own random stream, so the rooms are furnished the same for a seed as before.)
+ */
+function wearCorridors(map: TileMap, rng: Rng, rooms: Room[]): void {
+  const inRoom = (x: number, y: number) => rooms.some((r) => x >= r.x - 1 && x <= r.x + r.w && y >= r.y - 1 && y <= r.y + r.h);
+  for (let y = 1; y < map.height - 1; y++) {
+    for (let x = 1; x < map.width - 1; x++) {
+      if (map.get(x, y) !== Tile.Floor || inRoom(x, y)) continue;
+      const roll = rng.next();
+      if (roll < 0.05) {
+        map.props.push({ sprite: rng.pick(['fx_blood_0', 'fx_blood_1', 'fx_blood_2']), x: x * TILE + rng.int(6, 26), y: y * TILE + rng.int(10, 30), layer: 'floor', tint: rng.pick([0x2a2622, 0x241f1a, 0x1f2320]) });
+      } else if (roll < 0.075) {
+        const byWall = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map.get(x + dx, y + dy) === Tile.Wall);
+        if (byWall) map.props.push({ sprite: rng.pick(['deco_cable', 'deco_tape', 'deco_cigs', 'deco_orders', 'deco_stew']), x: x * TILE + rng.int(8, 24), y: y * TILE + rng.int(16, 28), layer: 'floor', flip: rng.chance(0.5) });
+      }
+    }
+  }
 }
 
 function neighbours(cx: number, cy: number, w: number, h: number): [number, number][] {
@@ -329,6 +351,8 @@ interface Kit {
   decor: string[];
   /** What gets left on its tables and benches. */
   tops?: string[];
+  /** What ends up on its floor: the traces of the work done here. */
+  floor?: string[];
 }
 
 const P = (sprite: string, w = 1, extra: Partial<Piece> = {}): Piece => ({ sprite, w, ...extra });
@@ -340,46 +364,55 @@ const KITS: Record<string, Kit> = {
     wall: [P('ship_shelf'), P('ship_rack_a'), P('ship_rack_b'), P('ship_cabinet'), P('ship_crate_w'), P('ship_crate_y')],
     wallCount: [2, 4], center: [], centerCount: [0, 0], cover: 1.6,
     containers: { box_dark: 3, box_olive: 3, locker: 1 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster2'], tops: ['deco_rations', 'deco_tape'],
+    floor: ['deco_rations', 'deco_tape', 'deco_cable', 'deco_orders'],
   },
   barracks: {
     wall: [P('ship_bunk', 3), P('ship_bunk', 3), P('ship_locker_s'), P('ship_suit'), P('ship_tv')],
     wallCount: [2, 3], center: [P('ship_table', 2, { surface: 24 })], centerCount: [0, 1], cover: 0.5,
     containers: { locker: 4, box_dark: 1 }, containerCount: [1, 3], decor: [...POSTERS, 'ship_poster'], tops: ['deco_cigs', 'deco_vodka', 'deco_stew', 'deco_milk'],
+    floor: ['deco_cigs', 'deco_vodka', 'deco_orders', 'deco_bandage'],
   },
   office: {
     wall: [P('ship_cabinet'), P('ship_terminal', 1, { terminal: true }), P('ship_tv'), P('ship_plant'), P('ship_cab3')],
     wallCount: [2, 4], center: [P('ship_desk', 3, { surface: 30 }), P('ship_desk_small', 1, { surface: 22 })], centerCount: [1, 2], cover: 0.3,
     containers: { filing: 4, locker: 1 }, containerCount: [1, 2], decor: POSTERS, tops: ['deco_tablet', 'deco_cigs', 'deco_milk', 'deco_compass', 'deco_camera'],
+    floor: ['deco_orders', 'deco_orders', 'deco_orders', 'deco_datachip'],
   },
   servers: {
     wall: [P('ship_server'), P('ship_server2'), P('hack_terminal', 1, { terminal: true }), P('ship_console3', 3)],
     wallCount: [2, 4], center: [P('hack_server', 3, { row: true }), P('hack_rack', 2, { row: true })], centerCount: [1, 3], cover: 0.2,
     containers: { server: 4, filing: 1 }, containerCount: [1, 2], decor: VENTS, tops: ['deco_tablet', 'deco_multitool'],
+    floor: ['deco_hdd', 'deco_cable', 'deco_cable', 'deco_datachip', 'deco_battery'],
   },
   workshop: {
     wall: [P('ship_workbench', 2, { surface: 34 }), P('ship_machine', 2), P('ship_pipe_v'), P('ship_cab2')],
     wallCount: [2, 3], center: [P('ship_machine', 2), P('ship_robot')], centerCount: [0, 1], cover: 1,
     containers: { toolbox: 4, box_dark: 2 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster3'], tops: ['deco_wrench', 'deco_tape', 'deco_multitool', 'deco_oxygen'],
+    floor: ['deco_gear', 'deco_wrench', 'deco_battery', 'deco_cable', 'deco_gear'],
   },
   medbay: {
     wall: [P('ship_bed', 2), P('med_iv'), P('med_monitor'), P('med_crate')],
     wallCount: [2, 4], center: [P('med_gurney', 1, { surface: 10 }), P('ship_bed', 2)], centerCount: [1, 2], cover: 0.3,
     containers: { medcab: 5, box_olive: 1 }, containerCount: [1, 2], decor: ['ship_poster4', 'ship_vent'], tops: ['deco_reagent', 'deco_antibiotics', 'deco_specimen'],
+    floor: ['deco_bandage', 'deco_bandage', 'deco_pills', 'deco_antibiotics'],
   },
   mess: {
     wall: [P('ship_cab2'), P('ship_cab3'), P('ship_tv'), P('ship_bin')],
     wallCount: [1, 3], center: [P('ship_table', 2, { surface: 24 })], centerCount: [1, 3], cover: 0.3,
     containers: { box_dark: 2, locker: 1 }, containerCount: [0, 1], decor: [...POSTERS, 'ship_vent'], tops: ['deco_stew', 'deco_rations', 'deco_vodka', 'deco_milk', 'deco_cigs'],
+    floor: ['deco_stew', 'deco_milk', 'deco_rations', 'deco_cigs'],
   },
   reactor: {
     wall: [P('ship_tank', 2), P('ship_capsule', 2), P('ship_pipe_v'), P('ship_console_b', 3)],
     wallCount: [2, 3], center: [P('ship_reactor', 1, { glow: 0xff9a40 })], centerCount: [1, 1], cover: 0.6,
     containers: { toolbox: 2, box_dark: 1 }, containerCount: [0, 1], decor: VENTS, tops: ['deco_geiger', 'deco_tape'],
+    floor: ['deco_cable', 'deco_cable', 'deco_battery', 'deco_geiger'],
   },
   armory: {
     wall: [P('ship_gunrack', 2), P('ship_locker'), P('merc_case2')],
     wallCount: [2, 3], center: [P('merc_tripod')], centerCount: [0, 1], cover: 1.2,
     containers: { ammocase: 4, box_red: 2, case_green: 1, locker: 1 }, containerCount: [1, 3], decor: ['ship_poster', 'ship_poster3'], tops: ['deco_geiger', 'deco_cigs'],
+    floor: ['deco_ammo', 'deco_ammo', 'deco_cigs', 'deco_bandage'],
   },
   entry: {
     wall: [P('ship_locker_s'), P('ship_crate_g'), P('ship_suit')],
@@ -621,12 +654,21 @@ function furnishRoom(
     map.props.push({ sprite: rng.pick(['fx_blood_0', 'fx_blood_1', 'fx_blood_2']), x: px(x) + rng.int(4, 28), y: px(y) + rng.int(8, 30), layer: 'floor', tint: 0x2a2622 });
   }
 
-  // --- Leftovers on the floor: tins, tools, ore, bones. What this world leaves lying around.
-  const litter = rng.int(0, 2) + (r.role === 'loot' ? 1 : 0);
+  // --- Leftovers on the floor. Mostly the traces of the room's own work (paperwork in an
+  // office, dressings in a medbay, spent tins in an armoury), dropped near the furniture
+  // where the work was done; now and then something of the world outside.
+  const litter = rng.int(1, 3) + (r.role === 'loot' ? 1 : 0);
   const open = floorTiles(map, r).filter(([x, y]) => !reserved.has(key(x, y)));
+  const byWork = open.filter(([x, y]) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => map.get(x + dx, y + dy) === Tile.Prop));
   for (let i = 0; i < litter && open.length; i++) {
-    const [x, y] = open.splice(rng.int(0, open.length - 1), 1)[0];
-    map.props.push({ sprite: rng.pick(theme.smalls), x: px(x) + rng.int(6, 26), y: px(y) + rng.int(14, 28) });
+    const pool = byWork.length && rng.chance(0.7) ? byWork : open;
+    const [x, y] = pool.splice(rng.int(0, pool.length - 1), 1)[0];
+    const other = pool === byWork ? open : byWork;
+    const j = other.findIndex(([ox, oy]) => ox === x && oy === y);
+    if (j >= 0) other.splice(j, 1);
+    const own = kit.floor?.length && rng.chance(0.75);
+    const sprite = own ? rng.pick(kit.floor!) : rng.pick(theme.smalls);
+    map.props.push({ sprite, x: px(x) + rng.int(6, 26), y: px(y) + rng.int(14, 28), flip: rng.chance(0.5) });
   }
 
   // --- Posters and vents on the back wall, where nothing stands in front of them.
@@ -666,6 +708,7 @@ function furnishRoom(
     map.lights.push({
       x: (r.x + r.w / 2) * TILE, y: (r.y + r.h * 0.55) * TILE, color,
       radius: Math.min(300, Math.hypot(r.w, r.h) * TILE * 0.6), intensity: r.role === 'start' ? 0.5 : 0.42, flicker: false,
+      area: { x: r.x * TILE - 6, y: r.y * TILE - 20, w: r.w * TILE + 12, h: r.h * TILE + 26 },
     });
   }
   const pad = r.role === 'extraction' ? map.extraction : null;

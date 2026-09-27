@@ -44,7 +44,7 @@ export function BoardPanel() {
           <button className={`tab ${tab === 'ship' ? 'on' : ''}`} onClick={() => { setTab('ship'); audio.ui('tab'); }}>SHIP WORK</button>
           <ByDevice kbm={null} pad={<Key a="nextTab" />} />
           <span className="grow" />
-          <span className="dim small">{done}/{all.length} CONTRACTS COMPLETE · {p.credits.toLocaleString()} CR</span>
+          <span className="dim small">{done}/{all.length} CONTRACTS COMPLETE · {p.credits.toLocaleString()} KR</span>
         </div>
         {tab === 'contracts' && (
           <div className="board-list">
@@ -69,7 +69,7 @@ export function BoardPanel() {
                   <div className="dim small">{u.description}</div>
                   {st !== 'installed' && (
                     <div className="upgrade-cost">
-                      <span className={creditsOk ? '' : 'bad'}>{u.cost.toLocaleString()} CR</span>
+                      <span className={creditsOk ? '' : 'bad'}>{u.cost.toLocaleString()} KR</span>
                       {u.items.map(([id, n]) => {
                         const have = stashCount(p, id);
                         return (

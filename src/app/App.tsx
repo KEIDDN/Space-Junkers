@@ -56,7 +56,7 @@ export function App() {
 
   const toShip = () => {
     const p = getProfile();
-    transition({ kind: 'ship' }, [`LASTOCHKA // ЛАСТОЧКА`, `DAY ${p.day} · HOLDING OVER OTETS`, `${p.credits.toLocaleString()} CR ABOARD`], 900);
+    transition({ kind: 'ship' }, [`LASTOCHKA // ЛАСТОЧКА`, `DAY ${p.day} · HOLDING OVER OTETS`, `${p.credits.toLocaleString()} KR ABOARD`], 900);
   };
 
   const deploy = (destination: string, seed: number) => {
@@ -92,7 +92,7 @@ export function App() {
       const p = getProfile();
       transition({ kind: 'ship' }, [
         s.status === 'extracted' ? 'DOCKING WITH THE LASTOCHKA . . .' : 'RECOVERY BEACON RECEIVED . . .',
-        `DAY ${p.day} · ${p.credits.toLocaleString()} CR ABOARD`,
+        `DAY ${p.day} · ${p.credits.toLocaleString()} KR ABOARD`,
       ], 1100, s.status === 'extracted' ? 'ok' : 'bad');
     } else transition({ kind: 'title' }, ['LEAVING THE RANGE'], 350);
   };
