@@ -268,7 +268,7 @@ function placeVignettes(map: TileMap, rng: Rng, rooms: Room[]): void {
   const scenes: Scene[] = [
     {
       // Somebody's lunch, on the desk where they left it.
-      key: 'meal', fits: (r) => ['mess', 'office', 'workshop', 'barracks'].includes(r.kind ?? '') && r.role !== 'vault',
+      key: 'meal', fits: (r) => ['mess', 'office', 'workshop', 'barracks', 'security'].includes(r.kind ?? '') && r.role !== 'vault',
       place: (r) => {
         for (const desk of rng.shuffle(map.props.filter((p) => SURFACES[p.sprite] && inside(r, Math.floor(p.x / TILE), Math.floor((p.y - 4) / TILE))))) {
           // Read from open floor beside the desk.
@@ -343,7 +343,7 @@ function placeVignettes(map: TileMap, rng: Rng, rooms: Room[]): void {
     },
     {
       // A clock stopped at the Blackout, and a note saying leave it.
-      key: 'clock', fits: (r) => ['office', 'mess', 'workshop', 'barracks', 'entry', 'servers'].includes(r.kind ?? ''),
+      key: 'clock', fits: (r) => ['office', 'mess', 'workshop', 'barracks', 'entry', 'servers', 'security'].includes(r.kind ?? ''),
       place: (r) => {
         const xs = rng.shuffle(Array.from({ length: r.w }, (_, i) => r.x + i))
           .filter((x) => map.get(x, r.y - 1) === Tile.Wall && map.get(x, r.y) === Tile.Floor && !used.has(k(x, r.y)) && !onExit(x, r.y));
@@ -577,6 +577,22 @@ const KITS: Record<string, Kit> = {
     wallCount: [2, 3], center: [P('merc_tripod')], centerCount: [0, 1], cover: 1.2,
     containers: { ammocase: 4, box_red: 2, case_green: 1, locker: 1 }, containerCount: [1, 3], decor: ['ship_poster', 'ship_poster3'], tops: ['deco_geiger', 'deco_cigs'],
     floor: ['deco_ammo', 'deco_ammo', 'deco_cigs', 'deco_bandage'],
+  },
+  // The guard post: lockers, a rack, a screen watching cameras that no longer work.
+  security: {
+    wall: [P('ship_locker'), P('ship_gunrack', 2), P('ship_tv'), P('hack_terminal', 1, { terminal: true }), P('ship_cabinet')],
+    wallCount: [2, 4], center: [P('ship_desk', 3, { surface: 30 }), P('ship_desk_small', 1, { surface: 22 })], centerCount: [1, 1], cover: 0.8,
+    containers: { locker: 3, ammocase: 1, filing: 1 }, containerCount: [1, 2], decor: ['ship_poster', 'ship_poster3'],
+    tops: ['deco_radio', 'deco_orders', 'deco_cigs', 'deco_camera'],
+    floor: ['deco_orders', 'deco_ammo', 'deco_cigs', 'deco_radio'],
+  },
+  // Somebody's research: sealed cabinets, capsules, specimens under glass.
+  lab: {
+    wall: [P('med_crate'), P('ship_capsule', 2), P('hack_terminal', 1, { terminal: true }), P('med_monitor'), P('ship_server')],
+    wallCount: [2, 4], center: [P('ship_table', 2, { surface: 24 }), P('med_gurney', 1, { surface: 10 })], centerCount: [1, 2], cover: 0.3,
+    containers: { medcab: 2, case_green: 1, server: 1 }, containerCount: [1, 2], decor: ['ship_poster4', 'ship_vent2'],
+    tops: ['deco_specimen', 'deco_reagent', 'deco_egg', 'deco_crystal', 'deco_tablet'],
+    floor: ['deco_reagent', 'deco_specimen', 'deco_datachip', 'deco_pills'],
   },
   entry: {
     wall: [P('ship_locker_s'), P('ship_crate_g'), P('ship_suit')],

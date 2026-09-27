@@ -189,6 +189,8 @@ export const ROOM_NOTICES: Record<string, { ru: string; en: string; style: keyof
   barracks: { ru: 'ОТБОЙ 22:00', en: 'LIGHTS OUT 22:00', style: 'plain' },
   mess: { ru: 'МОЙ РУКИ', en: 'WASH HANDS', style: 'plain' },
   office: { ru: 'ПЛАН - ЗАКОН', en: 'THE PLAN IS LAW', style: 'plain' },
+  security: { ru: 'ПОКАЖИ ПРОПУСК', en: 'SHOW YOUR PASS', style: 'warn' },
+  lab: { ru: 'НЕ ТРОГАТЬ', en: 'DO NOT TOUCH', style: 'danger' },
 };
 
 export const ROOM_SIGNS: Record<string, { ru: string; en: string; style: keyof typeof SIGN_STYLES }> = {
@@ -204,6 +206,8 @@ export const ROOM_SIGNS: Record<string, { ru: string; en: string; style: keyof t
   mess: { ru: 'СТОЛОВАЯ', en: 'CANTEEN', style: 'plain' },
   reactor: { ru: 'РЕАКТОР', en: 'DANGER', style: 'warn' },
   armory: { ru: 'АРСЕНАЛ', en: 'ARMOURY', style: 'danger' },
+  security: { ru: 'ОХРАНА', en: 'SECURITY', style: 'danger' },
+  lab: { ru: 'ЛАБОРАТОРИЯ', en: 'LABORATORY', style: 'medical' },
   // Aboard the Lastochka.
   ship_common: { ru: 'КУБРИК', en: 'MESS DECK', style: 'plain' },
   ship_cargo: { ru: 'ТРЮМ', en: 'CARGO', style: 'warn' },
