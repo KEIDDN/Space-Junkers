@@ -47,8 +47,8 @@ export interface InteractionEvents {
   onSignal?(x: number, y: number): void;
   /** A keycard opened a security door. */
   onUnlock?(door: DoorDef): void;
-  /** The player sat down at a terminal. */
-  onTerminal?(entry: number): void;
+  /** The player sat down at a terminal (or picked up a note). */
+  onTerminal?(entry: number, note?: string): void;
 }
 
 /** Something you hold E at that isn't a container: breakers, security doors, terminals. */
@@ -59,6 +59,7 @@ interface Fixture {
   exit?: ExitDef;
   door?: DoorDef;
   entry?: number;
+  note?: string;
   done: boolean;
 }
 
@@ -133,7 +134,9 @@ export class Interactions {
       this.fixtures.push({ kind: 'lock', x: ((a.tx + b.tx) / 2 + 0.5) * TILE, y: ((a.ty + b.ty) / 2 + 0.5) * TILE, door: d, done: false });
     }
     for (const t of map.terminals) {
-      this.fixtures.push({ kind: 'terminal', x: t.tx * TILE + TILE / 2, y: (t.ty + 1) * TILE + 4, entry: t.entry, done: false });
+      this.fixtures.push({
+        kind: 'terminal', x: t.x ?? t.tx * TILE + TILE / 2, y: t.y ?? (t.ty + 1) * TILE + 4, entry: t.entry, note: t.note, done: false,
+      });
     }
     this.overlay.addChild(this.zoneMarkings(), this.liftLamps, this.bar);
     this.drawLiftLamps();
@@ -372,10 +375,10 @@ export class Interactions {
   private useFixture(f: Fixture, dt: number, input: Input, moving: boolean): string {
     if (f.kind === 'terminal') {
       if (input.pressed('interact')) {
-        this.audio.ui('open');
-        this.ev.onTerminal?.(f.entry ?? 0);
+        this.audio.ui(f.note ? 'pickup' : 'open');
+        this.ev.onTerminal?.(f.entry ?? 0, f.note);
       }
-      return '{interact} READ TERMINAL';
+      return f.note ? '{interact} READ' : '{interact} READ TERMINAL';
     }
     let label: string;
     let time: number;

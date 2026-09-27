@@ -26,6 +26,7 @@ import numpy as np
 from PIL import Image
 
 import build_characters as characters
+import sj_props
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "Assets"
@@ -416,6 +417,8 @@ def build() -> None:
     frames["portrait_m"] = to_pixels(crop(CHAR, PORTRAIT_MALE))
     frames["portrait_f"] = to_pixels(crop(CHAR, PORTRAIT_FEMALE))
     frames["remains"] = Image.fromarray(characters.corpse(), "RGBA")
+    # What people left behind: notes, a drawing, a stopped clock, a bedroll... (sj_props.py)
+    frames.update(sj_props.props())
 
     # Crew portraits (dialogue)
     for crew, rect in CREW_PORTRAITS.items():

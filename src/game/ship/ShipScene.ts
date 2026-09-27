@@ -7,7 +7,7 @@ import { Input } from '../../engine/input';
 import { CREW, type CrewId } from '../../data/crew';
 import { questsFor } from '../../core/quests';
 import { useProfile } from '../../state/profileStore';
-import { buildShip, type ShipInteractable, type ShipLayout } from '../../data/shipLayout';
+import { buildShip, shipStory, type ShipInteractable, type ShipLayout } from '../../data/shipLayout';
 import { shipUi, useShip } from '../../state/shipStore';
 import { ActorView } from '../entities/ActorView';
 import { operatorLook } from '../entities/look';
@@ -20,6 +20,7 @@ import { Doors } from '../world/doors';
 import { emitterLevels, emittersFrom, type Emitter } from '../world/emitters';
 import { CrewActor } from './CrewActor';
 import { STEP_AT, prologueStep } from '../../data/prologue';
+import { CHATTER, type Exchange } from '../../data/chatter';
 import type { Sfx } from '../../engine/audio';
 
 /** What each crew member sounds like at work. */
@@ -134,7 +135,7 @@ export class ShipScene {
 
   private build(): void {
     const prof = useProfile.getState();
-    const L = buildShip(prof.upgrades, Object.entries(prof.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id));
+    const L = buildShip(prof.upgrades, shipStory(prof));
     this.layout = L;
     const map = L.map;
     this.emitters = emittersFrom(L.props);
@@ -279,6 +280,8 @@ export class ShipScene {
     }
     this.doors.update(dt, { x: this.px, y: this.py, alive: true }, []);
 
+    this.chatter(dt, busy);
+
     // --- Interaction
     const near = busy ? null : this.nearest();
     shipUi.patch({ prompt: near ? this.promptFor(near) : null });
@@ -333,6 +336,52 @@ export class ShipScene {
     this.drawStars();
     this.input.endFrame();
   };
+
+  private chatterWait = 18 + Math.random() * 12;
+  private talk: { ex: Exchange; i: number; t: number } | null = null;
+
+  /**
+   * Now and then two of the crew talk, and the operator overhears it if they're close.
+   * One exchange at a time, never the same twice in a session, never during a panel.
+   */
+  private chatter(dt: number, busy: boolean): void {
+    if (this.talk) {
+      this.talk.t -= dt;
+      if (this.talk.t > 0) return;
+      const { ex } = this.talk;
+      if (busy || this.talk.i >= ex.lines.length) {
+        this.talk = null;
+        shipUi.patch({ overheard: null });
+        return;
+      }
+      const l = ex.lines[this.talk.i++];
+      const c = CREW[l.who];
+      const st = this.layout.crew.find((s) => s.crew === l.who);
+      if (st) for (let k = 0; k < 4; k++) window.setTimeout(() => audio.blip(c.voice * (0.95 + Math.random() * 0.1), 0.35), k * 70);
+      shipUi.patch({ overheard: { who: c.callsign, text: l.text } });
+      this.talk.t = 1.6 + l.text.length * 0.045;
+      return;
+    }
+    this.chatterWait -= dt;
+    if (this.chatterWait > 0 || busy) return;
+    this.chatterWait = 35 + Math.random() * 30;
+    const p = useProfile.getState();
+    const heard = (id: CrewId) => {
+      const st = this.layout.crew.find((s) => s.crew === id);
+      return !!st && Math.hypot(st.x - this.px, st.y - this.py) < 230;
+    };
+    const options = CHATTER.filter((ex) => !ShipScene.said.has(ex.id)
+      && (!ex.afterExtraction || p.stats.extractions > 0)
+      && (!ex.lore || p.lore.includes(ex.lore))
+      && ex.lines.some((l) => heard(l.who)));
+    if (!options.length) return;
+    const ex = options[Math.floor(Math.random() * options.length)];
+    ShipScene.said.add(ex.id);
+    this.talk = { ex, i: 0, t: 0 };
+  }
+
+  /** Exchanges already overheard this session. */
+  private static said = new Set<string>();
 
   private lastFacing = 0;
   private emitters: Emitter[] = [];

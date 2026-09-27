@@ -11,7 +11,7 @@ export function TerminalView() {
 
   useEffect(() => {
     setTyped(0);
-    if (!entry) return;
+    if (!entry || entry.note) return;
     let n = 0;
     const id = window.setInterval(() => {
       n += 3;
@@ -24,6 +24,19 @@ export function TerminalView() {
 
   if (!entry) return null;
   let left = typed;
+  if (entry.note) {
+    // Handwriting on paper: no typing, no phosphor. It was already written.
+    return (
+      <div className="term-screen" data-nav-scope="terminal">
+        <div className="note-paper">
+          <div className="note-from">{entry.from}</div>
+          <div className="note-title">{entry.title}</div>
+          {entry.lines.map((l, i) => <div key={i} className="note-line">{l}</div>)}
+          <div className="note-foot"><ByDevice kbm={<>[E] PUT IT DOWN · WALK AWAY</>} pad={<><Key a="back" /> PUT IT DOWN</>} /></div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="term-screen" data-nav-scope="terminal">
       <div className="term-panel crt">

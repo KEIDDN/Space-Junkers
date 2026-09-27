@@ -602,11 +602,11 @@ export class AudioService {
   }
 
   /** One syllable of a character's "voice" while dialogue types out. */
-  blip(freq: number): void {
+  blip(freq: number, level = 1): void {
     const ctx = this.ctx;
     if (!ctx) return;
     const out = ctx.createGain();
-    out.gain.value = 0.12;
+    out.gain.value = 0.12 * level;
     out.connect(this.master);
     const t = ctx.currentTime;
     const o = ctx.createOscillator();

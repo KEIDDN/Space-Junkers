@@ -7,6 +7,7 @@ import { useProfile } from '../../state/profileStore';
 import { shipUi, useShip } from '../../state/shipStore';
 import { ship } from '../../state/shipOps';
 import { ReserveSlip } from './ReserveSlip';
+import { shipStory } from '../../data/shipLayout';
 import { ScenePanel } from './ScenePanel';
 import { PROLOGUE_DESTINATION, PROLOGUE_SEED, STEP_LINES, STEP_LOG, WAKE_LINE, prologueStep, type PrologueStep } from '../../data/prologue';
 import { shipActions } from '../../state/shipActions';
@@ -28,6 +29,7 @@ function finishScene(step: PrologueStep): void {
   const flags = { ...p.flags };
   if (step === 'kit') {
     flags.pro_kit = true;
+    shipActions.meet('merc');
     useProfile.getState().apply({ flags });
     shipUi.open({ kind: 'stash' });
   } else if (step === 'job') {
@@ -53,6 +55,7 @@ function ShipHud() {
   const notices = useProfile((s) => s.notices);
   const clear = useProfile((s) => s.clearNotices);
   const step = useProfile((s) => prologueStep(s.flags));
+  const overheard = useShip((s) => s.overheard);
   // Fedya on the intercom the first time the operator wakes up aboard.
   const [wake] = useState(() => step === 'kit' && !wakeHeard.done);
   useEffect(() => {
@@ -79,6 +82,7 @@ function ShipHud() {
           <button className="link" data-nav-default onClick={() => { audio.ui('click'); clear(); }} style={{ pointerEvents: 'auto' }}>[OK] <Key a="confirm" /></button>
         </div>
       )}
+      {overheard && !panel && <div className="ship-overheard crt-text"><span className="dim">{overheard.who}:</span> {overheard.text}</div>}
       {prompt && !panel && !jumping && <div className="hud-prompt crt-text"><Prompt text={prompt} /></div>}
       {jumping && <div className="hud-extract crt-text warn">JUMP DRIVE ENGAGED</div>}
       {!panel && (
@@ -100,7 +104,7 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
   const panel = useShip((s) => s.panel);
   const upgrades = useProfile((s) => s.upgrades.join());
   // Handing in a story contract changes someone's corner of the ship.
-  const story = useProfile((s) => Object.entries(s.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id).sort().join());
+  const story = useProfile((s) => shipStory(s).sort().join());
   const lastPos = useRef<{ x: number; y: number } | undefined>(undefined);
 
   useEffect(() => {

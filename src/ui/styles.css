@@ -862,3 +862,32 @@ body[data-device="pad"] .btn:hover:not(.pad-focus), body[data-device="pad"] .men
   padding: 6px 12px; font-size: 13px; line-height: 1.4;
   animation: toast-in 200ms ease-out, toast-out 900ms ease-in 9s forwards;
 }
+
+/* A note in someone's hand: yellowed paper, pencil, a little crooked. */
+.note-paper {
+  width: min(420px, 90vw); padding: 18px 22px 14px; transform: rotate(-1.2deg);
+  background: linear-gradient(180deg, #cfc5aa 0%, #bdb294 100%); color: #2b2620;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(90, 70, 40, 0.25);
+  font-family: 'Share Tech Mono', monospace; font-size: 15px; line-height: 1.5;
+}
+.note-from { font-size: 10px; letter-spacing: 1px; color: #6b604c; }
+.note-title { font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 1px; margin: 2px 0 10px; color: #4a3a2a; }
+.note-line { font-style: italic; }
+.note-foot { margin-top: 12px; font-size: 11px; color: #6b604c; }
+
+/* Recovered records: what was read down there, by thread. */
+.records-body { display: flex; gap: 14px; min-height: 280px; max-height: 58vh; }
+.records-list { flex: 0 0 46%; overflow-y: auto; padding-right: 6px; }
+.records-thread { margin-bottom: 12px; }
+.records-head { color: var(--warn); font-size: 13px; letter-spacing: 0.5px; }
+.records-thread .opt { display: block; width: 100%; text-align: left; font-size: 12px; }
+.records-thread .opt.on { color: var(--warn); }
+.records-read { flex: 1; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(5, 12, 8, 0.6); color: #9fd8b8; font-size: 13px; line-height: 1.5; overflow-y: auto; }
+.records-read.paper { background: #c9bfa4; color: #2b2620; font-style: italic; }
+.records-title { font-family: 'Russo One', sans-serif; margin: 2px 0 8px; font-style: normal; }
+.records-empty { padding: 30px 10px; max-width: 460px; }
+/* Crew overheard talking among themselves: a subtitle, never a dialogue. */
+.ship-overheard {
+  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); max-width: 620px; text-align: center;
+  font-size: 13px; color: #d8cfbc; text-shadow: 0 1px 2px #000, 0 0 6px #000; pointer-events: none;
+}

@@ -7280,9 +7280,29 @@
     "h": 10
    }
   },
-  "deco_datachip": {
+  "deco_clock": {
    "frame": {
     "x": 733,
+    "y": 1057,
+    "w": 10,
+    "h": 10
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 10,
+    "h": 10
+   },
+   "sourceSize": {
+    "w": 10,
+    "h": 10
+   }
+  },
+  "deco_datachip": {
+   "frame": {
+    "x": 744,
     "y": 1057,
     "w": 11,
     "h": 10
@@ -7302,7 +7322,7 @@
   },
   "deco_gear": {
    "frame": {
-    "x": 745,
+    "x": 756,
     "y": 1057,
     "w": 10,
     "h": 10
@@ -7322,7 +7342,7 @@
   },
   "fx_blood_1": {
    "frame": {
-    "x": 756,
+    "x": 767,
     "y": 1057,
     "w": 21,
     "h": 10
@@ -7340,9 +7360,49 @@
     "h": 10
    }
   },
+  "deco_drawing": {
+   "frame": {
+    "x": 789,
+    "y": 1057,
+    "w": 11,
+    "h": 9
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 11,
+    "h": 9
+   },
+   "sourceSize": {
+    "w": 11,
+    "h": 9
+   }
+  },
+  "deco_bedroll": {
+   "frame": {
+    "x": 801,
+    "y": 1057,
+    "w": 22,
+    "h": 8
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 22,
+    "h": 8
+   },
+   "sourceSize": {
+    "w": 22,
+    "h": 8
+   }
+  },
   "fx_flash_0": {
    "frame": {
-    "x": 778,
+    "x": 824,
     "y": 1057,
     "w": 10,
     "h": 8
@@ -7362,7 +7422,7 @@
   },
   "fx_flash_2": {
    "frame": {
-    "x": 789,
+    "x": 835,
     "y": 1057,
     "w": 12,
     "h": 8
@@ -7380,9 +7440,49 @@
     "h": 8
    }
   },
+  "deco_mag": {
+   "frame": {
+    "x": 848,
+    "y": 1057,
+    "w": 4,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 4,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 4,
+    "h": 7
+   }
+  },
+  "deco_note": {
+   "frame": {
+    "x": 853,
+    "y": 1057,
+    "w": 7,
+    "h": 7
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 7
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 7
+   }
+  },
   "fx_blood_0": {
    "frame": {
-    "x": 802,
+    "x": 861,
     "y": 1057,
     "w": 13,
     "h": 7
@@ -7402,7 +7502,7 @@
   },
   "fx_flash_1": {
    "frame": {
-    "x": 816,
+    "x": 875,
     "y": 1057,
     "w": 14,
     "h": 7
@@ -7418,6 +7518,106 @@
    "sourceSize": {
     "w": 14,
     "h": 7
+   }
+  },
+  "deco_candle": {
+   "frame": {
+    "x": 890,
+    "y": 1057,
+    "w": 3,
+    "h": 6
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 3,
+    "h": 6
+   },
+   "sourceSize": {
+    "w": 3,
+    "h": 6
+   }
+  },
+  "deco_casings": {
+   "frame": {
+    "x": 894,
+    "y": 1057,
+    "w": 12,
+    "h": 6
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 6
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 6
+   }
+  },
+  "deco_mug": {
+   "frame": {
+    "x": 907,
+    "y": 1057,
+    "w": 8,
+    "h": 6
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 6
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 6
+   }
+  },
+  "deco_photo": {
+   "frame": {
+    "x": 916,
+    "y": 1057,
+    "w": 6,
+    "h": 6
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 6,
+    "h": 6
+   },
+   "sourceSize": {
+    "w": 6,
+    "h": 6
+   }
+  },
+  "deco_plate": {
+   "frame": {
+    "x": 923,
+    "y": 1057,
+    "w": 11,
+    "h": 6
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 11,
+    "h": 6
+   },
+   "sourceSize": {
+    "w": 11,
+    "h": 6
    }
   }
  },

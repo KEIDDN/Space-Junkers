@@ -74,6 +74,8 @@ export interface RaidState {
   flashlight: boolean;
   /** Terminal being read. */
   terminal: LoreEntry | null;
+  /** Lore read this raid (ids). Kept even if the operator dies: it's memory, not loot. */
+  lore: string[];
   /** Tactical map overlay [M]. */
   mapOpen: boolean;
   /** Lost without a body: the orbit window closed, or the raid was abandoned. */
@@ -106,6 +108,7 @@ export const useRaid = create<RaidState>(() => ({
   extractKind: null,
   flashlight: true,
   terminal: null,
+  lore: [],
   mapOpen: false,
   mia: false,
   ending: null,
@@ -168,8 +171,13 @@ export const raid = {
       log: { kills: [], searched: 0, visited: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
       extractCountdown: null, extractInZone: false, extractKind: null, flashlight: true,
-      terminal: null, mapOpen: false, mia: false, ending: null,
+      terminal: null, mapOpen: false, mia: false, ending: null, lore: [],
     });
+  },
+
+  readLore(id: string): void {
+    const s = useRaid.getState();
+    if (!s.lore.includes(id)) useRaid.setState({ lore: [...s.lore, id] });
   },
 
   end(status: RaidStatus, mia = false): void {

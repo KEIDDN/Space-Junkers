@@ -7,7 +7,8 @@ import { Input } from '../engine/input';
 import { haptics } from '../engine/haptics';
 import { Rng } from '../engine/rng';
 import { DESTINATION } from '../data/destinations';
-import { loreEntry } from '../data/lore';
+import { NOTES, ZARYA_LOG, loreEntry } from '../data/lore';
+import { PROLOGUE_DESTINATION, PROLOGUE_SEED } from '../data/prologue';
 import { themeFor, type Theme } from '../data/themes';
 import { DEFAULT_AI, ENEMIES, FIRST_RAID_AI, type AiTuning } from '../data/enemies';
 import { ITEMS, RARITY_ORDER, type ArmorDef, type WeaponItemDef } from '../data/items';
@@ -122,6 +123,8 @@ export class Game {
   private padAim = new PadAim();
   private aimPoint = { x: 0, y: 0 };
   private aimTargets: AimTarget[] = [];
+  /** What the operator had read before this raid (keeps terminal entries stable within it). */
+  private loreRead: string[] = [];
   /** How this destination's hostiles fight (a learning operator gets the first-raid tuning). */
   private ai: AiTuning = DEFAULT_AI;
   /** The crew on the radio, for an operator still learning (null otherwise). */
@@ -259,6 +262,7 @@ export class Game {
     // Until their first extraction (and for three raids at most), an operator on Tikhaya is
     // still learning: a quieter entry, and scavengers who give them a chance.
     const stats = useProfile.getState().stats;
+    this.loreRead = useProfile.getState().lore;
     const learning = facility && dest?.id === 'tikhaya' && stats.extractions === 0 && stats.raids <= 3;
     this.ai = learning ? FIRST_RAID_AI : { ...DEFAULT_AI, ...dest?.ai };
     this.coach = learning ? new RadioCoach() : null;
@@ -325,7 +329,7 @@ export class Game {
       onExtracted: () => this.beginEnding('extracted'),
       onSignal: (x, y) => this.onSignal(x, y),
       onUnlock: (door) => this.doors?.unlock(door),
-      onTerminal: (n) => this.openTerminal(n),
+      onTerminal: (n, note) => this.openTerminal(n, note),
     }, this.actorLayer, facility ? t.loot : {});
 
     this.worldLit.addChild(ground);
@@ -767,10 +771,15 @@ export class Game {
     return true;
   }
 
-  private openTerminal(n: number): void {
+  private openTerminal(n: number, note?: string): void {
     const s = useRaid.getState();
     this.terminalAt = { x: this.player.x, y: this.player.y };
-    useRaid.setState({ terminal: loreEntry(s.destination, this.opts.seed, n), inventoryOpen: false, open: null, mapOpen: false });
+    // Zarya-7's first terminal is the station's own log; notes are what they are; anything
+    // else is the next thing the operator hasn't read.
+    const zarya = s.destination === PROLOGUE_DESTINATION && this.opts.seed === PROLOGUE_SEED && n === 0;
+    const entry = note ? NOTES[note] : zarya ? ZARYA_LOG : loreEntry(s.destination, this.opts.seed, n, this.loreRead);
+    raid.readLore(entry.id);
+    useRaid.setState({ terminal: entry, inventoryOpen: false, open: null, mapOpen: false });
   }
 
   /** The tactical map's view of the facility (for the [M] overlay). */

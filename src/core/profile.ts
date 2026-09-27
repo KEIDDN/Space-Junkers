@@ -74,6 +74,8 @@ export interface Profile {
   /** Course laid in at the nav console (fuel already paid). Cleared on deploy. */
   course: Course | null;
   stats: Stats;
+  /** Lore entries the operator has read (ids): threads unfold in order across raids. */
+  lore: string[];
 }
 
 export const STARTING_CREDITS = 3500;
@@ -119,6 +121,7 @@ export function newProfile(operator: Operator = 'm'): Profile {
     raid: null,
     course: null,
     stats: { raids: 0, extractions: 0, deaths: 0, kills: 0, creditsEarned: 0, bestHaul: 0 },
+    lore: [],
   };
 }
 
@@ -264,6 +267,7 @@ export function repair(raw: Profile): { profile: Profile; notes: string[] } {
     course: raw.course && typeof raw.course === 'object' && typeof raw.course.destination === 'string'
       && Number.isFinite(raw.course.seed) ? { destination: raw.course.destination, seed: raw.course.seed } : null,
     stats: { ...base.stats, ...(raw.stats ?? {}) },
+    lore: Array.isArray(raw.lore) ? raw.lore.filter((x: unknown): x is string => typeof x === 'string') : [],
   };
   if (!p.destinations.includes('tikhaya')) p.destinations.unshift('tikhaya');
 

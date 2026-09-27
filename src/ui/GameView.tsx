@@ -32,7 +32,9 @@ export function settleRaid(status: 'extracted' | 'dead'): void {
     visited: s.log.visited,
     found: extracted ? foundItems(s.loadout, s.brought) : [],
   });
-  useProfile.getState().apply(profile);
+  // What was read down there stays read, whatever happened after.
+  const lore = [...profile.lore, ...s.lore.filter((id) => !profile.lore.includes(id))];
+  useProfile.getState().apply({ ...profile, lore });
   useRaid.setState({ progressed });
 }
 

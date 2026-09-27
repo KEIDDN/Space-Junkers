@@ -3,7 +3,9 @@ import { useSettings } from '../state/settingsStore';
 import { DESTINATION } from '../data/destinations';
 import { facilityName } from '../data/themes';
 import { audio } from '../engine/audio';
-import { deploy as deployProfile } from '../core/raidResult';
+import { deploy as deployProfile, foundItems } from '../core/raidResult';
+import { useHud } from '../state/hudStore';
+import { RARITY_ORDER, itemDef } from '../data/items';
 import { getProfile, useProfile } from '../state/profileStore';
 import { raid, rangeLoadout, useRaid } from '../state/raidStore';
 import { GameView } from '../ui/GameView';
@@ -97,6 +99,12 @@ export function App() {
     if (s.mode === 'facility') {
       recentRaid.outcome = s.status === 'extracted' ? 'extracted' : 'dead';
       recentRaid.greeted.clear();
+      recentRaid.lore = s.lore;
+      const hud = useHud.getState();
+      recentRaid.wounded = hud.maxHp > 0 && hud.hp / hud.maxHp < 0.5;
+      recentRaid.kills = s.kills;
+      recentRaid.bigFind = s.status === 'extracted'
+        && foundItems(s.loadout, s.brought).some((i) => RARITY_ORDER[itemDef(i.id).rarity] >= RARITY_ORDER.rare);
       const p = getProfile();
       transition({ kind: 'ship' }, [
         s.status === 'extracted' ? 'DOCKING WITH THE LASTOCHKA . . .' : 'RECOVERY BEACON RECEIVED . . .',

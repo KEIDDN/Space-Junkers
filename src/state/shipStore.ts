@@ -21,9 +21,11 @@ export interface ShipState {
   jumping: boolean;
   /** The emergency kit the ship's reserve just issued (shown until acknowledged). */
   reserve: Issued[] | null;
+  /** Crew talking among themselves within earshot (a subtitle). */
+  overheard: { who: string; text: string } | null;
 }
 
-export const useShip = create<ShipState>(() => ({ prompt: null, panel: null, jumping: false, reserve: null }));
+export const useShip = create<ShipState>(() => ({ prompt: null, panel: null, jumping: false, reserve: null, overheard: null }));
 
 export const shipUi = {
   open(panel: ShipPanel): void {
