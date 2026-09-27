@@ -17,4 +17,7 @@ export interface GameContext {
   hitstop(seconds: number): void;
   /** Brief light burst (no-op where there is no darkness). */
   lightFlash(x: number, y: number, radius: number, color: number, intensity: number): void;
+  /** Is there smoke between two points (blocks sight)? */
+  smokeBetween(x0: number, y0: number, x1: number, y1: number): boolean;
+  throwGrenade(fromX: number, fromY: number, toX: number, toY: number, kind: 'frag' | 'smoke', faction: 'player' | 'enemy'): void;
 }

@@ -22,6 +22,9 @@ export class Camera {
   private kickY = 0;
   private time = 0;
 
+  /** Fraction of the mouse offset the view leans toward (0 = locked on target). */
+  lookAhead = LOOK_AHEAD;
+
   constructor(private worldW: number, private worldH: number) {}
 
   snapTo(x: number, y: number): void {
@@ -29,9 +32,12 @@ export class Camera {
     this.y = y;
   }
 
+  /** Player preference: how strongly shake is felt (0 = never). */
+  shakeScale = 1;
+
   /** Add screen shake. 0..1, stacks up to 1. */
   shake(amount: number): void {
-    this.trauma = Math.min(1, this.trauma + amount);
+    this.trauma = Math.min(1, this.trauma + amount * this.shakeScale);
   }
 
   /** Push the view in a direction (e.g. opposite of a gunshot). */
@@ -42,8 +48,8 @@ export class Camera {
 
   update(dt: number, targetX: number, targetY: number, mouseViewX: number, mouseViewY: number): void {
     this.time += dt;
-    const lookX = (mouseViewX - VIEW_W / 2) * LOOK_AHEAD;
-    const lookY = (mouseViewY - VIEW_H / 2) * LOOK_AHEAD;
+    const lookX = (mouseViewX - VIEW_W / 2) * this.lookAhead;
+    const lookY = (mouseViewY - VIEW_H / 2) * this.lookAhead;
     const t = 1 - Math.exp(-FOLLOW_SHARPNESS * dt);
     this.x += (targetX + lookX - this.x) * t;
     this.y += (targetY + lookY - this.y) * t;

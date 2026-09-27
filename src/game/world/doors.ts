@@ -1,4 +1,4 @@
-import { Container, Sprite } from 'pixi.js';
+import { Container, Graphics, Sprite } from 'pixi.js';
 import { tex } from '../../engine/assets';
 import type { AudioService } from '../../engine/audio';
 import { TILE } from '../../engine/config';
@@ -18,7 +18,11 @@ interface DoorState {
   wantOpen: boolean;
   idle: number;
   leaves: [Sprite, Sprite];
+  /** Status lamp of a security door (red while locked). */
+  lamp: Graphics | null;
 }
+
+const LOCKED_TINT = 0xd0584a;
 
 export interface DoorUser {
   x: number;
@@ -55,20 +59,39 @@ export class Doors {
         lb.x += TILE;
       }
       this.container.addChild(la, lb);
-      this.doors.push({
-        def,
-        cx: ((a.tx + b.tx) / 2 + 0.5) * TILE,
-        cy: ((a.ty + b.ty) / 2 + 0.5) * TILE,
-        open: 0,
-        wantOpen: false,
-        idle: 0,
-        leaves: [la, lb],
-      });
+      const cx = ((a.tx + b.tx) / 2 + 0.5) * TILE;
+      const cy = ((a.ty + b.ty) / 2 + 0.5) * TILE;
+      let lamp: Graphics | null = null;
+      if (def.locked) {
+        la.tint = lb.tint = LOCKED_TINT;
+        lamp = new Graphics();
+        lamp.position.set(def.vertical ? cx : cx + TILE + 4, def.vertical ? cy - TILE - 8 : cy - 22);
+        this.container.addChild(lamp);
+      }
+      this.doors.push({ def, cx, cy, open: 0, wantOpen: false, idle: 0, leaves: [la, lb], lamp });
+      if (lamp) this.drawLamp(this.doors[this.doors.length - 1]);
     }
+  }
+
+  /** Swipe a keycard: the security door works like any other from now on. */
+  unlock(def: DoorDef): void {
+    const d = this.doors.find((q) => q.def === def);
+    if (!d || !def.locked) return;
+    def.locked = false;
+    for (const t of def.tiles) this.map.setDoorLocked(t.tx, t.ty, false);
+    for (const leaf of d.leaves) leaf.tint = 0xe8b0a0;
+    this.drawLamp(d);
+  }
+
+  private drawLamp(d: DoorState): void {
+    if (!d.lamp) return;
+    const c = d.def.locked ? 0xff3a2a : 0x7dff9a;
+    d.lamp.clear().rect(-3, -2, 6, 4).fill({ color: 0x14110e }).rect(-2, -1, 4, 2).fill({ color: c });
   }
 
   update(dt: number, player: DoorUser, others: readonly DoorUser[]): void {
     for (const d of this.doors) {
+      if (d.def.locked) continue;
       const near = (u: DoorUser) => u.alive && Math.hypot(u.x - d.cx, u.y - d.cy) < TRIGGER_DIST;
       const playerNear = near(player);
       const anyone = playerNear || others.some(near);

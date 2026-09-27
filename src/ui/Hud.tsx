@@ -1,43 +1,219 @@
 import { useEffect, useState } from 'react';
-import { ITEMS, RARITY_COLOR } from '../data/items';
-import { useExpedition } from '../state/expeditionStore';
+import { itemDef } from '../data/items';
+import { liveTracker } from '../core/quests';
+import { haulValue } from '../core/raidResult';
+import { useProfile } from '../state/profileStore';
+import { facilityName } from '../data/themes';
+import { fmt } from './TacticalMap';
+import { useRaid, type FeedEntry } from '../state/raidStore';
 import { useHud } from '../state/hudStore';
 import { AtlasSprite } from './AtlasSprite';
 
-export function Hud() {
+function Pips({ frac, n = 5 }: { frac: number; n?: number }) {
+  const lit = Math.ceil(frac * n);
+  return (
+    <span className="pips">
+      {Array.from({ length: n }, (_, i) => (
+        <span key={i} className={`pip ${i < lit ? (frac < 0.35 ? 'bad' : 'on') : ''}`} />
+      ))}
+    </span>
+  );
+}
+
+function Vitals() {
   const hp = useHud((s) => s.hp);
   const maxHp = useHud((s) => s.maxHp);
+  const bleeding = useHud((s) => s.bleeding);
+  const regen = useHud((s) => s.regen);
+  const boosted = useHud((s) => s.boosted);
+  const armor = useHud((s) => s.armor);
+  const helmet = useHud((s) => s.helmet);
+  const stamina = useHud((s) => s.stamina);
+  const gait = useHud((s) => s.gait);
+  const frac = hp / maxHp;
+  const tone = frac < 0.35 ? 'bad' : frac < 0.65 ? 'warn' : 'ok';
+  return (
+    <div className="hud-bl crt-text">
+      <div className="hud-row">
+        <span className="label">VITALS</span>
+        {bleeding && <span className="status bad blink">BLEEDING</span>}
+        {regen && <span className="status ok">REGEN</span>}
+        {boosted && <span className="status warn">STIM</span>}
+        {gait === 'sneak' && <span className="status dim">SNEAK [C]</span>}
+      </div>
+      <div className="hp-row">
+        <div className="hp-bar">
+          <div className={`hp-fill ${tone}`} style={{ width: `${frac * 100}%` }} />
+          {[0.25, 0.5, 0.75].map((m) => <span key={m} className="hp-tick" style={{ left: `${m * 100}%` }} />)}
+        </div>
+        <span className={`big ${tone}`}>{String(Math.max(0, hp)).padStart(3, '0')}</span>
+      </div>
+      <div className="stamina-bar"><div className={stamina < 30 ? 'low' : ''} style={{ width: `${stamina}%` }} /></div>
+      <div className="hud-row small">
+        <span className="dim">BODY</span> {armor < 0 ? <span className="dim">NONE</span> : <Pips frac={armor} />}
+        <span className="dim">HEAD</span> {helmet < 0 ? <span className="dim">NONE</span> : <Pips frac={helmet} />}
+      </div>
+    </div>
+  );
+}
+
+function WeaponBlock() {
+  const armed = useHud((s) => s.armed);
   const weaponName = useHud((s) => s.weaponName);
   const weaponSlot = useHud((s) => s.weaponSlot);
   const ammo = useHud((s) => s.ammo);
   const magSize = useHud((s) => s.magSize);
   const reserve = useHud((s) => s.reserve);
+  const ammoName = useHud((s) => s.ammoName);
   const reloading = useHud((s) => s.reloading);
+  const jammed = useHud((s) => s.jammed);
+  if (!armed) {
+    return (
+      <div className="hud-br crt-text">
+        <div className="label">NO WEAPON</div>
+        <div className="dim small">[TAB] INVENTORY</div>
+      </div>
+    );
+  }
+  const low = ammo <= Math.ceil(magSize * 0.25);
+  return (
+    <div className="hud-br crt-text">
+      <div className="label">[{weaponSlot + 1}] {weaponName}</div>
+      <div className="ammo">
+        <span className={`big ${reloading ? 'dim' : low ? 'bad' : ''}`}>{ammo}</span>
+        <span className="dim"> / {reserve}</span>
+      </div>
+      <div className="dim small">{ammoName}</div>
+      {jammed && <div className="bad blink">JAMMED · [R] CLEAR</div>}
+      {!jammed && reloading && <div className="warn blink">RELOADING</div>}
+      {!jammed && !reloading && ammo === 0 && <div className="bad blink">{reserve ? 'EMPTY · [R]' : 'NO AMMO'}</div>}
+    </div>
+  );
+}
+
+function QuickHud() {
+  const quick = useHud((s) => s.quick);
+  const using = useHud((s) => s.using);
+  const usingName = useHud((s) => s.usingName);
+  const slots = quick.split('|');
+  return (
+    <div className="hud-bc crt-text">
+      {using >= 0 && (
+        <div className="using">
+          <span className="warn">APPLYING {usingName?.toUpperCase()}</span>
+          <span className="use-bar"><span style={{ width: `${using * 100}%` }} /></span>
+        </div>
+      )}
+      <div className="hud-quick">
+        {slots.map((s, i) => {
+          const [id, n] = s.split(':');
+          return (
+            <div key={i} className={`hq-slot ${id && n === '0' ? 'empty' : ''}`}>
+              <span className="hq-key">{i + 3}</span>
+              {id && <AtlasSprite name={itemDef(id).icon} fit={{ w: 26, h: 22 }} />}
+              {id && <span className="hq-count">{n}</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Active contract objectives, live with this raid's progress. */
+function Tracker() {
+  const quests = useProfile((s) => s.quests);
+  const log = useRaid((s) => s.log);
+  const destination = useRaid((s) => s.destination);
+  const lines = liveTracker({ ...useProfile.getState(), quests }, log, destination).slice(0, 4);
+  if (!lines.length) return null;
+  return (
+    <div className="hud-tracker crt-text">
+      {lines.map((l, i) => (
+        <div key={i} className={l.have >= l.need ? 'ok' : ''}>
+          {l.have >= l.need ? '■' : '□'} {l.text} <span className="dim">{l.have}/{l.need}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Feed() {
+  const feed = useRaid((s) => s.feed);
+  const [now, setNow] = useState(() => Date.now());
+  const [born] = useState(() => new Map<number, number>());
+  for (const f of feed) if (!born.has(f.id)) born.set(f.id, Date.now());
+  useEffect(() => {
+    if (!feed.length) return;
+    const h = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(h);
+  }, [feed.length]);
+  const live = feed.filter((f: FeedEntry) => now - (born.get(f.id) ?? now) < 3500);
+  return (
+    <div className="hud-feed">
+      {live.map((f) => (
+        <div key={f.id} className={`feed-line ${f.tone} crt-text`}>
+          {f.itemId && <AtlasSprite name={itemDef(f.itemId).icon} fit={{ w: 20, h: 16 }} />}
+          {f.text}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** First raid only: the keys that matter, for half a minute. */
+function FirstRaidHint() {
+  const first = useProfile((s) => s.stats.raids <= 1);
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    const id = window.setTimeout(() => setShow(false), 30000);
+    return () => window.clearTimeout(id);
+  }, []);
+  if (!first || !show) return null;
+  return (
+    <div className="hud-hint crt-text">
+      <div><b>WASD</b> MOVE · <b>SHIFT</b> SPRINT · <b>C</b> SNEAK · <b>F</b> FLASHLIGHT · <b>R</b> RELOAD</div>
+      <div><b>E</b> SEARCH / USE · <b>TAB</b> BAG · <b>M</b> MAP · <b>3–6</b> MEDS · <b>ESC</b> PAUSE</div>
+      <div className="dim">Find the shuttle pad or the lift. Loot is only yours once you're out.</div>
+    </div>
+  );
+}
+
+export function Hud() {
   const hostiles = useHud((s) => s.hostiles);
   const dead = useHud((s) => s.dead);
   const cleared = useHud((s) => s.cleared);
+  const weight = useHud((s) => s.weight);
+  const exfil = useHud((s) => s.exfil);
 
-  const mode = useExpedition((s) => s.mode);
-  const seed = useExpedition((s) => s.seed);
-  const bag = useExpedition((s) => s.bag);
-  const prompt = useExpedition((s) => s.prompt);
-  const countdown = useExpedition((s) => s.extractCountdown);
-  const inZone = useExpedition((s) => s.extractInZone);
-  const flashlight = useExpedition((s) => s.flashlight);
-
-  const hpFrac = hp / maxHp;
-  const hpClass = hpFrac < 0.35 ? 'bad' : hpFrac < 0.65 ? 'warn' : 'ok';
-  const lowAmmo = ammo <= Math.ceil(magSize * 0.25);
-  const bagValue = bag.reduce((n, id) => n + (ITEMS[id]?.value ?? 0), 0);
+  const mode = useRaid((s) => s.mode);
+  const seed = useRaid((s) => s.seed);
+  const loadout = useRaid((s) => s.loadout);
+  const brought = useRaid((s) => s.brought);
+  const prompt = useRaid((s) => s.prompt);
+  const countdown = useRaid((s) => s.extractCountdown);
+  const inZone = useRaid((s) => s.extractInZone);
+  const flashlight = useRaid((s) => s.flashlight);
+  const inventoryOpen = useRaid((s) => s.inventoryOpen || s.mapOpen || s.terminal !== null);
+  const extractKind = useRaid((s) => s.extractKind);
+  const destination = useRaid((s) => s.destination);
+  const timeLeft = useHud((s) => s.timeLeft);
   const facility = mode === 'facility';
+  const haul = facility ? haulValue(loadout, brought) : 0;
 
   return (
-    <div className="hud">
+    <div className={`hud ${inventoryOpen ? 'menu-open' : ''}`}>
       <div className="hud-tl crt-text">
         {facility ? (
           <>
-            <div>FACILITY #{String(seed).padStart(6, '0')}</div>
-            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} [F]</div>
+            <div>{facilityName(destination, seed)} <span className="dim">#{String(seed).padStart(6, '0')}</span></div>
+            {timeLeft >= 0 && (
+              <div className={timeLeft <= 60 ? 'bad blink' : timeLeft <= 120 ? 'bad' : timeLeft <= 300 ? 'warn' : 'dim'}>
+                ORBIT WINDOW {fmt(timeLeft)}
+              </div>
+            )}
+            <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} [F] · <span className="dim">MAP [M]</span></div>
+            <Tracker />
           </>
         ) : (
           <>
@@ -49,39 +225,30 @@ export function Hud() {
 
       {facility && (
         <div className="hud-tr crt-text">
-          <div className="label">EXPEDITION BAG · AT RISK</div>
-          <div><span className="big-mid">{bagValue.toLocaleString()}</span> <span className="dim">CR · {bag.length} ITEMS</span></div>
+          <div className="label">FOUND IN RAID · AT RISK</div>
+          <div><span className="big-mid">{haul.toLocaleString()}</span> <span className="dim">CR</span></div>
+          <div className={`small ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : 'dim'}`}>{weight} KG CARRIED · [TAB] BAG</div>
         </div>
       )}
 
-      <Toasts />
+      {exfil && <div className="hud-exfil crt-text">{exfil}</div>}
+      {facility && !inventoryOpen && countdown === null && <FirstRaidHint />}
+      <Feed />
 
       {countdown !== null && !dead && (
         <div className="hud-extract crt-text">
-          <div className={inZone ? 'ok' : 'bad blink'}>{inZone ? 'EXTRACTION INBOUND. HOLD THE ZONE' : 'RETURN TO EXTRACTION ZONE'}</div>
+          <div className={inZone ? 'ok' : 'bad blink'}>
+            {extractKind === 'lift' ? 'LIFT RISING. STAY ON THE PLATFORM' : inZone ? 'EXTRACTION INBOUND. HOLD THE ZONE' : 'RETURN TO THE EXTRACTION ZONE'}
+          </div>
           <div className="big ok">{countdown.toFixed(1)}</div>
         </div>
       )}
 
-      {prompt && !dead && <div className="hud-prompt crt-text">{prompt}</div>}
+      {prompt && !dead && !inventoryOpen && <div className="hud-prompt crt-text">{prompt}</div>}
 
-      <div className="hud-bl crt-text">
-        <div className="label">VITALS</div>
-        <div className="hp-bar">
-          <div className={`hp-fill ${hpClass}`} style={{ width: `${hpFrac * 100}%` }} />
-        </div>
-        <div className={`big ${hpClass}`}>{String(hp).padStart(3, '0')}</div>
-      </div>
-
-      <div className="hud-br crt-text">
-        <div className="label">[{weaponSlot + 1}] {weaponName}</div>
-        <div className="ammo">
-          <span className={`big ${reloading ? 'dim' : lowAmmo ? 'bad' : ''}`}>{reloading ? '--' : ammo}</span>
-          <span className="dim"> / {reserve === Infinity ? '∞' : reserve}</span>
-        </div>
-        {reloading && <div className="warn blink">RELOADING</div>}
-        {!reloading && ammo === 0 && <div className="bad blink">EMPTY</div>}
-      </div>
+      <Vitals />
+      <QuickHud />
+      <WeaponBlock />
 
       {dead && (
         <div className="hud-center crt-text">
@@ -92,34 +259,6 @@ export function Hud() {
       {!dead && !facility && cleared && (
         <div className="hud-top crt-text ok">SECTOR CLEAR. PRESS [ESC] FOR MENU</div>
       )}
-    </div>
-  );
-}
-
-/** Loot pickup feed. Each toast removes itself after a few seconds. */
-function Toasts() {
-  const toasts = useExpedition((s) => s.toasts);
-  const [now, setNow] = useState(() => Date.now());
-  const [born] = useState(() => new Map<number, number>());
-  for (const t of toasts) if (!born.has(t.id)) born.set(t.id, Date.now());
-  useEffect(() => {
-    if (!toasts.length) return;
-    const h = setInterval(() => setNow(Date.now()), 250);
-    return () => clearInterval(h);
-  }, [toasts.length]);
-  const live = toasts.filter((t) => now - (born.get(t.id) ?? now) < 4000);
-  return (
-    <div className="hud-toasts">
-      {live.map((t) => {
-        const it = ITEMS[t.itemId];
-        return (
-          <div key={t.id} className="toast crt-text">
-            <AtlasSprite name={it.icon} scale={1} />
-            <span style={{ color: RARITY_COLOR[it.rarity] }}>+ {it.name}</span>
-            <span className="dim">{it.value} CR</span>
-          </div>
-        );
-      })}
     </div>
   );
 }
