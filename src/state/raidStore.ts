@@ -78,6 +78,8 @@ export interface RaidState {
   mapOpen: boolean;
   /** Lost without a body: the orbit window closed, or the raid was abandoned. */
   mia: boolean;
+  /** The last beat of a raid (for the ending overlay), before the report. */
+  ending: 'extracted' | 'dead' | 'mia' | null;
 }
 
 let feedId = 0;
@@ -106,6 +108,7 @@ export const useRaid = create<RaidState>(() => ({
   terminal: null,
   mapOpen: false,
   mia: false,
+  ending: null,
 }));
 
 function workspace(s: RaidState): Workspace {
@@ -165,7 +168,7 @@ export const raid = {
       log: { kills: [], searched: 0, visited: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
       extractCountdown: null, extractInZone: false, extractKind: null, flashlight: true,
-      terminal: null, mapOpen: false, mia: false,
+      terminal: null, mapOpen: false, mia: false, ending: null,
     });
   },
 
@@ -376,6 +379,7 @@ export function rangeLoadout(): Loadout {
   for (const id of ['toz12', 'svk', 'ppd41']) l = loadoutAdd(l, createItem(id, { loaded: 99 })).loadout;
   l = loadoutAdd(l, createItem('medkit')).loadout;
   l = loadoutAdd(l, createItem('bandage')).loadout;
-  l.quick = ['bandage', 'medkit', null, null];
+  for (const id of ['frag', 'frag', 'smoke']) l = loadoutAdd(l, createItem(id)).loadout;
+  l.quick = ['bandage', 'medkit', 'frag', 'smoke'];
   return l;
 }

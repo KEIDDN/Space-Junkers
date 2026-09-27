@@ -308,6 +308,8 @@ interface Piece {
   terminal?: boolean;
   /** Emissive tint and a small light of this colour. */
   glow?: number;
+  /** Things can sit on it: the height of its top above its base, px. */
+  surface?: number;
 }
 
 /** How a room of some purpose is furnished. */
@@ -325,6 +327,8 @@ interface Kit {
   containerCount: [number, number];
   /** Small wall decor (posters, vents). */
   decor: string[];
+  /** What gets left on its tables and benches. */
+  tops?: string[];
 }
 
 const P = (sprite: string, w = 1, extra: Partial<Piece> = {}): Piece => ({ sprite, w, ...extra });
@@ -335,47 +339,47 @@ const KITS: Record<string, Kit> = {
   storage: {
     wall: [P('ship_shelf'), P('ship_rack_a'), P('ship_rack_b'), P('ship_cabinet'), P('ship_crate_w'), P('ship_crate_y')],
     wallCount: [2, 4], center: [], centerCount: [0, 0], cover: 1.6,
-    containers: { box_dark: 3, box_olive: 3, locker: 1 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster2'],
+    containers: { box_dark: 3, box_olive: 3, locker: 1 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster2'], tops: ['deco_rations', 'deco_tape'],
   },
   barracks: {
     wall: [P('ship_bunk', 3), P('ship_bunk', 3), P('ship_locker_s'), P('ship_suit'), P('ship_tv')],
-    wallCount: [2, 3], center: [P('ship_table', 2)], centerCount: [0, 1], cover: 0.5,
-    containers: { locker: 4, box_dark: 1 }, containerCount: [1, 3], decor: [...POSTERS, 'ship_poster'],
+    wallCount: [2, 3], center: [P('ship_table', 2, { surface: 24 })], centerCount: [0, 1], cover: 0.5,
+    containers: { locker: 4, box_dark: 1 }, containerCount: [1, 3], decor: [...POSTERS, 'ship_poster'], tops: ['deco_cigs', 'deco_vodka', 'deco_stew', 'deco_milk'],
   },
   office: {
     wall: [P('ship_cabinet'), P('ship_terminal', 1, { terminal: true }), P('ship_tv'), P('ship_plant'), P('ship_cab3')],
-    wallCount: [2, 4], center: [P('ship_desk', 3), P('ship_desk_small')], centerCount: [1, 2], cover: 0.3,
-    containers: { filing: 4, locker: 1 }, containerCount: [1, 2], decor: POSTERS,
+    wallCount: [2, 4], center: [P('ship_desk', 3, { surface: 30 }), P('ship_desk_small', 1, { surface: 22 })], centerCount: [1, 2], cover: 0.3,
+    containers: { filing: 4, locker: 1 }, containerCount: [1, 2], decor: POSTERS, tops: ['deco_tablet', 'deco_cigs', 'deco_milk', 'deco_compass', 'deco_camera'],
   },
   servers: {
     wall: [P('ship_server'), P('ship_server2'), P('hack_terminal', 1, { terminal: true }), P('ship_console3', 3)],
     wallCount: [2, 4], center: [P('hack_server', 3, { row: true }), P('hack_rack', 2, { row: true })], centerCount: [1, 3], cover: 0.2,
-    containers: { server: 4, filing: 1 }, containerCount: [1, 2], decor: VENTS,
+    containers: { server: 4, filing: 1 }, containerCount: [1, 2], decor: VENTS, tops: ['deco_tablet', 'deco_multitool'],
   },
   workshop: {
-    wall: [P('ship_workbench', 2), P('ship_machine', 2), P('ship_pipe_v'), P('ship_cab2')],
+    wall: [P('ship_workbench', 2, { surface: 34 }), P('ship_machine', 2), P('ship_pipe_v'), P('ship_cab2')],
     wallCount: [2, 3], center: [P('ship_machine', 2), P('ship_robot')], centerCount: [0, 1], cover: 1,
-    containers: { toolbox: 4, box_dark: 2 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster3'],
+    containers: { toolbox: 4, box_dark: 2 }, containerCount: [1, 2], decor: [...VENTS, 'ship_poster3'], tops: ['deco_wrench', 'deco_tape', 'deco_multitool', 'deco_oxygen'],
   },
   medbay: {
     wall: [P('ship_bed', 2), P('med_iv'), P('med_monitor'), P('med_crate')],
-    wallCount: [2, 4], center: [P('med_gurney'), P('ship_bed', 2)], centerCount: [1, 2], cover: 0.3,
-    containers: { medcab: 5, box_olive: 1 }, containerCount: [1, 2], decor: ['ship_poster4', 'ship_vent'],
+    wallCount: [2, 4], center: [P('med_gurney', 1, { surface: 10 }), P('ship_bed', 2)], centerCount: [1, 2], cover: 0.3,
+    containers: { medcab: 5, box_olive: 1 }, containerCount: [1, 2], decor: ['ship_poster4', 'ship_vent'], tops: ['deco_reagent', 'deco_antibiotics', 'deco_specimen'],
   },
   mess: {
     wall: [P('ship_cab2'), P('ship_cab3'), P('ship_tv'), P('ship_bin')],
-    wallCount: [1, 3], center: [P('ship_table', 2)], centerCount: [1, 3], cover: 0.3,
-    containers: { box_dark: 2, locker: 1 }, containerCount: [0, 1], decor: [...POSTERS, 'ship_vent'],
+    wallCount: [1, 3], center: [P('ship_table', 2, { surface: 24 })], centerCount: [1, 3], cover: 0.3,
+    containers: { box_dark: 2, locker: 1 }, containerCount: [0, 1], decor: [...POSTERS, 'ship_vent'], tops: ['deco_stew', 'deco_rations', 'deco_vodka', 'deco_milk', 'deco_cigs'],
   },
   reactor: {
     wall: [P('ship_tank', 2), P('ship_capsule', 2), P('ship_pipe_v'), P('ship_console_b', 3)],
     wallCount: [2, 3], center: [P('ship_reactor', 1, { glow: 0xff9a40 })], centerCount: [1, 1], cover: 0.6,
-    containers: { toolbox: 2, box_dark: 1 }, containerCount: [0, 1], decor: VENTS,
+    containers: { toolbox: 2, box_dark: 1 }, containerCount: [0, 1], decor: VENTS, tops: ['deco_geiger', 'deco_tape'],
   },
   armory: {
     wall: [P('ship_gunrack', 2), P('ship_locker'), P('merc_case2')],
     wallCount: [2, 3], center: [P('merc_tripod')], centerCount: [0, 1], cover: 1.2,
-    containers: { ammocase: 4, box_red: 2, case_green: 1, locker: 1 }, containerCount: [1, 3], decor: ['ship_poster', 'ship_poster3'],
+    containers: { ammocase: 4, box_red: 2, case_green: 1, locker: 1 }, containerCount: [1, 3], decor: ['ship_poster', 'ship_poster3'], tops: ['deco_geiger', 'deco_cigs'],
   },
   entry: {
     wall: [P('ship_locker_s'), P('ship_crate_g'), P('ship_suit')],
@@ -392,6 +396,12 @@ const KITS: Record<string, Kit> = {
     wallCount: [1, 2], center: [], centerCount: [0, 0], cover: 0.3,
     containers: { case_red: 1 }, containerCount: [0, 0], decor: [],
   },
+};
+
+/** Screens and status lights that cast a little colour of their own. */
+const TECH_GLOW: Record<string, number> = {
+  ship_terminal: 0x5fe08a, hack_terminal: 0x5fe08a, ship_console3: 0x5fe08a, ship_console_b: 0x5fe08a,
+  ship_server: 0x4aa8ff, ship_server2: 0x4aa8ff, ship_tv: 0x8ab8ff, med_monitor: 0x5fe0c8,
 };
 
 /** Tall containers belong against the back wall; boxes can sit anywhere along a wall. */
@@ -522,6 +532,18 @@ function furnishRoom(
   })();
   for (const type of containerTypes) placeContainer(type, BACK_WALL.has(type));
 
+  /** Leave a thing or two on top of a piece of furniture. */
+  const dress = (piece: Piece, x0: number, baseY: number) => {
+    if (!piece.surface) return;
+    const pool = [...(kit.tops ?? []), ...theme.smalls];
+    if (!pool.length) return;
+    const n = rng.int(1, piece.w > 1 ? 3 : 1);
+    for (let i = 0; i < n; i++) {
+      const x = px(x0) + 6 + rng.next() * (piece.w * TILE - 12);
+      map.props.push({ sprite: rng.pick(pool), x: Math.round(x), y: baseY + 1, lift: piece.surface + rng.int(-2, 1) });
+    }
+  };
+
   // --- Back-wall furniture
   const wallN = rng.int(kit.wallCount[0], kit.wallCount[1]);
   for (let k = 0, tries = 0; k < wallN && tries < 16 && kit.wall.length; tries++) {
@@ -531,7 +553,10 @@ function furnishRoom(
     if (!tiles.every(([x]) => standsOnBackWall(x))) continue;
     if (tryBlock(tiles, () => {
       map.props.push({ sprite: piece.sprite, x: px(x0) + (piece.w * TILE) / 2, y: px(r.y + 1) - 2 });
+      dress(piece, x0, px(r.y + 1) - 2);
       if (piece.terminal) map.terminals.push({ tx: x0, ty: r.y, entry: map.terminals.length });
+      const glow = TECH_GLOW[piece.sprite];
+      if (glow) map.lights.push({ x: px(x0) + (piece.w * TILE) / 2, y: px(r.y + 1) + 4, color: glow, radius: 56, intensity: 0.32, flicker: false });
     }, !!piece.terminal)) k++;
   }
 
@@ -549,7 +574,8 @@ function furnishRoom(
       if (piece.row) {
         for (let i = 0; i < piece.w; i++) map.props.push({ sprite: piece.sprite, x: px(x0 + i) + TILE / 2, y: px(y0 + h) - 2 });
       } else {
-        map.props.push({ sprite: piece.sprite, x: px(x0) + (piece.w * TILE) / 2, y: px(y0 + h) - 2});
+        map.props.push({ sprite: piece.sprite, x: px(x0) + (piece.w * TILE) / 2, y: px(y0 + h) - 2 });
+        dress(piece, x0, px(y0 + h) - 2);
       }
       if (piece.glow) {
         map.lights.push({ x: px(x0) + (piece.w * TILE) / 2, y: px(y0 + h) - 20, color: piece.glow, radius: 120, intensity: 0.55, flicker: true });
@@ -595,6 +621,14 @@ function furnishRoom(
     map.props.push({ sprite: rng.pick(['fx_blood_0', 'fx_blood_1', 'fx_blood_2']), x: px(x) + rng.int(4, 28), y: px(y) + rng.int(8, 30), layer: 'floor', tint: 0x2a2622 });
   }
 
+  // --- Leftovers on the floor: tins, tools, ore, bones. What this world leaves lying around.
+  const litter = rng.int(0, 2) + (r.role === 'loot' ? 1 : 0);
+  const open = floorTiles(map, r).filter(([x, y]) => !reserved.has(key(x, y)));
+  for (let i = 0; i < litter && open.length; i++) {
+    const [x, y] = open.splice(rng.int(0, open.length - 1), 1)[0];
+    map.props.push({ sprite: rng.pick(theme.smalls), x: px(x) + rng.int(6, 26), y: px(y) + rng.int(14, 28) });
+  }
+
   // --- Posters and vents on the back wall, where nothing stands in front of them.
   const decorN = kit.decor.length ? rng.int(0, 2) : 0;
   const decorX = backWallX().filter((x) => standsOnBackWall(x) && map.get(x, r.y) === Tile.Floor && !reserved.has(key(x, r.y)));
@@ -603,7 +637,17 @@ function furnishRoom(
   }
 
   // --- Lights, in fixtures on the back wall.
-  const lit = r.role === 'standard' ? rng.chance(0.55) : r.role === 'loot' ? rng.chance(0.5) : true;
+  const lit = r.role === 'standard' ? rng.chance(0.62) : r.role === 'loot' ? rng.chance(0.5) : true;
+  if (!lit) {
+    // Mains are out: a battery emergency lamp throbs over the back wall, barely enough.
+    const spots = backWallX().filter(standsOnBackWall);
+    if (spots.length) {
+      map.lights.push({
+        x: px(spots[0]) + TILE / 2, y: r.y * TILE + 6, color: rng.chance(0.7) ? 0xff4a32 : 0xffa030,
+        radius: 150, intensity: 0.5, flicker: false, style: 'pulse', fixture: true,
+      });
+    }
+  }
   if (lit) {
     const radius = Math.min(260, Math.max(150, Math.max(r.w, r.h) * TILE * 0.8));
     const count = r.w >= 10 ? 2 : 1;
@@ -617,6 +661,12 @@ function furnishRoom(
         fixture: map.get(Math.floor(lx / TILE), r.y - 1) === Tile.Wall,
       });
     }
+    // The lamps light the room, not just the wall under them: a soft wash over the floor,
+    // so a lit room reads as a place (and anyone standing in it can be seen).
+    map.lights.push({
+      x: (r.x + r.w / 2) * TILE, y: (r.y + r.h * 0.55) * TILE, color,
+      radius: Math.min(300, Math.hypot(r.w, r.h) * TILE * 0.6), intensity: r.role === 'start' ? 0.5 : 0.42, flicker: false,
+    });
   }
   const pad = r.role === 'extraction' ? map.extraction : null;
   if (pad) {

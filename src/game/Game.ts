@@ -1,19 +1,20 @@
 import { Application, Container, Graphics, type Ticker } from 'pixi.js';
 import { loadAssets } from '../engine/assets';
-import { audio } from '../engine/audio';
+import { audio, type ROOMS } from '../engine/audio';
 import { Camera } from '../engine/camera';
 import { GUN_HEIGHT, MAX_DT, VIEW_H, VIEW_W } from '../engine/config';
 import { Input } from '../engine/input';
+import { haptics } from '../engine/haptics';
 import { Rng } from '../engine/rng';
 import { DESTINATION } from '../data/destinations';
 import { loreEntry } from '../data/lore';
 import { themeFor, type Theme } from '../data/themes';
 import { ENEMIES } from '../data/enemies';
-import { ITEMS, type ArmorDef, type WeaponItemDef } from '../data/items';
-import { BODY_GRID, BODY_POCKETS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
+import { ITEMS, RARITY_ORDER, type ArmorDef, type WeaponItemDef } from '../data/items';
+import { BODY_GRID, BODY_POCKETS, CONTAINERS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
 import { WEAPONS } from '../data/weapons';
 import { TEST_RANGE } from '../data/testRange';
-import { addToGrid, createItem, emptyGrid, loadoutCount, loadoutWeight, type Grid } from '../core/inventory';
+import { addToGrid, createItem, emptyGrid, itemValueDeep, loadoutCount, loadoutItems, loadoutWeight, type Grid, type Loadout } from '../core/inventory';
 import type { Operator } from '../core/profile';
 import { useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
@@ -23,14 +24,17 @@ import { Enemy } from './ai/Enemy';
 import { Grenades, fragDamage } from './combat/grenades';
 import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
 import type { GameContext } from './context';
-import { Player } from './entities/Player';
+import { Player, STEADY_SPREAD } from './entities/Player';
+import { PadAim, type AimTarget } from './padAim';
+import { AmbientFx } from './fx/ambient';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
 import { Lighting } from './render/lighting';
-import { DEFAULT_LOOK, buildMapView } from './render/mapView';
+import { DEFAULT_LOOK, buildMapView, floorAt, type MapLook } from './render/mapView';
 import { ScreenOverlay } from './render/screenOverlay';
 import type { TacticalSnapshot } from './tactical';
 import { hasLineOfSight, type RayHit } from './world/collision';
+import { emitterLevels, emittersFrom, type Emitter } from './world/emitters';
 import { Doors } from './world/doors';
 import { generateFacility } from './world/facilityGen';
 import { Tile, mapFromAscii, type TileMap } from './world/tilemap';
@@ -80,6 +84,7 @@ export class Game {
   private doors: Doors | null = null;
   private interactions!: Interactions;
   private grenades!: Grenades;
+  private ambientFx: AmbientFx | null = null;
   private ctx!: GameContext;
   private unsubscribe: (() => void) | null = null;
 
@@ -93,8 +98,10 @@ export class Game {
   private targets: Hittable[] = [];
   private hitstopTime = 0;
   private deadTime = 0;
+  private ending: { kind: 'extracted' | 'mia'; t: number } | null = null;
   private ended = false;
   private theme: Theme = themeFor(undefined);
+  private look: MapLook = DEFAULT_LOOK;
   /** Raid clock (seconds) and the orbit window. */
   private elapsed = 0;
   private window = Infinity;
@@ -104,7 +111,13 @@ export class Game {
   /** Tiles the operator has seen, for the tactical map. */
   private explored = new Uint8Array(0);
   private surveyTimer = 0;
+  private emitters: Emitter[] = [];
+  private emitterTimer = 0;
   private terminalAt: { x: number; y: number } | null = null;
+  /** Controller aim, and where the reticle is in the world this frame. */
+  private padAim = new PadAim();
+  private aimPoint = { x: 0, y: 0 };
+  private aimTargets: AimTarget[] = [];
   paused = false;
 
   constructor(private opts: GameOptions) {}
@@ -178,6 +191,10 @@ export class Game {
     if (e?.alive) this.onBulletActor({ dx: 1, dy: 0, damage: 999, pen: 9, knockback: 50 } as Bullet, e, e.x, e.y, false);
   }
 
+  setBrightness(v: number): void {
+    this.lighting?.setBrightness(v);
+  }
+
   setShake(v: number): void {
     if (this.camera) this.camera.shakeScale = v;
   }
@@ -197,6 +214,7 @@ export class Game {
     window.removeEventListener('pointerdown', this.unlockAudio);
     window.removeEventListener('keydown', this.unlockAudio);
     this.input.destroy();
+    haptics.stop();
     this.audio.setOccluder(null);
     this.audio.stopAmbience();
     this.audio.destroy();
@@ -223,6 +241,7 @@ export class Game {
     this.grenades?.clear();
     this.hitstopTime = 0;
     this.deadTime = 0;
+    this.ending = null;
     this.ended = false;
 
     const dest = DESTINATION[useRaid.getState().destination];
@@ -243,9 +262,14 @@ export class Game {
     this.camera.shakeScale = useSettings.getState().shake;
     const map = this.map;
     this.audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
-    this.audio.startAmbience('facility');
+    this.audio.setRoom(facility ? (this.theme.id as keyof typeof ROOMS) : 'range');
+    this.audio.startAmbience('facility', facility ? this.theme.id : 'range');
+    this.emitters = emittersFrom([
+      ...this.map.props,
+      ...this.map.containers.map((c) => ({ sprite: CONTAINERS[c.type]?.sprite ?? '', x: c.tx * 32 + 16, y: c.ty * 32 + 16 })),
+    ]);
     this.effects = new Effects(this.map, this.audio);
-    this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map) : null;
+    this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map, useSettings.getState().brightness) : null;
 
     this.ctx = {
       map: this.map,
@@ -253,15 +277,21 @@ export class Game {
       effects: this.effects,
       audio: this.audio,
       camera: this.camera,
+      haptics,
       emitNoise: (x, y, r) => {
         for (const e of this.enemies) e.hear(x, y, r);
+        this.cueSound(x, y, r);
       },
       hitstop: (s) => {
         this.hitstopTime = Math.max(this.hitstopTime, s);
       },
-      lightFlash: (x, y, r, color, intensity) => this.lighting?.flash(x, y, r, color, intensity),
+      lightFlash: (x, y, r, color, intensity, life) => this.lighting?.flash(x, y, r, color, intensity, life),
       smokeBetween: (x0, y0, x1, y1) => this.grenades.blocks(x0, y0, x1, y1),
       throwGrenade: (fx, fy, tx, ty, kind, faction) => this.grenades.throw(fx, fy, tx, ty, kind, faction),
+      surfaceAt: (x, y) => {
+        const f = floorAt(this.look, Math.floor(x / 32), Math.floor(y / 32));
+        return f === 'floor_grate' ? 'grate' : f === 'floor_plate' ? 'plate' : 'deck';
+      },
     };
     this.grenades = new Grenades(this.map, this.audio, {
       onNoise: (x, y, r) => this.ctx.emitNoise(x, y, r),
@@ -269,13 +299,13 @@ export class Game {
     });
 
     const t = this.theme;
-    const look = facility ? { floor: t.floor, floorTint: t.floorTint, wall: t.wall, wallTint: t.wallTint, trim: t.trim } : DEFAULT_LOOK;
-    const { ground, props } = buildMapView(this.map, look);
+    this.look = facility ? { floor: t.floor, floorTint: t.floorTint, wall: t.wall, wallTint: t.wallTint, trim: t.trim } : DEFAULT_LOOK;
+    const { ground, props } = buildMapView(this.map, this.look);
     this.doors = this.map.doors.length ? new Doors(this.map, this.audio, this.ctx.emitNoise) : null;
     this.interactions = new Interactions(this.map, this.audio, {
       onNoise: this.ctx.emitNoise,
       onLight: this.ctx.lightFlash,
-      onExtracted: () => this.endRun('extracted'),
+      onExtracted: () => this.beginEnding('extracted'),
       onSignal: (x, y) => this.onSignal(x, y),
       onUnlock: (door) => this.doors?.unlock(door),
       onTerminal: (n) => this.openTerminal(n),
@@ -285,6 +315,13 @@ export class Game {
     if (this.doors) this.worldLit.addChild(this.doors.container);
     this.worldLit.addChild(this.effects.decals, this.actorLayer, this.grenades.container, this.effects.lit);
     this.worldGlow.addChild(this.interactions.overlay, this.effects.overlay, this.tracers);
+    // Life in the walls: blinking status lights, sparking machines, steam, dust in the beam.
+    this.ambientFx = new AmbientFx(
+      [...this.map.props, ...this.map.containers.map((c) => ({ sprite: CONTAINERS[c.type]?.sprite ?? '', x: c.tx * 32 + 16, y: c.ty * 32 + 29 }))],
+      this.effects, this.audio, this.ctx.lightFlash, this.opts.seed,
+    );
+    this.worldGlow.addChildAt(this.ambientFx.glow, 0);
+    if (this.lighting) this.worldLit.addChild(this.ambientFx.dust);
     for (const p of props) this.actorLayer.addChild(p);
 
     const spawn = this.map.spawns.find((s) => s.kind === 'player')!;
@@ -303,7 +340,10 @@ export class Game {
 
     // The inventory UI can change what's equipped at any moment.
     this.unsubscribe = useRaid.subscribe((s, prev) => {
-      if (s.loadout !== prev.loadout) this.player.syncLoadout(s.loadout);
+      if (s.loadout !== prev.loadout) {
+        this.player.syncLoadout(s.loadout);
+        this.announceFinds(prev.loadout, s.loadout, s.brought);
+      }
     });
 
     this.app.stage.addChild(this.worldLit);
@@ -319,8 +359,30 @@ export class Game {
     this.opts.onEnd?.(status);
   }
 
+  /**
+   * A beat before the report: getting out is a flash of relief, running out of time is a
+   * ship's lights leaving without you. The world keeps moving, but you're out of it.
+   */
+  private beginEnding(kind: 'extracted' | 'mia'): void {
+    if (this.ending || this.ended) return;
+    this.ending = { kind, t: 0 };
+    this.player.untouchable = true;
+    // Bank the result now: closing the tab during the last beat must not turn a clean
+    // extraction into an M.I.A. (settling twice is a no-op).
+    if (kind === 'extracted') this.opts.onEnd?.('extracted');
+    raid.patch({ ending: kind, prompt: null, extractCountdown: null });
+    raid.closeOverlay();
+    this.silenceMusic(kind === 'extracted' ? 1.5 : 4);
+    if (kind === 'extracted') {
+      this.lighting?.flash(this.player.x, this.player.y, 320, 0xd8ffe0, 1.4, 0.4);
+      haptics.rumble(0.55, 0.45, 1000);
+    }
+    else this.audio.setMuffled(true);
+  }
+
   private tick = (ticker: Ticker): void => {
-    const dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
+    let dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
+    this.input.poll(dt);
 
     if (this.paused) {
       this.input.endFrame();
@@ -328,18 +390,36 @@ export class Game {
     }
 
     if (!this.player.alive) {
+      if (this.deadTime === 0) {
+        // Hearing goes first; the world slows (and the overlay drains its colour).
+        this.audio.setMuffled(true);
+        haptics.rumble(1, 0.5, 1300);
+        this.silenceMusic(4);
+        if (this.opts.mode === 'facility') raid.patch({ ending: 'dead' });
+      }
       this.deadTime += dt;
-      if (this.opts.mode === 'range' && this.input.wasPressed('KeyR')) {
+      dt *= 0.35 + 0.65 * Math.min(1, this.deadTime / 2);
+      if (this.opts.mode === 'range' && this.input.pressed('reload')) {
         raid.start('range', 0, 'range', useRaid.getState().loadout);
+        this.audio.setMuffled(false);
         this.startRun();
         this.input.endFrame();
         return;
       }
       if (this.opts.mode === 'facility' && this.deadTime > DEATH_LINGER) this.endRun('dead');
     }
+    if (this.ending) {
+      this.ending.t += dt;
+      // The shuttle (or the lift) has you: you're gone from the room.
+      if (this.ending.kind === 'extracted' && this.ending.t > 0.3) this.player.view.container.visible = false;
+      if (this.ending.t > (this.ending.kind === 'extracted' ? 1.6 : 2.4)) this.endRun(this.ending.kind === 'extracted' ? 'extracted' : 'dead', this.ending.kind === 'mia');
+    }
 
-    if (this.input.wasPressed('Tab') && this.player.alive) raid.toggleInventory();
-    if (this.input.wasPressed('KeyM') && this.player.alive && this.opts.mode === 'facility') {
+    if (this.input.pressed('inventory') && this.player.alive && !this.ending) {
+      raid.toggleInventory();
+      this.audio.ui(useRaid.getState().inventoryOpen ? 'open' : 'close');
+    }
+    if (this.input.pressed('map') && this.player.alive && !this.ending && this.opts.mode === 'facility') {
       raid.toggleMap();
       this.audio.ui(useRaid.getState().mapOpen ? 'open' : 'close');
     }
@@ -358,17 +438,18 @@ export class Game {
     // Reading a terminal ends with E or by walking away. That E press doesn't also reopen it.
     let closedTerminal = false;
     if (this.terminalAt && useRaid.getState().terminal) {
-      if (this.input.wasPressed('KeyE') || Math.hypot(p.x - this.terminalAt.x, p.y - this.terminalAt.y) > 36) {
+      if (this.input.pressed('interact') || Math.hypot(p.x - this.terminalAt.x, p.y - this.terminalAt.y) > 36) {
         raid.closeOverlay();
         this.audio.ui('close');
         this.terminalAt = null;
         closedTerminal = true;
       }
     }
-    const menuOpen = raid.overlayOpen() || closedTerminal;
+    // During the last beat of a raid the hands are off the controls.
+    const menuOpen = raid.overlayOpen() || closedTerminal || !!this.ending;
     this.runCommands();
 
-    const aim = this.camera.toWorld(this.input.mouseX, this.input.mouseY);
+    const aim = this.aimFor(dt, !menuOpen);
     p.update(dt, this.input, aim.x, aim.y, !menuOpen);
 
     // How visible the player is: flashlight and gunfire give you away.
@@ -389,17 +470,139 @@ export class Game {
 
     this.trackRooms(dt);
     this.survey(dt);
+    this.listenToRoom(dt);
+    this.heartbeat(dt);
+    this.tensionMusic(dt);
     this.raidClock(dt);
     const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25, menuOpen);
+    p.searching = this.interactions.handsBusy ? Math.max(0, p.searching) + dt : -1;
     if (menuOpen && this.input.wasPressed('KeyE')) raid.closeOverlay();
     const zone = this.map.exitAt(p.x, p.y);
-    raid.patch({
+    if (!this.ending) raid.patch({
       prompt: view.prompt,
       extractCountdown: view.countdown === null ? null : Math.ceil(view.countdown * 10) / 10,
       extractInZone: view.inZone,
       extractKind: view.countdown === null ? null : zone?.kind === 'lift' ? 'lift' : 'pad',
       flashlight: p.flashlight,
     });
+  }
+
+  /**
+   * Where the player aims this frame: under the mouse, or out along the right stick
+   * (with a light pull toward a hostile you can actually see).
+   */
+  private aimFor(dt: number, handsFree: boolean): { x: number; y: number } {
+    const p = this.player;
+    if (!this.input.padAiming) {
+      const m = this.camera.toWorld(this.input.mouseX, this.input.mouseY);
+      this.aimPoint = m;
+      // Keep the stick aim in step, so picking the controller up doesn't swing the gun.
+      this.padAim.reset(p.aim, Math.hypot(m.x - p.x, m.y - (p.y - GUN_HEIGHT)));
+      return m;
+    }
+    const ox = p.x;
+    const oy = p.y - GUN_HEIGHT;
+    this.aimTargets.length = 0;
+    for (const e of this.enemies) {
+      if (e.alive && e.view.container.alpha > 0.5) this.aimTargets.push({ x: e.x, y: e.y - GUN_HEIGHT, r: e.hitRadius + 3 });
+    }
+    const s = useSettings.getState();
+    const pt = this.padAim.update(dt, {
+      stick: handsFree ? this.input.aimStick : { x: 0, y: 0, mag: 0 },
+      move: this.input.move(),
+      steady: handsFree && this.input.down('steady'),
+      firing: handsFree && this.input.down('fire'),
+      sensitivity: s.aimSpeed,
+      assist: s.aimAssist,
+      targets: this.aimTargets,
+      ox, oy,
+    });
+    this.aimPoint = pt;
+    return pt;
+  }
+
+  private tension = 0;
+  private tensionHold = 0;
+  private musicLevel = -1;
+
+  private silenceMusic(fade: number): void {
+    this.tension = 0;
+    this.tensionHold = 0;
+    this.musicLevel = 0;
+    if (this.opts.mode === 'facility') this.audio.music('raid', 0, fade);
+  }
+
+  /**
+   * The raid is silent until it isn't: a low layer rises when someone is hunting you or
+   * rounds are flying, lingers a while after, and swells a little for the last minutes
+   * and the extraction. Then it lets go and the facility's own sounds come back.
+   */
+  private tensionMusic(dt: number): void {
+    if (this.opts.mode !== 'facility') return;
+    const p = this.player;
+    let want = 0;
+    if (p.alive && !this.ending) {
+      const hunted = this.enemies.some((e) => e.alive && e.aware && Math.hypot(e.x - p.x, e.y - p.y) < 700);
+      if (hunted || p.lastHitAgo < 6 || p.lastShotAgo < 4) want = 1;
+      else if (this.interactions.extracting) want = 0.8;
+      else if (this.window - this.elapsed < 120) want = 0.5;
+    }
+    if (want > 0) this.tensionHold = 12;
+    else this.tensionHold -= dt;
+    const target = want > 0 ? want : this.tensionHold > 0 ? this.tension : 0;
+    this.tension += (target - this.tension) * Math.min(1, dt * (target > this.tension ? 0.9 : 0.12));
+    if (Math.abs(this.tension - this.musicLevel) > 0.04 || (target === 0 && this.tension < 0.02 && this.musicLevel > 0)) {
+      this.musicLevel = this.tension < 0.02 ? 0 : this.tension;
+      this.audio.music('raid', this.musicLevel, 1);
+    }
+  }
+
+  private heartTimer = 0;
+
+  /** Badly hurt: your own heartbeat, faster the closer to the end. */
+  private heartbeat(dt: number): void {
+    const p = this.player;
+    const k = p.hp / p.maxHp;
+    if (!p.alive || k > 0.3) return;
+    this.heartTimer -= dt;
+    if (this.heartTimer > 0) return;
+    this.heartTimer = 0.55 + k * 1.4;
+    haptics.heartbeat(1 - k / 0.3);
+    this.audio.sfx('heartbeat', p.x, p.y, 0.6 + (0.3 - k) * 2);
+  }
+
+  /** A good find going into the bag deserves a moment: a chime and a line in the feed. */
+  private announceFinds(before: Loadout, after: Loadout, brought: readonly string[]): void {
+    const had = new Set(loadoutItems(before).map((i) => i.uid));
+    const mine = new Set(brought);
+    for (const it of loadoutItems(after)) {
+      if (had.has(it.uid) || mine.has(it.uid)) continue;
+      const d = ITEMS[it.id];
+      if (!d || RARITY_ORDER[d.rarity] < RARITY_ORDER.rare) continue;
+      this.audio.ui('valuable');
+      raid.notice(`${d.name.toUpperCase()} · ${itemValueDeep(it).toLocaleString()} CR`, 'loot', it.id);
+      break;
+    }
+  }
+
+  /** Accessibility: point toward loud noises the player can't see the source of. */
+  private cueSound(x: number, y: number, radius: number): void {
+    if (radius < 250 || !useSettings.getState().soundCues || !this.player) return;
+    const p = this.player;
+    const d = Math.hypot(x - p.x, y - p.y);
+    if (d < 40 || d > radius) return;
+    const onScreen = x > this.camera.left && x < this.camera.left + VIEW_W && y > this.camera.top && y < this.camera.top + VIEW_H;
+    if (onScreen && hasLineOfSight(this.map, p.x, p.y - 8, x, y - 8)) return;
+    this.overlay.soundCue(Math.atan2(y - p.y, x - p.x), radius > 500);
+  }
+
+  /** Machinery near the player hums in the right ear, quieter through walls. */
+  private listenToRoom(dt: number): void {
+    this.emitterTimer -= dt;
+    if (this.emitterTimer > 0) return;
+    this.emitterTimer = 0.2;
+    const p = this.player;
+    this.audio.setEmitters(emitterLevels(this.emitters, p.x, p.y, (x, y) => !hasLineOfSight(this.map, p.x, p.y - 8, x, y - 8)));
   }
 
   /** Fill in the operator's map: everything in line of sight nearby. */
@@ -428,7 +631,7 @@ export class Game {
    * Raid pressure: the Lastochka can only hold orbit so long, and other crews keep landing.
    */
   private raidClock(dt: number): void {
-    if (this.opts.mode !== 'facility' || !this.player.alive) return;
+    if (this.opts.mode !== 'facility' || !this.player.alive || this.ending) return;
     this.elapsed += dt;
     const left = this.window - this.elapsed;
     while (this.warned < WARNINGS.length && left <= WARNINGS[this.warned]) {
@@ -439,7 +642,7 @@ export class Game {
     }
     if (left <= 0) {
       raid.notice('The Lastochka broke orbit without you.', 'bad');
-      this.endRun('dead', true);
+      this.beginEnding('mia');
       return;
     }
     if (this.squads < SQUAD_TIMES.length && this.elapsed >= SQUAD_TIMES[this.squads]) {
@@ -578,7 +781,12 @@ export class Game {
 
   private render(dt: number): void {
     const p = this.player;
-    this.camera.update(dt, p.x, p.y - GUN_HEIGHT, this.input.mouseX, this.input.mouseY);
+    // Steadying the aim leans the view further out along it.
+    const steady = p.steady && p.alive;
+    this.camera.lookAhead += ((steady ? 0.5 : 0.28) - this.camera.lookAhead) * Math.min(1, dt * 6);
+    const rx = this.aimPoint.x - this.camera.left;
+    const ry = this.aimPoint.y - this.camera.top;
+    this.camera.update(dt, p.x, p.y - GUN_HEIGHT, rx, ry);
     this.worldLit.position.set(-this.camera.left, -this.camera.top);
     this.worldGlow.position.set(-this.camera.left, -this.camera.top);
     this.audio.setListener(p.x, p.y);
@@ -591,17 +799,20 @@ export class Game {
 
     this.tracers.clear();
     this.projectiles.render(this.tracers);
+    this.ambientFx?.update(dt, this.camera.left, this.camera.top, VIEW_W, VIEW_H);
 
     // Crosshair spread: cone half-angle projected to the cursor distance.
     const w = p.weapon;
     const psx = p.x - this.camera.left;
     const psy = p.y - GUN_HEIGHT - this.camera.top;
-    const dist = Math.hypot(this.input.mouseX - psx, this.input.mouseY - psy);
+    const csx = this.aimPoint.x - this.camera.left;
+    const csy = this.aimPoint.y - this.camera.top;
+    const dist = Math.hypot(csx - psx, csy - psy);
     const moveFactor = Math.min(1, p.speed / 112);
-    const spreadPx = w ? Math.tan((w.spread(moveFactor) * Math.PI) / 180) * dist : 6;
+    const spreadPx = w ? Math.tan((w.spread(moveFactor) * (steady ? STEADY_SPREAD : 1) * Math.PI) / 180) * dist : 6;
     const menuOpen = raid.overlayOpen();
     const st = p.status;
-    this.overlay.update(dt, this.input.mouseX, this.input.mouseY, spreadPx,
+    this.overlay.update(dt, csx, csy, spreadPx,
       w?.reloading ? w.reloadProgress : st.using >= 0 ? st.using : -1, psx, psy, p.hp / p.maxHp, !menuOpen && p.alive, st.bleeding);
 
     const lo = useRaid.getState().loadout;
@@ -669,7 +880,7 @@ export class Game {
   }
 
   private onBulletWall = (b: Bullet, hit: RayHit): void => {
-    this.effects.wallImpact(hit.x, hit.y, hit.nx, hit.ny);
+    this.effects.bulletWall(hit.x, hit.y, hit.nx, hit.ny, b.dx, b.dy);
     this.audio.sfx('impactWall', hit.x, hit.y);
     // Bullets snapping into walls nearby are something enemies notice.
     if (b.faction === 'player') this.ctx.emitNoise(hit.x, hit.y, 90);
@@ -708,6 +919,7 @@ export class Game {
     this.effects.bloodPool(enemy.x, enemy.y, true);
     this.effects.bloodHit(x, y, dx, dy, 14);
     this.audio.sfx(headshot ? 'headshot' : 'kill', x, y);
+    haptics.confirm();
     this.hitstopTime = Math.max(this.hitstopTime, headshot ? 0.07 : 0.045);
     this.camera.shake(0.15);
     this.addBody(enemy);
@@ -720,6 +932,7 @@ export class Game {
     if (target === this.player) {
       this.audio.sfx('whiz', this.player.x + b.dx * 10, this.player.y + b.dy * 10);
       this.camera.shake(0.06);
+      haptics.pulse(0, 0.18, 45);
       this.overlay.suppressed();
       return;
     }
@@ -732,6 +945,7 @@ export class Game {
     this.lighting?.flash(x, y - 6, 280, 0xffb060, 1.4, 0.18);
     const pd = Math.hypot(this.player.x - x, this.player.y - y);
     this.camera.shake(Math.max(0.15, 0.9 - pd / 500));
+    haptics.blast(pd);
     this.hitstopTime = Math.max(this.hitstopTime, 0.05);
     const pdmg = fragDamage(this.map, x, y, this.player.x, this.player.y, radius, damage);
     if (pdmg > 0 && this.player.alive) {

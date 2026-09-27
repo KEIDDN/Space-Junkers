@@ -238,7 +238,11 @@ button { font-family: var(--mono); }
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   background: rgba(4, 4, 6, 0.72); line-height: 1.3; z-index: 20;
 }
-.pause-panel { width: 440px; display: flex; flex-direction: column; gap: 10px; }
+.pause-panel { width: min(820px, 94vw); display: flex; flex-direction: column; gap: 10px; }
+.pause-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.pause-col { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.controls-col { border-left: 1px solid var(--edge); padding-left: 18px; gap: 4px; display: flex; flex-direction: column; }
+.controls-col .controls { grid-template-columns: 1fr; margin: 0; }
 .setting { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .setting > span:first-child { min-width: 104px; }
 .setting input { flex: 1; accent-color: var(--warn); }
@@ -656,6 +660,7 @@ button { font-family: var(--mono); }
   min-width: 52px; color: var(--text); letter-spacing: 0.06em;
   border: 1px solid var(--edge); padding: 0 4px; background: rgba(0, 0, 0, 0.3); text-align: center;
 }
+.controls-row .key:has(.pad-btn) { border: none; background: none; padding: 0; min-width: 44px; }
 .hud-hint {
   position: absolute; left: 50%; top: 104px; transform: translateX(-50%); text-align: center;
   font-size: 12px; letter-spacing: 0.08em; color: var(--text); background: rgba(0, 0, 0, 0.45);
@@ -663,3 +668,148 @@ button { font-family: var(--mono); }
 }
 .hud-hint b { color: var(--warn); font-weight: normal; }
 @keyframes hint-fade { 0%, 85% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ---------- Scene covers (between places) ---------- */
+.scene-cover {
+  position: fixed; inset: 0; z-index: 100; background: #030304;
+  display: flex; align-items: center; justify-content: center; pointer-events: all;
+  transition: opacity 0.32s steps(6);
+}
+.scene-cover.in { animation: cover-in 0.32s steps(6) forwards; }
+.scene-cover.hold { opacity: 1; }
+.scene-cover.out { animation: cover-out 0.65s steps(10) forwards; pointer-events: none; }
+@keyframes cover-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cover-out { from { opacity: 1; } to { opacity: 0; } }
+.scene-cover::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(125, 255, 154, 0.025) 0 1px, transparent 1px 3px);
+}
+.scene-cover-text { font-family: var(--mono); color: var(--phosphor); font-size: 14px; letter-spacing: 0.14em; line-height: 1.9; min-width: 420px; text-shadow: 0 0 6px rgba(125, 255, 154, 0.35); }
+.scene-cover-text .lead { font-family: var(--display); font-size: 20px; letter-spacing: 0.1em; color: #e8e2cf; text-shadow: none; }
+.scene-cover-text.bad .lead { color: var(--bad); }
+.scene-cover-text.ok .lead { color: var(--ok); }
+
+/* ---------- Raid endings ---------- */
+.raid-ending { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; line-height: 1.2; }
+.raid-ending-text { text-align: center; opacity: 0; animation: ending-text 0.6s 0.35s steps(6) forwards; }
+.raid-ending .big { font-family: var(--display); font-size: 44px; letter-spacing: 0.12em; }
+.raid-ending .small { font-family: var(--mono); font-size: 13px; letter-spacing: 0.2em; margin-top: 6px; color: var(--text); }
+.raid-ending.extracted { animation: ending-extract 1.6s ease-in forwards; }
+.raid-ending.extracted .big { color: var(--ok); text-shadow: 0 0 12px rgba(125, 255, 154, 0.5); }
+.raid-ending.dead { animation: ending-dead 2.4s ease-in forwards; }
+.raid-ending.dead .big { color: var(--bad); }
+.raid-ending.mia { animation: ending-mia 2.4s ease-in forwards; }
+.raid-ending.mia .big { color: var(--warn); }
+@keyframes ending-text { to { opacity: 1; } }
+@keyframes ending-extract {
+  0% { background: rgba(235, 255, 240, 0); }
+  8% { background: rgba(235, 255, 240, 0.85); }
+  30% { background: rgba(20, 60, 34, 0.55); }
+  100% { background: rgba(3, 8, 5, 1); }
+}
+@keyframes ending-dead {
+  0% { background: radial-gradient(ellipse at center, rgba(120, 0, 0, 0) 40%, rgba(120, 0, 0, 0.5)); }
+  60% { background: radial-gradient(ellipse at center, rgba(60, 0, 0, 0.35) 20%, rgba(40, 0, 0, 0.9)); }
+  100% { background: rgba(4, 2, 2, 1); }
+}
+@keyframes ending-mia { 0% { background: rgba(3, 3, 5, 0); } 100% { background: rgba(3, 3, 5, 1); } }
+
+/* ---------- Results reveal ---------- */
+.results-panel { animation: results-in 0.35s steps(5) both; }
+@keyframes results-in { from { opacity: 0; transform: translateY(6px); } }
+.results-panel .loot-row { opacity: 0; animation: row-in 0.18s steps(3) forwards; }
+@keyframes row-in { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+.results-title { animation: title-flicker 0.5s steps(4) both; }
+@keyframes title-flicker { 0% { opacity: 0; } 30% { opacity: 1; } 45% { opacity: 0.3; } 60%, 100% { opacity: 1; } }
+.hp-bar.critical { animation: hp-critical 0.9s steps(2) infinite; }
+@keyframes hp-critical { 50% { box-shadow: 0 0 0 1px var(--bad), 0 0 8px rgba(224, 68, 58, 0.6); } }
+.toggle {
+  min-width: 56px; background: rgba(0, 0, 0, 0.35); border: 1px solid var(--edge); color: var(--dim);
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em; padding: 2px 8px; cursor: pointer;
+}
+.toggle.on { color: var(--ok); border-color: rgba(143, 209, 138, 0.5); }
+.toggle:hover { border-color: var(--edge-hi); }
+/* Dying: the colour drains out of the world behind the red. */
+.raid-ending.dead { animation: ending-dead 2.4s ease-in forwards, drain 1.2s ease-out forwards; }
+@keyframes drain { from { backdrop-filter: grayscale(0) brightness(1); } to { backdrop-filter: grayscale(0.9) brightness(0.75); } }
+
+/* ===========================================================================
+   INPUT GLYPHS AND CONTROLLER FOCUS
+   Keycaps for the keyboard, button faces for a pad. Focus is a phosphor bracket
+   that reads as the terminal's own cursor, not a browser outline.
+   =========================================================================== */
+
+.glyph {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-family: var(--mono); font-size: 11px; line-height: 1; letter-spacing: 0.04em;
+  vertical-align: 1px; white-space: nowrap;
+}
+.glyph-hold { font-size: 9px; color: var(--dim); letter-spacing: 0.1em; }
+.key-cap {
+  padding: 2px 5px 1px; min-width: 16px; justify-content: center;
+  color: var(--text); background: linear-gradient(#2a251e, #16130f);
+  border: 1px solid var(--edge-hi); border-bottom-width: 2px; border-radius: 2px;
+}
+.key-cap .glyph-hold { margin-right: 2px; }
+.pad-btn .pad-label {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  color: var(--text); background: radial-gradient(circle at 35% 30%, #2d2a26, #0d0c0a 75%);
+  border: 1px solid var(--edge-hi);
+}
+.pad-btn.face .pad-label {
+  border-radius: 50%; padding: 0; width: 17px; color: var(--tone); border-color: var(--tone);
+  font-weight: bold; box-shadow: 0 0 6px color-mix(in srgb, var(--tone) 35%, transparent);
+}
+.pad-btn.shoulder .pad-label { border-radius: 6px 6px 3px 3px; font-size: 10px; padding: 0 5px; }
+.pad-btn.misc .pad-label { border-radius: 8px; font-size: 10px; padding: 0 5px; }
+
+/* The controller's focus: a bright bracket, a slight lift, never a blue browser ring. */
+.pad-focus { outline: none; }
+.pad-focus:not(.inv-item):not(.dialog-box) { position: relative; }
+.pad-focus:not(.inv-item):not(.quick-slot)::after {
+  content: ''; position: absolute; inset: -3px; pointer-events: none;
+  border: 1px solid var(--warn);
+  box-shadow: 0 0 10px rgba(242, 163, 58, 0.35), inset 0 0 8px rgba(242, 163, 58, 0.12);
+  animation: pad-focus-in 0.12s ease-out;
+}
+.menu-btn.pad-focus, .btn.pad-focus, .opt.pad-focus, .nav-row.pad-focus, .vendor-row.pad-focus, .tab.pad-focus {
+  color: var(--warn); filter: brightness(1.2);
+}
+.opt.pad-focus { color: var(--crew, var(--warn)); background: rgba(255, 255, 255, 0.04); }
+.inv-item.pad-focus { z-index: 3; }
+.inv-item.pad-focus .item-tile {
+  filter: brightness(1.35); outline: 2px solid var(--warn); outline-offset: -1px;
+  box-shadow: 0 0 12px rgba(242, 163, 58, 0.45);
+}
+.quick-slot.pad-focus { outline: 2px solid var(--warn); }
+.inv-menu button.pad-focus { background: #2a2118; color: var(--warn); }
+.inv-menu button.pad-focus::after { inset: 0; }
+input[type="range"].pad-focus { filter: drop-shadow(0 0 4px rgba(242, 163, 58, 0.8)); }
+.dialog-box.pad-focus::after { display: none; }
+.contract.clickable.pad-focus { border-color: var(--crew, var(--warn)); }
+@keyframes pad-focus-in { from { inset: -7px; opacity: 0; } }
+
+/* A controller in hand: no pointer on screen, and hover-only cues stay off. */
+body[data-device="pad"] { cursor: none; }
+body[data-device="pad"] .inv-item:hover .item-tile { filter: none; }
+body[data-device="pad"] .btn:hover:not(.pad-focus), body[data-device="pad"] .menu-btn:hover:not(.pad-focus) { filter: none; color: inherit; }
+
+.record-panel .tabs { margin-bottom: 8px; }
+.record-panel.wide { width: min(820px, 94vw); }
+.record-settings { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+.record-settings .settings-col { display: flex; flex-direction: column; gap: 6px; }
+.tabs .pad-btn { opacity: 0.85; }
+
+.title-settings { width: min(780px, 92vw); padding: 16px 18px 12px; display: flex; flex-direction: column; gap: 10px; }
+.menu-btn.armed { border-color: var(--bad); color: var(--bad); }
+
+.audio-gate {
+  position: fixed; right: 14px; bottom: 12px; z-index: 120; pointer-events: none;
+  font-size: 11px; letter-spacing: 0.1em; color: var(--warn);
+  background: rgba(0, 0, 0, 0.6); border: 1px solid var(--edge); padding: 5px 9px;
+}
+
+.title-credits { width: min(640px, 92vw); padding: 16px 18px 12px; display: flex; flex-direction: column; gap: 12px; }
+.credits-list { display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.45; }
+.credits-block { display: flex; flex-direction: column; gap: 1px; }

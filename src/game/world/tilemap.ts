@@ -29,6 +29,8 @@ export interface PropPlacement {
   flip?: boolean;
   /** Emissive tint for glowing props (reactor cores). */
   tint?: number;
+  /** Sits on top of furniture: drawn this many px above its base, sorted just in front. */
+  lift?: number;
 }
 
 /** Something to read on a terminal screen. */
@@ -73,6 +75,8 @@ export interface LightDef {
   flicker: boolean;
   /** Draw a lamp housing on the wall here. */
   fixture?: boolean;
+  /** 'pulse': a slow emergency throb instead of a steady or stuttering tube. */
+  style?: 'pulse';
 }
 
 export interface ContainerPlacement {

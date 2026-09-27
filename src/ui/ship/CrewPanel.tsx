@@ -10,6 +10,7 @@ import { shipUi } from '../../state/shipStore';
 import { AtlasSprite } from '../AtlasSprite';
 import { ContractCard, rewardText } from './Contracts';
 import { TradeScreen } from './TradeScreen';
+import { Key } from '../Glyph';
 
 /** How the last raid ended, so the crew can react to it once. Not saved. */
 export const recentRaid: { outcome: 'extracted' | 'dead' | null; greeted: Set<CrewId> } = { outcome: null, greeted: new Set() };
@@ -128,8 +129,8 @@ export function CrewPanel({ crew }: { crew: CrewId }) {
   const levelFrac = nextLevel ? (trust - TRUST_LEVELS[level].points) / (nextLevel.points - TRUST_LEVELS[level].points) : 1;
 
   return (
-    <div className="dialog-root" style={{ ['--crew' as string]: def.color }}>
-      <div className="dialog-box panel" onClick={advance}>
+    <div className="dialog-root" data-nav-scope="dialogue" style={{ ['--crew' as string]: def.color }}>
+      <div className="dialog-box panel" onClick={advance} data-nav={mode.kind === 'lines' ? '' : undefined} data-nav-default={mode.kind === 'lines' ? '' : undefined}>
         <div className="dialog-portrait">
           <AtlasSprite name={def.portrait} scale={2} />
         </div>
@@ -146,21 +147,21 @@ export function CrewPanel({ crew }: { crew: CrewId }) {
           {mode.kind === 'lines' && (
             <div className="dialog-text">
               {tw.shown}
-              {tw.done && <span className="dialog-more blink">▼</span>}
+              {tw.done && <span className="dialog-more blink">▼ <Key a="confirm" /></span>}
             </div>
           )}
           {mode.kind === 'menu' && (
             <div className="dialog-options" onClick={(e) => e.stopPropagation()}>
               <div className="dialog-blurb dim">{def.blurb}</div>
               {(contracts.length > 0 || lockedByTrust) && (
-                <button className="opt" onClick={() => { audio.ui('click'); setMode({ kind: 'contracts' }); }}>
+                <button className="opt" data-nav-default onClick={() => { audio.ui('click'); setMode({ kind: 'contracts' }); }}>
                   ▸ CONTRACTS {ready > 0 && <span className="ok">· {ready} READY</span>} {fresh > 0 && <span className="warn">· {fresh} NEW</span>}
                 </button>
               )}
               <button className="opt" onClick={() => { audio.ui('open'); setMode({ kind: 'trade' }); }}>▸ TRADE</button>
               <button className="opt" onClick={() => { audio.ui('click'); setMode({ kind: 'topics' }); }}>▸ ASK ABOUT…</button>
               {crew === 'trader' && <button className="opt" onClick={() => say([marketLine(day)])}>▸ WHAT'S SELLING TODAY?</button>}
-              <button className="opt dim-opt" onClick={leave}>▸ LEAVE [ESC]</button>
+              <button className="opt dim-opt" onClick={leave}>▸ LEAVE <Key a="back" /></button>
             </div>
           )}
           {mode.kind === 'contracts' && (
@@ -177,7 +178,7 @@ export function CrewPanel({ crew }: { crew: CrewId }) {
           {mode.kind === 'offer' && (
             <div className="dialog-options" onClick={(e) => e.stopPropagation()}>
               <ContractCard p={profile} def={QUEST[mode.id]} status="available" compact preview />
-              <button className="opt" onClick={() => { shipActions.acceptQuest(mode.id); setMode({ kind: 'contracts' }); }}>▸ ACCEPT</button>
+              <button className="opt" data-nav-default onClick={() => { shipActions.acceptQuest(mode.id); setMode({ kind: 'contracts' }); }}>▸ ACCEPT</button>
               <button className="opt dim-opt" onClick={() => setMode({ kind: 'contracts' })}>▸ NOT NOW</button>
             </div>
           )}

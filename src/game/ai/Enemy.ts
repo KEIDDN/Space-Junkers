@@ -1,4 +1,4 @@
-import { anim } from '../../engine/assets';
+import { anim, hasAnim } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import type { EnemyDef } from '../../data/enemies';
 import { ITEMS, defaultAmmo, type ArmorDef, type WeaponItemDef } from '../../data/items';
@@ -8,7 +8,8 @@ import { discharge } from '../combat/fire';
 import type { Hittable } from '../combat/projectiles';
 import { WeaponState } from '../combat/weapon';
 import type { GameContext } from '../context';
-import { ActorView } from '../entities/ActorView';
+import { ActorView, type Pose } from '../entities/ActorView';
+import { playAnimEvents, weaponAction } from '../entities/handling';
 import { hasLineOfSight, moveCircle } from '../world/collision';
 import { findPath } from '../world/pathfinding';
 
@@ -92,6 +93,9 @@ export class Enemy implements Hittable {
   private pendingAlert: { x: number; y: number; t: number } | null = null;
   /** Seconds since this enemy last fired (muzzle flash reveals it in the dark). */
   lastShotAgo = 99;
+  private mutterTimer = 6 + Math.random() * 30;
+  /** A bolt or pump being worked after a shot: you can hear what they carry. */
+  private cycleTimer = -1;
 
   constructor(
     private ctx: GameContext,
@@ -103,10 +107,12 @@ export class Enemy implements Hittable {
     this.x = x;
     this.y = y;
     this.hp = def.hp;
+    // Each faction has two looks; a squad is never a row of clones.
+    const look = Math.random() < 0.45 && hasAnim(`${def.anim}_b_walk`) ? `${def.anim}_b` : def.anim;
     this.view = new ActorView({
-      walk: anim(`${def.anim}_walk`),
-      flash: anim(`${def.anim}_walk_flash`),
-      death: anim(`${def.anim}_dead`),
+      walk: anim(`${look}_walk`),
+      flash: anim(`${look}_walk_flash`),
+      death: anim(`${look}_dead`),
     });
     this.weaponItem = def.weapons[Math.floor(Math.random() * def.weapons.length)];
     const gun = WEAPONS[(ITEMS[this.weaponItem] as WeaponItemDef).weapon];
@@ -233,7 +239,8 @@ export class Enemy implements Hittable {
     this.ky += dirY * knockback;
     this.view.hitFlash();
     this.view.flinch(dirX);
-    this.stagger = blocked ? 0.08 : 0.16;
+    // Heavier hits knock them off their aim for longer: a rifle round rocks them, a pistol stings.
+    this.stagger = Math.max(this.stagger, blocked ? 0.08 : Math.min(0.42, 0.12 + amount / 150));
     this.edge = 1;
     this.suppression = Math.min(1, this.suppression + 0.3);
     if (this.hp <= 0) {
@@ -277,12 +284,25 @@ export class Enemy implements Hittable {
 
     this.stateTime += dt;
     this.stagger -= dt;
+    // Bored guards talk into their radios. Quietly, but a listening player can find them by it.
+    this.mutterTimer -= dt;
+    if (this.mutterTimer <= 0) {
+      this.mutterTimer = 14 + Math.random() * 26;
+      if (this.state === 'idle' || this.state === 'patrol') this.ctx.audio.sfx('mutter', this.x, this.y);
+    }
     this.lastShotAgo += dt;
     this.shoutCooldown -= dt;
     this.grenadeCooldown -= dt;
     this.suppression = Math.max(0, this.suppression - dt * 0.35);
     this.edge = Math.max(0, this.edge - dt * 0.03);
     this.weapon.update(dt);
+    if (this.cycleTimer >= 0) {
+      this.cycleTimer -= dt;
+      if (this.cycleTimer < 0) {
+        this.ctx.audio.sfx(this.weapon.def.archetype === 'marksman' ? 'bolt' : 'cycle', this.x, this.y);
+        this.view.pulse('rack');
+      }
+    }
 
     if (this.pendingAlert) {
       this.pendingAlert.t -= dt;
@@ -538,9 +558,20 @@ export class Enemy implements Hittable {
 
     const moved = Math.hypot(this.x - ox, this.y - oy);
     const backwards = (this.x - ox) * Math.cos(this.facing) < -0.05;
-    const raise = this.weapon.reloading ? 0 : 1;
-    this.view.update(dt, this.x, this.y, this.facing, moved, backwards, raise);
-    if (this.view.stepped) this.ctx.audio.sfx('step', this.x, this.y, running ? 1.7 : 1);
+    // Unaware guards carry the gun low; once they know you're there it comes up.
+    const pose: Pose = {
+      raise: this.aware || this.state === 'alert' ? 1 : this.state === 'investigate' || this.state === 'search' ? 0.65 : 0.35,
+      gait: running ? 'run' : 'walk',
+      vx: (this.x - ox) / Math.max(dt, 1e-4),
+      vy: (this.y - oy) / Math.max(dt, 1e-4),
+      action: weaponAction(this.weapon),
+    };
+    this.view.update(dt, this.x, this.y, this.facing, moved, backwards, pose);
+    playAnimEvents(this.ctx, this.view, this.x, this.y, this.facing, this.weapon.def);
+    if (this.view.stepped) {
+      this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), running ? 1.7 : 1);
+      if (running) this.ctx.effects.stepDust(this.x, this.y, Math.atan2(this.y - oy, this.x - ox));
+    }
   }
 
   private engage(fromHit = false): void {
@@ -569,7 +600,8 @@ export class Enemy implements Hittable {
   private shoot(target: Target): void {
     const w = this.weapon;
     if (w.ammo === 0) {
-      if (w.startReload()) this.ctx.audio.reload(w.def.reloadTime, this.x, this.y);
+      // The reload is heard through its animation (mag out, mag in, rack).
+      w.startReload();
       return;
     }
     // Only fire when roughly facing the target.
@@ -590,6 +622,7 @@ export class Enemy implements Hittable {
     const aim = toTarget + (Math.random() - 0.5) * 2 * err * DEG;
     discharge(this.ctx, this.view, w, this.x, this.y, aim, 'enemy', 0);
     this.lastShotAgo = 0;
+    if (w.def.cycled && w.ammo > 0) this.cycleTimer = Math.min(0.28, 0.45 / w.def.fireRate);
     this.burstLeft--;
     if (this.burstLeft <= 0) {
       this.burstLeft = randInt(this.def.burst);

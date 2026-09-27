@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { RARITY_COLOR, itemDef } from '../data/items';
 import { itemValueDeep, loadoutItems, loadoutValue } from '../core/inventory';
 import { foundItems, haulValue } from '../core/raidResult';
@@ -8,6 +9,30 @@ import { useProfile } from '../state/profileStore';
 import { useRaid } from '../state/raidStore';
 import { facilityName } from '../data/themes';
 import { AtlasSprite } from './AtlasSprite';
+import { Key } from './Glyph';
+
+/** Counts a number up over a moment, ticking as it goes: the haul adding itself up. */
+function useCountUp(target: number, delayMs: number, durationMs = 900): number {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    let lastTick = 0;
+    const start = performance.now() + delayMs;
+    const step = (now: number) => {
+      const k = Math.max(0, Math.min(1, (now - start) / durationMs));
+      const eased = 1 - (1 - k) ** 3;
+      setV(Math.round(target * eased));
+      if (k > 0 && k < 1 && now - lastTick > 60) {
+        lastTick = now;
+        audio.ui('tick');
+      }
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [target, delayMs, durationMs]);
+  return v;
+}
 
 /** After-action report: what came home, or what was left on the floor. */
 export function Results({ onContinue }: { onContinue: () => void }) {
@@ -23,9 +48,15 @@ export function Results({ onContinue }: { onContinue: () => void }) {
     .sort((a, b) => itemValueDeep(b) - itemValueDeep(a));
   const haul = haulValue(loadout, brought);
   const lost = loadoutValue(loadout);
+  // Rows arrive one by one, then the total adds itself up.
+  const shown = Math.min(rows.length, 12);
+  const total = useCountUp(extracted ? haul : lost, 350 + shown * 70);
+  useEffect(() => {
+    audio.ui(extracted ? 'relief' : 'loss');
+  }, [extracted]);
 
   return (
-    <div className="screen crt">
+    <div className="screen crt" data-nav-scope="results">
       <div className="panel results-panel">
         <div className={`results-title ${extracted ? 'ok' : 'bad'}`}>
           {extracted ? 'EXTRACTION SUCCESSFUL' : mia ? 'M.I.A. // LEFT BEHIND' : 'K.I.A. // SIGNAL LOST'}
@@ -37,10 +68,10 @@ export function Results({ onContinue }: { onContinue: () => void }) {
         <div className="results-sub">{extracted ? 'RECOVERED FROM THE FACILITY' : mia ? 'LOST WITH YOU' : 'LEFT ON YOUR BODY'}</div>
         <div className="loot-list">
           {rows.length === 0 && <div className="dim small">{extracted ? 'NOTHING FOUND. AT LEAST YOU\'RE ALIVE.' : 'NOTHING. YOU WENT IN WITH NOTHING.'}</div>}
-          {rows.map((it) => {
+          {rows.map((it, i) => {
             const d = itemDef(it.id);
             return (
-              <div key={it.uid} className={`loot-row ${extracted ? '' : 'lost'}`}>
+              <div key={it.uid} className={`loot-row ${extracted ? '' : 'lost'}`} style={{ animationDelay: `${300 + Math.min(i, 12) * 70}ms` }}>
                 <span className="loot-icon"><AtlasSprite name={d.icon} fit={{ w: 44, h: 26 }} /></span>
                 <span style={{ color: RARITY_COLOR[d.rarity] }}>{d.name}</span>
                 {it.qty > 1 && <span className="dim">×{it.qty}</span>}
@@ -52,8 +83,8 @@ export function Results({ onContinue }: { onContinue: () => void }) {
         </div>
         <div className="results-total">
           {extracted
-            ? <>HAUL: <span className="warn">{haul.toLocaleString()} CR</span> <span className="dim small">· carried home to the ship</span></>
-            : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{lost.toLocaleString()} CR</span></>}
+            ? <>HAUL: <span className="warn">{total.toLocaleString()} CR</span> <span className="dim small">· carried home to the ship</span></>
+            : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{total.toLocaleString()} CR</span></>}
         </div>
         {progressed.length > 0 && (
           <div className="results-contracts">
@@ -65,7 +96,7 @@ export function Results({ onContinue }: { onContinue: () => void }) {
             ))}
           </div>
         )}
-        <button className="deploy" onClick={() => { audio.ui('click'); onContinue(); }}>[ RETURN TO SHIP ]</button>
+        <button className="deploy" data-nav-default onClick={() => { audio.ui('click'); onContinue(); }}>[ RETURN TO SHIP ] <Key a="confirm" /></button>
       </div>
     </div>
   );

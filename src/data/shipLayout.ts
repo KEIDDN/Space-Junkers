@@ -28,6 +28,8 @@ export interface ShipProp {
   flip?: boolean;
   /** Gentle hover (drone). */
   bob?: boolean;
+  /** Sits on top of furniture: drawn this many px above its base, sorted just in front. */
+  lift?: number;
 }
 
 export type InteractKind = 'crew' | 'stash' | 'nav' | 'board' | 'airlock' | 'record';
@@ -60,13 +62,18 @@ export interface ShipLayout {
   /** Airlock chamber floor, in tiles (hazard-striped). */
   airlock: { x: number; y: number; w: number; h: number };
   reactor: { x: number; y: number };
+  /** Cables run along the deck (world px polylines). */
+  cables: [number, number][][];
 }
 
 const px = (t: number) => t * TILE;
 const cx = (t: number) => t * TILE + TILE / 2;
 
-/** @param upgrades installed ship work: the ship looks different as it improves. */
-export function buildShip(upgrades: readonly string[] = []): ShipLayout {
+/**
+ * @param upgrades installed ship work: the ship looks different as it improves.
+ * @param story contracts handed in: the crew's corners fill up with what came of them.
+ */
+export function buildShip(upgrades: readonly string[] = [], story: readonly string[] = []): ShipLayout {
   const map = new TileMap(SHIP_W, SHIP_H);
   map.ambient = 0.4;
 
@@ -90,6 +97,18 @@ export function buildShip(upgrades: readonly string[] = []): ShipLayout {
   carve(26, 17, 26, 18);
   carve(27, 21, 34, 26); // engine room
   carve(30, 20, 31, 20);
+
+  // Named compartments (for the stencilled plates on their walls).
+  const room = (kind: string, x0: number, y0: number, x1: number, y1: number) =>
+    map.rooms.push({ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1, role: 'standard', depth: 0, kind });
+  room('ship_common', 14, 8, 25, 13);
+  room('ship_cargo', 14, 15, 25, 21);
+  room('ship_tech', 5, 8, 12, 12);
+  room('ship_med', 5, 15, 12, 19);
+  room('ship_quarters', 5, 21, 12, 25);
+  room('ship_nook', 27, 8, 33, 12);
+  room('ship_armory', 27, 15, 34, 19);
+  room('ship_engine', 27, 21, 34, 26);
 
   // Walls around everything walkable.
   for (let y = 0; y < SHIP_H; y++) {
@@ -201,6 +220,51 @@ export function buildShip(upgrades: readonly string[] = []): ShipLayout {
     { sprite: 'ship_robot', x: cx(33), y: px(26) - 4 },
   ];
 
+  // --- Lived in: the small stuff people leave around.
+  props.push(
+    // Common room: last night's table.
+    { sprite: 'deco_vodka', x: px(24) - 9, y: px(13) + 3, lift: 27 },
+    { sprite: 'deco_rations', x: px(24) + 7, y: px(13) + 3, lift: 25 },
+    { sprite: 'deco_cigs', x: px(24) - 1, y: px(13) + 4, lift: 24 },
+    // Fedya: his radio, his compass, his smokes.
+    { sprite: 'deco_radio', x: px(17) + 10, y: px(19) + 6 },
+    { sprite: 'deco_compass', x: px(15) - 2, y: px(19) + 6 },
+    { sprite: 'deco_milk', x: px(17) + 2, y: px(20) + 4 },
+    // Shura: gadgets everywhere.
+    { sprite: 'deco_tablet', x: px(10) + 6, y: px(12) + 6 },
+    { sprite: 'deco_camera', x: px(7), y: px(12) + 8 },
+    { sprite: 'deco_multitool', x: px(11) + 4, y: px(10) + 6 },
+    // Doc: jars, bottles, and a plant she talks to.
+    { sprite: 'deco_specimen', x: cx(12), y: px(20), lift: 16 },
+    { sprite: 'deco_reagent', x: cx(10) + 2, y: px(16) + 6 },
+    { sprite: 'deco_antibiotics', x: cx(12) - 7, y: px(18) + 8 },
+    { sprite: 'ship_plant2', x: cx(10) + 10, y: px(20) + 2 },
+    // Your corner: dinner in front of the TV.
+    { sprite: 'deco_stew', x: cx(10) + 6, y: px(24) + 4 },
+    { sprite: 'deco_vodka', x: cx(10) + 12, y: px(24) + 2 },
+    // Lis: things that are definitely hers.
+    { sprite: 'deco_jewelbox', x: cx(31), y: px(10) + 4 },
+    { sprite: 'deco_idol', x: cx(33), y: px(10), lift: 22 },
+    { sprite: 'deco_cigs', x: cx(29) + 8, y: px(12) + 2 },
+    // Molot: tools of the trade, and a picture of somewhere green.
+    { sprite: 'deco_wrench', x: cx(31) + 4, y: px(18) + 6 },
+    { sprite: 'deco_geiger', x: cx(27) + 6, y: px(18) + 2 },
+    { sprite: 'deco_landscape', x: cx(34) - 2, y: px(15) - 12, wall: true },
+    // Engine room: patched and making do.
+    { sprite: 'deco_oxygen', x: cx(33) + 8, y: px(26) + 2 },
+    { sprite: 'deco_tape', x: cx(30), y: px(26) + 6 },
+  );
+
+  // --- What came of their stories.
+  const done = (q: string) => story.includes(q);
+  if (done('fedya_tomatoes')) props.push({ sprite: 'ship_plant', x: px(14) + 6, y: px(19) + 2 }, { sprite: 'ship_plant3', x: px(14) + 18, y: px(19) + 4 });
+  if (done('doc_growth')) props.push({ sprite: 'deco_fungus', x: cx(12) - 10, y: px(20) + 2 });
+  if (done('doc_egg')) props.push({ sprite: 'deco_egg', x: cx(11), y: px(19) + 6 });
+  if (done('molot_garrison')) props.push({ sprite: 'ship_banner', x: px(31) + 4, y: px(15) - 6, wall: true });
+  if (done('shura_channel')) props.push({ sprite: 'ship_tv', x: cx(7), y: px(10) - 2, solid: [[7, 9]] });
+  if (done('lis_shiny')) props.push({ sprite: 'deco_chalice', x: cx(27), y: px(13) - 2, lift: 18 });
+  if (done('lis_crown')) props.push({ sprite: 'deco_crown', x: cx(33), y: px(10), lift: 24 });
+
   // --- Ship work shows.
   const has = (u: string) => upgrades.includes(u);
   if (has('stash1')) {
@@ -278,5 +342,13 @@ export function buildShip(upgrades: readonly string[] = []): ShipLayout {
     cockpit: { x: px(20), y: px(8) },
     airlock: { x: 18, y: 23, w: 4, h: 3 },
     reactor: { x: px(31), y: px(23) },
+    cables: [
+      // Shura's rig, spliced into everything.
+      [[px(9) - 4, px(10) + 2], [px(8), px(11) + 6], [px(6) + 4, px(11) + 10], [px(5) + 18, px(12) + 4]],
+      [[px(9) + 6, px(10) + 2], [px(10) + 4, px(11) + 4], [px(11) + 12, px(11) + 10], [px(12) + 10, px(12) + 6]],
+      // Engine room feeds, patched with tape.
+      [[px(31) - 6, px(24) + 2], [px(31) + 2, px(25) + 6], [px(33) + 6, px(25) + 10], [px(34) + 10, px(26) + 4]],
+      [[px(28) + 14, px(24) + 6], [px(29) + 10, px(25) + 12], [px(30) + 2, px(26) - 2]],
+    ],
   };
 }

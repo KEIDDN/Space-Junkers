@@ -1,6 +1,7 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { tex } from '../engine/assets';
 import type { AudioService } from '../engine/audio';
+import { haptics } from '../engine/haptics';
 import { TILE } from '../engine/config';
 import type { Input } from '../engine/input';
 import { Rng } from '../engine/rng';
@@ -33,11 +34,14 @@ interface Lootable {
   sprite: Sprite | null;
   /** Rolls the contents the first time it's opened. */
   roll(): Grid;
+  /** Rest position of the sprite, and a short bump when it's opened. */
+  home?: { x: number; y: number };
+  bump?: number;
 }
 
 export interface InteractionEvents {
   onNoise(x: number, y: number, radius: number): void;
-  onLight(x: number, y: number, radius: number, color: number, intensity: number): void;
+  onLight(x: number, y: number, radius: number, color: number, intensity: number, life?: number): void;
   onExtracted(): void;
   /** The pad alarm started: everyone in the facility knows where you'll be. */
   onSignal?(x: number, y: number): void;
@@ -86,6 +90,8 @@ export class Interactions {
   private powered = new Set<ExitDef>();
   private alarmTimer = 0;
   private beaconTimer = 0;
+  private sweepTimer = 0;
+  private sweepStep = 0;
   private done = false;
   private pileCount = 0;
 
@@ -111,7 +117,7 @@ export class Interactions {
       const seed = (map.seed * 7919 + i * 104729) >>> 0;
       this.lootables.push({
         id: `c${i}`, kind: 'container', label: def.label, pos: () => ({ x, y: place.flat ? y - 4 : y - 10 }),
-        searchTime: def.searchTime, searched: false, sprite,
+        searchTime: def.searchTime, searched: false, sprite, home: { x: sprite.x, y: sprite.y },
         roll: () => rollContainer(new Rng(seed), def, place.risk, lootMul, place.rich ?? 0),
       });
     });
@@ -135,6 +141,11 @@ export class Interactions {
 
   get extracting(): boolean {
     return this.extractRemaining !== null;
+  }
+
+  /** The player's hands are busy searching, swiping or throwing a breaker (not reading). */
+  get handsBusy(): boolean {
+    return this.searching !== null && !('entry' in this.searching && this.searching.kind === 'terminal');
   }
 
   /** Containers (not bodies or piles), for the tactical map. */
@@ -188,7 +199,7 @@ export class Interactions {
    */
   update(dt: number, input: Input, px: number, py: number, busy: boolean, moving: boolean, menuOpen: boolean): InteractionView {
     this.bar.clear();
-    this.refreshPiles();
+    this.refreshPiles(dt);
     if (this.done) return { prompt: null, countdown: null, inZone: false };
 
     const zone = this.map.exitAt(px, py);
@@ -217,10 +228,22 @@ export class Interactions {
         this.audio.sfx('beacon', zx, zy);
         this.ev.onLight(zx, zy, 140, 0x7dff9a, 0.7);
       }
+      // Hazard beacons sweep around the pad: the room turns red and everyone knows why.
+      this.sweepTimer -= dt;
+      if (this.sweepTimer <= 0) {
+        this.sweepTimer = 0.16;
+        const k = this.sweepStep++ % 4;
+        const cx = (e.x + (k === 0 || k === 3 ? -0.5 : e.w + 0.5)) * TILE;
+        const cy = (e.y + (k < 2 ? -0.5 : e.h + 0.5)) * TILE;
+        this.ev.onLight(cx, cy, 130, 0xff3020, 0.55, 0.3);
+      }
       if (this.alarmTimer <= 0) {
-        this.alarmTimer = ALARM_INTERVAL;
-        this.audio.sfx('alarm', zx, zy);
+        // The klaxon quickens and swells as the shuttle closes in.
+        const urgency = 1 - Math.max(0, this.extractRemaining) / EXTRACT_TIME;
+        this.alarmTimer = ALARM_INTERVAL * (1 - urgency * 0.55);
+        this.audio.sfx('alarm', zx, zy, 1 + urgency * 0.6);
         this.ev.onNoise(zx, zy, ALARM_RADIUS);
+        if (onPad) haptics.rumble(0.12 + urgency * 0.25, 0.12, 380);
       }
       if (onPad && !busy) this.extractRemaining -= dt;
       if (this.extractRemaining <= 0) return this.finish(px, py, inZone);
@@ -251,22 +274,24 @@ export class Interactions {
     }
 
     if (zone?.kind === 'pad' && this.extractRemaining === null) {
-      if (input.wasPressed('KeyE')) {
+      if (input.pressed('interact')) {
+        haptics.rumble(0.35, 0.3, 600);
         this.extractRemaining = EXTRACT_TIME;
         this.alarmTimer = 0;
         this.beaconTimer = 0;
         this.ev.onSignal?.((zone.x + zone.w / 2) * TILE, (zone.y + zone.h / 2) * TILE);
       }
-      return { prompt: '[E] SIGNAL EXTRACTION. The alarm will sound', countdown, inZone };
+      return { prompt: '{interact} SIGNAL EXTRACTION. The alarm will sound', countdown, inZone };
     }
     if (zone?.kind === 'lift' && this.liftRemaining === null) {
       if (!this.powered.has(zone)) return { prompt: 'MAINTENANCE LIFT · NO POWER. Find the breaker', countdown, inZone };
-      if (input.wasPressed('KeyE')) {
+      if (input.pressed('interact')) {
         this.liftRemaining = LIFT_TIME;
         this.liftHum = 0;
+        haptics.rumble(0.3, 0.2, 500);
         this.audio.sfx('keycard', px, py);
       }
-      return { prompt: '[E] RIDE THE LIFT UP. Stay on the platform', countdown, inZone };
+      return { prompt: '{interact} RIDE THE LIFT UP. Stay on the platform', countdown, inZone };
     }
     if (zone?.kind === 'lift') return { prompt: null, countdown, inZone };
 
@@ -292,12 +317,12 @@ export class Interactions {
     if (!nearest) return { prompt: null, countdown, inZone };
 
     if (nearest.searched) {
-      if (input.wasPressed('KeyE')) this.open(nearest);
+      if (input.pressed('interact')) this.open(nearest);
       const n = useRaid.getState().containers[nearest.id]?.items.length ?? 0;
-      return { prompt: `[E] OPEN ${nearest.label}${n ? '' : ' (EMPTY)'}`, countdown, inZone };
+      return { prompt: `{interact} OPEN ${nearest.label}${n ? '' : ' (EMPTY)'}`, countdown, inZone };
     }
 
-    const holding = input.isDown('KeyE');
+    const holding = input.down('interact');
     if (holding && !moving) {
       if (this.searching !== nearest) {
         this.searching = nearest;
@@ -311,13 +336,15 @@ export class Interactions {
         this.audio.sfx('rummage', p.x, p.y);
         this.ev.onNoise(p.x, p.y, 70);
       }
+      // The thing being rummaged through jostles.
+      if (nearest.sprite && nearest.home) nearest.sprite.x = nearest.home.x + (Math.floor(this.progress * 18) % 2 === 0 ? 0 : 1);
       this.drawBar(p.x, p.y, Math.min(1, this.progress));
       if (this.progress >= 1) this.finishSearch(nearest);
     } else {
       this.searching = null;
       this.progress = 0;
     }
-    return { prompt: `[HOLD E] SEARCH ${nearest.label}`, countdown, inZone };
+    return { prompt: `{hold:interact} SEARCH ${nearest.label}`, countdown, inZone };
   }
 
   private finish(px: number, py: number, inZone: boolean): InteractionView {
@@ -344,24 +371,24 @@ export class Interactions {
   /** Prompt and hold-to-use for a fixture. */
   private useFixture(f: Fixture, dt: number, input: Input, moving: boolean): string {
     if (f.kind === 'terminal') {
-      if (input.wasPressed('KeyE')) {
+      if (input.pressed('interact')) {
         this.audio.ui('open');
         this.ev.onTerminal?.(f.entry ?? 0);
       }
-      return '[E] READ TERMINAL';
+      return '{interact} READ TERMINAL';
     }
     let label: string;
     let time: number;
     if (f.kind === 'lock') {
       const card = this.keycard();
       if (!card) return 'SECURITY DOOR · SEALED. Needs a vault keycard';
-      label = `[HOLD E] SWIPE KEYCARD (${card.dur ?? 1} USE${card.dur === 1 ? '' : 'S'} LEFT)`;
+      label = `{hold:interact} SWIPE KEYCARD (${card.dur ?? 1} USE${card.dur === 1 ? '' : 'S'} LEFT)`;
       time = SWIPE_TIME;
     } else {
-      label = '[HOLD E] THROW THE BREAKER. It will be loud';
+      label = '{hold:interact} THROW THE BREAKER. It will be loud';
       time = BREAKER_TIME;
     }
-    if (input.isDown('KeyE') && !moving) {
+    if (input.down('interact') && !moving) {
       if (this.searching !== f) {
         this.searching = f;
         this.progress = 0;
@@ -384,6 +411,7 @@ export class Interactions {
       this.powered.add(f.exit);
       this.drawLiftLamps();
       this.audio.sfx('breaker', f.x, f.y);
+      haptics.rumble(0.7, 0.5, 350);
       this.ev.onNoise(f.x, f.y, 380);
       this.ev.onLight(f.x, f.y - 10, 90, 0xffe0a0, 0.9);
       raid.notice('Breaker thrown: the maintenance lift has power', 'ok');
@@ -427,12 +455,15 @@ export class Interactions {
 
   private finishSearch(l: Lootable): void {
     l.searched = true;
+    l.bump = 0.22;
+    if (l.sprite && l.home) l.sprite.x = l.home.x;
     this.searching = null;
     if (!raid.hasContainer(l.id)) raid.setContainer(l.id, l.roll());
     if (l.kind === 'container') raid.searched();
     const p = l.pos();
     const n = useRaid.getState().containers[l.id].items.length;
     this.audio.sfx(n ? 'loot' : 'dryfire', p.x, p.y);
+    haptics.tick(n ? 0.3 : 0.15);
     this.open(l);
   }
 
@@ -447,9 +478,13 @@ export class Interactions {
   }
 
   /** Searched containers go dark when empty; empty piles disappear. */
-  private refreshPiles(): void {
+  private refreshPiles(dt: number): void {
     const containers = useRaid.getState().containers;
     for (const l of this.lootables) {
+      if (l.bump !== undefined && l.bump > 0 && l.sprite && l.home) {
+        l.bump -= dt;
+        l.sprite.y = l.home.y - Math.round(Math.sin((1 - l.bump / 0.22) * Math.PI) * 2);
+      }
       if (!l.sprite || !l.searched) continue;
       const empty = (containers[l.id]?.items.length ?? 0) === 0;
       if (l.kind === 'pile') l.sprite.visible = !empty;

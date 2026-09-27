@@ -3,7 +3,8 @@ import type { Operator } from '../core/profile';
 import { audio } from '../engine/audio';
 import { useProfile } from '../state/profileStore';
 import { AtlasSprite } from './AtlasSprite';
-import { SettingsRows } from './Settings';
+import { ControlsList, SettingsRows } from './Settings';
+import { ByDevice, Key } from './Glyph';
 
 const OPERATORS: { id: Operator; callsign: string; portrait: string; line: string }[] = [
   { id: 'm', callsign: 'VOLK', portrait: 'portrait_m', line: 'Ex-miner. Doesn\'t talk about the collapse at Shaft 9.' },
@@ -42,12 +43,43 @@ interface Props {
   onRange: () => void;
 }
 
+const CREDITS: [string, string[]][] = [
+  ['MUSIC', [
+    'Pondering the Cosmos · Ruskerdax',
+    'Sirens in Darkness · The Cynic Project (cynicmusic.com · pixelsphere.org)',
+    'Narrow Corridors · tinyworlds',
+  ]],
+  ['RECORDED SOUND', [
+    'The Free Firearm Sound Library · Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney',
+    'Impact, RPG, Sci-fi and UI Audio · Kenney (kenney.nl)',
+    'Reload and handling recordings · bmaczero, StarNinjas, zer0sol',
+  ]],
+  ['TYPE', ['Share Tech Mono · VT323 · Russo One (SIL Open Font License)']],
+  ['EVERYTHING ELSE', ['Pixel art from the project sheets; synthesized sound, lighting and effects in code.']],
+];
+
+/** Who made what: shown from the title screen. Every external source is CC0 or OFL. */
+function Credits() {
+  return (
+    <div className="credits-list">
+      <div className="nav-title">SPACE JUNKERS <span className="dim">// СКРАПЕРЫ</span></div>
+      {CREDITS.map(([head, lines]) => (
+        <div key={head} className="credits-block">
+          <div className="dim small">{head}</div>
+          {lines.map((l) => <div key={l}>{l}</div>)}
+        </div>
+      ))}
+      <div className="dim small">Full sources and licenses: ASSET_SOURCES.md</div>
+    </div>
+  );
+}
+
 export function TitleScreen({ onContinue, onRange }: Props) {
   const started = useProfile((s) => !!s.flags.started);
   const stats = useProfile((s) => s.stats);
   const credits = useProfile((s) => s.credits);
   const resetProfile = useProfile((s) => s.resetProfile);
-  const [picking, setPicking] = useState(false);
+  const [view, setView] = useState<'menu' | 'pick' | 'settings' | 'credits'>('menu');
   const [confirmWipe, setConfirmWipe] = useState(false);
 
   const newGame = (op: Operator) => {
@@ -58,9 +90,24 @@ export function TitleScreen({ onContinue, onRange }: Props) {
   };
 
   const hover = () => audio.ui('hover');
+  const open = (v: typeof view) => {
+    audio.ui(v === 'menu' ? 'close' : 'click');
+    setView(v);
+  };
+
+  // Back out of a sub-screen (or a pending wipe) with Esc / the pad's back button.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code !== 'Escape') return;
+      if (view !== 'menu') open('menu');
+      else if (confirmWipe) setConfirmWipe(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
 
   return (
-    <div className="screen title-screen" onPointerDown={() => audio.unlock()}>
+    <div className="screen title-screen" data-nav-scope="title" onPointerDown={() => audio.unlock()}>
       <Starfield />
       <div className="title-planet"><AtlasSprite name="planet_otets_big" scale={3} /></div>
       <div className="title-scan" />
@@ -68,24 +115,44 @@ export function TitleScreen({ onContinue, onRange }: Props) {
         <div className="title-logo">SPACE<br />JUNKERS</div>
         <div className="title-sub">СКРАПЕРЫ · SALVAGE CREW OF THE LASTOCHKA</div>
 
-        {!picking ? (
+        {view === 'menu' && (
           <div className="title-menu">
             {started && (
               <button className="menu-btn big" onPointerEnter={hover} onClick={() => { audio.ui('click'); onContinue(); }}>
                 CONTINUE <span className="dim">· DAY {useProfile.getState().day} · {credits.toLocaleString()} CR · {stats.extractions} EXTRACTION{stats.extractions === 1 ? '' : 'S'}</span>
               </button>
             )}
-            <button className="menu-btn big" onPointerEnter={hover} onClick={() => {
-              audio.ui('click');
+            <button className={`menu-btn big ${confirmWipe ? 'danger armed' : ''}`} onPointerEnter={hover} onClick={() => {
+              audio.ui(confirmWipe || !started ? 'click' : 'error');
               if (started && !confirmWipe) setConfirmWipe(true);
-              else setPicking(true);
+              else open('pick');
             }}>
-              {confirmWipe ? 'NEW GAME: THIS ERASES YOUR SAVE. CLICK AGAIN' : 'NEW GAME'}
+              {confirmWipe ? 'NEW GAME: THIS ERASES YOUR SAVE. CONFIRM AGAIN' : 'NEW GAME'}
             </button>
             <button className="menu-btn" onPointerEnter={hover} onClick={() => { audio.ui('click'); onRange(); }}>GUNPLAY RANGE</button>
-            <SettingsRows />
+            <button className="menu-btn" onPointerEnter={hover} onClick={() => open('settings')}>SETTINGS &amp; CONTROLS</button>
+            <button className="menu-btn" onPointerEnter={hover} onClick={() => open('credits')}>CREDITS</button>
           </div>
-        ) : (
+        )}
+        {view === 'credits' && (
+          <div className="title-credits panel">
+            <Credits />
+            <button className="link" onClick={() => open('menu')}>[BACK] <Key a="back" /></button>
+          </div>
+        )}
+        {view === 'settings' && (
+          <div className="title-settings panel">
+            <div className="pause-body">
+              <div className="pause-col"><SettingsRows /></div>
+              <div className="pause-col controls-col">
+                <div className="dim small">CONTROLS</div>
+                <ControlsList />
+              </div>
+            </div>
+            <button className="link" onClick={() => open('menu')}>[BACK] <Key a="back" /></button>
+          </div>
+        )}
+        {view === 'pick' && (
           <div className="title-pick">
             <div className="dim small">CHOOSE YOUR OPERATOR</div>
             <div className="operators">
@@ -97,11 +164,17 @@ export function TitleScreen({ onContinue, onRange }: Props) {
                 </button>
               ))}
             </div>
-            <button className="link" onClick={() => setPicking(false)}>[BACK]</button>
+            <button className="link" onClick={() => open('menu')}>[BACK] <Key a="back" /></button>
           </div>
         )}
       </div>
-      <div className="title-foot dim small">BUILD 0.3 · WASD MOVE · MOUSE AIM · E INTERACT · TAB INVENTORY · ESC PAUSE</div>
+      <div className="title-foot dim small">
+        BUILD 1.0 ·{' '}
+        <ByDevice
+          kbm={<>WASD MOVE · MOUSE AIM · E INTERACT · TAB INVENTORY · ESC PAUSE</>}
+          pad={<><Key a="move" /> MOVE · <Key a="aim" /> AIM · <Key a="fire" /> FIRE · <Key a="interact" /> INTERACT · <Key a="inventory" /> BAG · <Key a="pause" /> PAUSE</>}
+        />
+      </div>
     </div>
   );
 }

@@ -86,7 +86,7 @@ export function validDrop(target: DropTarget | null, drag: DragInfo, ops: Invent
   }
 }
 
-function commitDrop(target: DropTarget, drag: DragInfo, ops: InventoryOps): boolean {
+export function commitDrop(target: DropTarget, drag: DragInfo, ops: InventoryOps): boolean {
   switch (target.kind) {
     case 'grid':
       return ops.move(drag.uid, { grid: target.key, x: target.x, y: target.y, rot: drag.rot });

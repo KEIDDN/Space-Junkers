@@ -50,6 +50,8 @@ export class WeaponState {
   roundLoaded = false;
   /** Set on the frame a full reload completed. */
   reloaded = false;
+  /** The current reload started with a round still chambered (no need to rack). */
+  tactical = false;
 
   constructor(readonly def: WeaponDef, source: AmmoSource | number, loaded = def.magSize) {
     this.source = typeof source === 'number' ? new CountedAmmo(source) : source;
@@ -76,6 +78,16 @@ export class WeaponState {
 
   get drawing(): boolean {
     return this.drawTimer > 0;
+  }
+
+  /** 0..1 progress of bringing the gun up (1 when not drawing). */
+  get drawProgress(): number {
+    return this.drawTimer > 0 ? 1 - this.drawTimer / this.def.drawTime : 1;
+  }
+
+  /** 0..1 progress of clearing a jam (0 when not unjamming). */
+  get unjamProgress(): number {
+    return this.unjamTimer > 0 ? 1 - this.unjamTimer / UNJAM_TIME : 0;
   }
 
   /** Busy with hands: can't fire. */
@@ -163,6 +175,7 @@ export class WeaponState {
       return true;
     }
     if (this.reloading || this.ammo >= this.def.magSize || this.source.count() <= 0) return false;
+    this.tactical = this.ammo > 0;
     if (this.def.reloadPerRound) this.roundTimer = this.def.reloadPerRound + 0.25; // shoulder the gun first
     else this.reloadTimer = this.def.reloadTime;
     this.buffered = 0;

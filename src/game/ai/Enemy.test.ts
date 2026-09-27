@@ -5,7 +5,13 @@ vi.mock('../entities/ActorView', () => ({
   ActorView: class {
     stepped = false;
     thudded = false;
-    container = {};
+    events = [];
+    container = { x: 0, y: 0 };
+    muzzleAngle = 0;
+    pulse() {}
+    ejectWorld(x: number, y: number) {
+      return { x, y: y - 17 };
+    }
     setWeapon() {}
     update() {}
     hitFlash() {}
@@ -17,7 +23,7 @@ vi.mock('../entities/ActorView', () => ({
     }
   },
 }));
-vi.mock('../../engine/assets', () => ({ anim: () => [], tex: () => ({}) }));
+vi.mock('../../engine/assets', () => ({ anim: () => [], hasAnim: () => false, tex: () => ({}) }));
 
 import { ENEMIES } from '../../data/enemies';
 import type { GameContext } from '../context';
@@ -42,14 +48,15 @@ function ctx(extra: Partial<GameContext> = {}): GameContext & { shots: number; g
     shots: 0,
     grenades: 0,
     projectiles: { fire: () => { c.shots++; } },
-    effects: { muzzleFlash() {}, smoke() {}, casing() {} },
-    audio: { sfx() {}, gunshot() {}, reload() {} },
+    effects: { muzzleFlash() {}, smoke() {}, casing() {}, dropMag() {}, stepDust() {} },
+    audio: { sfx() {}, gunshot() {}, step() {} },
     camera: { shake() {}, kick() {} },
     emitNoise() {},
     hitstop() {},
     lightFlash() {},
     smokeBetween: () => false,
     throwGrenade: () => { c.grenades++; },
+    surfaceAt: () => 'deck',
     ...extra,
   };
   return c as unknown as GameContext & { shots: number; grenades: number };

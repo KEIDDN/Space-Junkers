@@ -7,9 +7,10 @@ import '@fontsource/vt323';
 import '@fontsource/russo-one';
 import './ui/styles.css';
 import { useProfile } from './state/profileStore';
+import { audio } from './engine/audio';
 
 // Automated play tests reach the save through this (dev builds only).
-if (import.meta.env.DEV) Object.assign(window, { __profile: useProfile });
+if (import.meta.env.DEV) Object.assign(window, { __profile: useProfile, __audio: audio });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

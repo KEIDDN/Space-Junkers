@@ -19,6 +19,11 @@ export function tex(name: string): Texture {
   return t;
 }
 
+/** Is there an animation by this name (optional variants)? */
+export function hasAnim(name: string): boolean {
+  return !!sheet?.animations[name];
+}
+
 export function anim(name: string): Texture[] {
   const a = sheet?.animations[name];
   if (!a) throw new Error(`Missing animation "${name}"`);

@@ -2,6 +2,7 @@ import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { tex } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import { Tile, type TileMap } from '../world/tilemap';
+import { ROOM_SIGNS, SIGN_STYLES, signTexture } from './signs';
 
 /** Weighted floor plates (each covers 2×2 tiles): mostly plain deck, some plates and grates. */
 export type FloorStyle = [string, number][];
@@ -53,7 +54,11 @@ function isOpen(t: Tile): boolean {
  * other walls show a dark cap, trimmed in rust where it meets open space.
  * Props are returned separately because they must depth-sort with actors.
  */
-export function buildMapView(map: TileMap, look: MapLook = DEFAULT_LOOK): { ground: Container; props: Sprite[] } {
+export function buildMapView(
+  map: TileMap, look: MapLook = DEFAULT_LOOK,
+  /** Wall hangings and furniture that aren't map props (the ship's), for signs to keep clear of. */
+  wallThings: { x: number; y: number; w: number }[] = [],
+): { ground: Container; props: Sprite[] } {
   const ground = new Container();
   const floors = new Container();
   const shade = new Graphics();
@@ -124,17 +129,49 @@ export function buildMapView(map: TileMap, look: MapLook = DEFAULT_LOOK): { grou
   }
   wallDecor.addChild(lamps);
 
+  // A stencilled plate on each room's back wall, clear of lamps and posters.
+  for (const r of map.rooms) {
+    const sign = r.kind ? ROOM_SIGNS[r.kind] : undefined;
+    if (!sign) continue;
+    const t = signTexture(sign.ru, sign.en, SIGN_STYLES[sign.style]);
+    const half = t.width / 2;
+    const busy = [
+      ...map.lights.filter((l) => l.fixture && Math.floor(l.y / TILE) === r.y).map((l) => ({ x: l.x, w: 12 })),
+      ...map.props.filter((p) => p.layer === 'wall' && Math.abs(p.y - r.y * TILE) < 16).map((p) => ({ x: p.x, w: 16 })),
+      // Tall things standing against the back wall would hide a plate.
+      ...map.props.filter((p) => p.layer !== 'floor' && p.y - r.y * TILE > 0 && p.y - r.y * TILE < 44)
+        .map((p) => ({ x: p.x, w: tex(p.sprite).width / 2 + 2 })),
+      ...wallThings.filter((p) => p.y - r.y * TILE > -24 && p.y - r.y * TILE < 64).map((p) => ({ x: p.x, w: p.w / 2 + 2 })),
+    ];
+    const faceAt = (x: number) => {
+      const tx = Math.floor(x / TILE);
+      return map.get(tx, r.y - 1) === Tile.Wall && isOpen(map.get(tx, r.y));
+    };
+    const fits = (cx: number) => faceAt(cx - half) && faceAt(cx + half)
+      && busy.every((b) => Math.abs(b.x - cx) > half + b.w);
+    // Prefer the left third of the wall, like a plate by the door; else anywhere it fits.
+    const xs: number[] = [];
+    for (let x = r.x * TILE + half + 6; x <= (r.x + r.w) * TILE - half - 6; x += 4) xs.push(x);
+    xs.sort((a, b) => Math.abs(a - (r.x + r.w * 0.3) * TILE) - Math.abs(b - (r.x + r.w * 0.3) * TILE));
+    const cx = xs.find(fits);
+    if (cx === undefined) continue;
+    const s = new Sprite(t);
+    s.anchor.set(0.5, 0);
+    s.position.set(Math.round(cx), r.y * TILE - 27);
+    wallDecor.addChild(s);
+  }
+
   const props: Sprite[] = [];
   for (const p of map.props) {
     const s = new Sprite(tex(p.sprite));
     s.anchor.set(0.5, 1);
-    s.position.set(Math.round(p.x), Math.round(p.y));
+    s.position.set(Math.round(p.x), Math.round(p.y - (p.lift ?? 0)));
     if (p.flip) s.scale.x = -1;
     if (p.tint !== undefined) s.tint = p.tint;
     if (p.layer === 'floor') floorDecor.addChild(s);
     else if (p.layer === 'wall') wallDecor.addChild(s);
     else {
-      s.zIndex = s.y;
+      s.zIndex = p.y + (p.lift ? 1 : 0);
       props.push(s);
     }
   }
@@ -150,6 +187,12 @@ function lighten(c: number): number {
   const g = Math.min(255, ((c >> 8) & 255) + 22);
   const b = Math.min(255, (c & 255) + 14);
   return (r << 16) | (g << 8) | b;
+}
+
+/** Which floor plate covers a tile (the same pick the renderer makes). */
+export function floorAt(look: MapLook, tx: number, ty: number): string {
+  const total = look.floor.reduce((n, [, w]) => n + w, 0);
+  return pickFloor(look.floor, total, hash(tx >> 1, ty >> 1));
 }
 
 function pickFloor(style: FloorStyle, total: number, h: number): string {

@@ -14,9 +14,11 @@ const LIGHT_SCALE = 0.5;
 interface StaticLight {
   def: LightDef;
   sprite: Sprite;
-  /** Flicker state machine. */
+  /** Flicker state machine: steady stretches, then a stutter of quick toggles. */
   on: boolean;
   timer: number;
+  burst: number;
+  phase: number;
 }
 
 interface FlashLight {
@@ -38,6 +40,7 @@ export class Lighting {
   flashlightOn = true;
 
   private rt: RenderTexture;
+  private base: Sprite;
   private scene = new Container();
   private world = new Container();
   private statics: StaticLight[] = [];
@@ -52,19 +55,21 @@ export class Lighting {
   private py = 0;
   private aim = 0;
 
-  constructor(private renderer: Renderer, private map: TileMap) {
+  /**
+   * @param brightness player preference: lifts the ambient floor (1 = as designed).
+   */
+  constructor(private renderer: Renderer, private map: TileMap, brightness = 1) {
     this.rt = RenderTexture.create({ width: VIEW_W * LIGHT_SCALE, height: VIEW_H * LIGHT_SCALE });
     this.overlay = new Sprite(this.rt);
     this.overlay.blendMode = 'multiply';
     this.overlay.scale.set(1 / LIGHT_SCALE);
     this.scene.scale.set(LIGHT_SCALE);
 
-    const amb = map.ambient;
-    const base = new Sprite(Texture.WHITE);
-    base.width = VIEW_W;
-    base.height = VIEW_H;
-    base.tint = rgb(amb * 0.85, amb * 0.92, amb * 1.2);
-    this.scene.addChild(base, this.world);
+    this.base = new Sprite(Texture.WHITE);
+    this.base.width = VIEW_W;
+    this.base.height = VIEW_H;
+    this.setBrightness(brightness);
+    this.scene.addChild(this.base, this.world);
 
     this.levels = new Float32Array(map.width * map.height);
     for (const def of map.lights) this.addStatic(def);
@@ -80,6 +85,12 @@ export class Lighting {
     this.playerLights.addChild(this.personal, this.cone);
     this.playerLights.mask = this.playerMask;
     this.world.addChild(this.playerLights, this.playerMask);
+  }
+
+  /** Lift or lower the ambient floor (player preference). */
+  setBrightness(brightness: number): void {
+    const amb = Math.min(1, this.map.ambient * brightness);
+    this.base.tint = rgb(amb * 0.85, amb * 0.92, amb * 1.2);
   }
 
   /** 0..1 static light at a world position (from lamps, not the player). */
@@ -130,14 +141,27 @@ export class Lighting {
 
     for (const s of this.statics) {
       const d = s.def;
-      if (d.flicker) {
+      let level = 1;
+      if (d.style === 'pulse') {
+        s.phase += dt;
+        level = 0.55 + 0.45 * Math.sin(s.phase * 2.1);
+      } else if (d.flicker) {
+        // A dying tube: holds for a while, then stutters a few times.
         s.timer -= dt;
         if (s.timer <= 0) {
-          s.on = !s.on;
-          s.timer = s.on ? 0.05 + Math.random() * (Math.random() < 0.3 ? 0.15 : 2.2) : 0.03 + Math.random() * 0.14;
+          if (s.burst > 0) {
+            s.burst--;
+            s.on = !s.on;
+            s.timer = s.on ? 0.04 + Math.random() * 0.1 : 0.03 + Math.random() * 0.07;
+          } else {
+            s.on = true;
+            s.burst = 2 + Math.floor(Math.random() * 5) * 2;
+            s.timer = 2 + Math.random() * 7;
+          }
         }
+        level = s.on ? 1 : 0.15;
       }
-      s.sprite.alpha = d.intensity * (s.on ? 1 : 0.18);
+      s.sprite.alpha = d.intensity * level;
       // Cull offscreen lights.
       s.sprite.visible = d.x + d.radius > camLeft && d.x - d.radius < camLeft + VIEW_W
         && d.y + d.radius > camTop && d.y - d.radius < camTop + VIEW_H;
@@ -197,7 +221,7 @@ export class Lighting {
     sprite.position.set(def.x, def.y);
     sprite.blendMode = 'add';
     this.world.addChild(sprite);
-    this.statics.push({ def, sprite, on: true, timer: Math.random() * 2 });
+    this.statics.push({ def, sprite, on: true, timer: Math.random() * 4, burst: 0, phase: Math.random() * 6 });
 
     // Light levels per tile, for gameplay (who can be seen).
     const r = Math.ceil(def.radius / TILE);

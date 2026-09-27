@@ -11,10 +11,17 @@ import { buildShip, type ShipInteractable, type ShipLayout } from '../../data/sh
 import { shipUi, useShip } from '../../state/shipStore';
 import { ActorView } from '../entities/ActorView';
 import { Lighting } from '../render/lighting';
+import { AmbientFx } from '../fx/ambient';
+import { Effects } from '../fx/effects';
 import { buildMapView, FLOOR_DECK } from '../render/mapView';
 import { hasLineOfSight, moveCircle } from '../world/collision';
 import { Doors } from '../world/doors';
+import { emitterLevels, emittersFrom, type Emitter } from '../world/emitters';
 import { CrewActor } from './CrewActor';
+import type { Sfx } from '../../engine/audio';
+
+/** What each crew member sounds like at work. */
+const CREW_SOUND: Record<CrewId, Sfx> = { hacker: 'typing', medic: 'beeps', trader: 'radio', merc: 'sharpen', smuggler: 'cards' };
 
 const SPEED = 92;
 const ACCEL = 1200;
@@ -32,6 +39,8 @@ export class ShipScene {
   private input!: Input;
   private camera!: Camera;
   private lighting!: Lighting;
+  private effects!: Effects;
+  private ambientFx!: AmbientFx;
   private layout!: ShipLayout;
   private doors!: Doors;
   private world = new Container();
@@ -80,6 +89,7 @@ export class ShipScene {
     this.fit();
     this.input = new Input(this.app.canvas);
     audio.unlock();
+    audio.setRoom('ship');
     audio.startAmbience('ship');
     this.build();
     this.app.ticker.add(this.tick);
@@ -120,9 +130,11 @@ export class ShipScene {
   }
 
   private build(): void {
-    const L = buildShip(useProfile.getState().upgrades);
+    const prof = useProfile.getState();
+    const L = buildShip(prof.upgrades, Object.entries(prof.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id));
     this.layout = L;
     const map = L.map;
+    this.emitters = emittersFrom(L.props);
     this.camera = new Camera(map.pixelWidth, map.pixelHeight);
     this.camera.lookAhead = 0.08;
 
@@ -131,7 +143,8 @@ export class ShipScene {
       this.starField.push({ x: Math.random() * VIEW_W * 1.6, y: Math.random() * VIEW_H * 1.6, b: Math.random(), tw: Math.random() * 6 });
     }
 
-    const { ground } = buildMapView(map, { floor: FLOOR_DECK, floorTint: 0xf0e4d4, wall: 'wall_face_a', wallTint: 0xffffff, trim: 0x7a2e20 });
+    const { ground } = buildMapView(map, { floor: FLOOR_DECK, floorTint: 0xf0e4d4, wall: 'wall_face_a', wallTint: 0xffffff, trim: 0x7a2e20 },
+      L.props.filter((p) => !p.floor && p.sprite).map((p) => ({ x: p.x, y: p.y, w: tex(p.sprite).width })));
     // The cockpit is one painted piece over the nose of the ship.
     const cockpit = new Sprite(tex('ship_cockpit'));
     cockpit.anchor.set(0.5, 1);
@@ -156,15 +169,25 @@ export class ShipScene {
     floorProps.addChild(hz);
     const wallProps = new Container();
     this.actors.sortableChildren = true;
+    // Cables snake across the deck, with a highlight so they read as round.
+    const cables = new Graphics();
+    for (const line of L.cables) {
+      for (const [w, c, a] of [[2, 0x0c0b0a, 0.55], [1, 0x4a4238, 0.8]] as const) {
+        cables.moveTo(line[0][0], line[0][1]);
+        for (const [x, y] of line.slice(1)) cables.lineTo(x, y);
+        cables.stroke({ width: w, color: c, alpha: a });
+      }
+    }
+    floorProps.addChild(cables);
     for (const p of L.props) {
       const s = new Sprite(tex(p.sprite));
       s.anchor.set(0.5, 1);
-      s.position.set(Math.round(p.x), Math.round(p.y));
+      s.position.set(Math.round(p.x), Math.round(p.y - (p.lift ?? 0)));
       if (p.flip) s.scale.x = -1;
       if (p.floor) floorProps.addChild(s);
       else if (p.wall) wallProps.addChild(s);
       else {
-        s.zIndex = p.y;
+        s.zIndex = p.y + (p.lift ? 1 : 0);
         this.actors.addChild(s);
       }
       if (p.bob) this.bobbers.push({ s, y: s.y, t: Math.random() * 6 });
@@ -187,8 +210,11 @@ export class ShipScene {
     audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
     this.lighting.flashlightOn = false;
 
-    this.world.addChild(ground, floorProps, this.doors.container, wallProps, this.actors);
-    this.glowWorld.addChild(this.markers);
+    // The ship's own small life: status lights, a machine that sparks, steam, dust.
+    this.effects = new Effects(map, audio);
+    this.ambientFx = new AmbientFx(L.props, this.effects, audio, (x, y, r, c, i) => this.lighting.flash(x, y, r, c, i));
+    this.world.addChild(ground, floorProps, this.effects.decals, this.doors.container, wallProps, this.actors, this.effects.lit, this.ambientFx.dust);
+    this.glowWorld.addChild(this.ambientFx.glow, this.effects.overlay, this.markers);
     this.app.stage.addChild(this.stars, this.world, this.lighting.overlay, this.glowWorld, this.glow);
     this.camera.snapTo(this.px, this.py);
   }
@@ -200,17 +226,12 @@ export class ShipScene {
     const busy = !!ship.panel;
 
     // --- Movement (frozen while a panel is open)
-    let ix = 0;
-    let iy = 0;
-    if (!busy) {
-      if (this.input.isDown('KeyA') || this.input.isDown('ArrowLeft')) ix -= 1;
-      if (this.input.isDown('KeyD') || this.input.isDown('ArrowRight')) ix += 1;
-      if (this.input.isDown('KeyW') || this.input.isDown('ArrowUp')) iy -= 1;
-      if (this.input.isDown('KeyS') || this.input.isDown('ArrowDown')) iy += 1;
-    }
-    const len = Math.hypot(ix, iy);
-    const tx = len ? (ix / len) * SPEED : 0;
-    const ty = len ? (iy / len) * SPEED : 0;
+    this.input.poll(dt);
+    const mv = busy ? { x: 0, y: 0 } : this.input.move();
+    const len = Math.hypot(mv.x, mv.y);
+    const push = Math.min(1, len);
+    const tx = len ? (mv.x / len) * SPEED * push : 0;
+    const ty = len ? (mv.y / len) * SPEED * push : 0;
     this.vx = approach(this.vx, tx, ACCEL * dt);
     this.vy = approach(this.vy, ty, ACCEL * dt);
     const pos = { x: this.px, y: this.py };
@@ -234,11 +255,15 @@ export class ShipScene {
     const facing = Math.abs(this.vx) > 4 ? (this.vx > 0 ? 0 : Math.PI) : this.lastFacing;
     this.lastFacing = facing;
     this.player.update(dt, this.px, this.py, facing, moved, false, 0);
-    if (this.player.stepped) audio.sfx('step', this.px, this.py);
+    if (this.player.stepped) audio.step(this.px, this.py, 'plate', 1, true);
 
     // --- Crew, props, doors
     const talking = ship.panel?.kind === 'crew' ? ship.panel.crew : null;
-    for (const c of this.crew) c.update(dt, this.px, this.py, talking === c.station.crew);
+    for (const c of this.crew) {
+      c.update(dt, this.px, this.py, talking === c.station.crew);
+      // Everyone aboard makes their own small noises: you can find them with your ears.
+      if (c.busied) audio.sfx(CREW_SOUND[c.station.crew], c.station.x, c.station.y);
+    }
     for (const b of this.bobbers) {
       b.t += dt;
       b.s.y = Math.round(b.y + Math.sin(b.t * 2.2) * 2);
@@ -248,11 +273,11 @@ export class ShipScene {
     // --- Interaction
     const near = busy ? null : this.nearest();
     shipUi.patch({ prompt: near ? this.promptFor(near) : null });
-    if (near && this.input.wasPressed('KeyE')) {
+    if (near && this.input.pressed('interact')) {
       audio.ui('open');
       if (near.kind === 'crew') shipUi.open({ kind: 'crew', crew: near.crew! });
       else shipUi.open({ kind: near.kind } as never);
-    } else if (!busy && this.input.wasPressed('Tab')) {
+    } else if (!busy && this.input.pressed('inventory')) {
       audio.ui('open');
       shipUi.open({ kind: 'stash' });
     }
@@ -272,19 +297,33 @@ export class ShipScene {
     }
 
     // --- Render
-    this.camera.update(dt, this.px, this.py - 16, this.input.mouseX, this.input.mouseY);
+    // Look around with the mouse, or lean the view with the right stick.
+    const look = this.input.padAiming
+      ? { x: VIEW_W / 2 + this.input.aimStick.x * 150, y: VIEW_H / 2 + this.input.aimStick.y * 110 }
+      : { x: this.input.mouseX, y: this.input.mouseY };
+    this.camera.update(dt, this.px, this.py - 16, look.x, look.y);
     this.world.position.set(-this.camera.left, -this.camera.top);
     this.glowWorld.position.set(-this.camera.left, -this.camera.top);
     this.updateMarkers(dt);
     audio.setListener(this.px, this.py);
     const dr = Math.hypot(this.px - this.layout.reactor.x, this.py - this.layout.reactor.y);
     audio.setAmbienceIntensity(Math.max(0, 1 - dr / 260));
+    this.emitterTimer -= dt;
+    if (this.emitterTimer <= 0) {
+      this.emitterTimer = 0.2;
+      const map = this.layout.map;
+      audio.setEmitters(emitterLevels(this.emitters, this.px, this.py, (x, y) => !hasLineOfSight(map, this.px, this.py - 8, x, y - 8)));
+    }
+    this.effects.update(dt);
+    this.ambientFx.update(dt, this.camera.left, this.camera.top, VIEW_W, VIEW_H);
     this.lighting.update(dt, this.camera.left, this.camera.top, this.px, this.py, 0);
     this.drawStars();
     this.input.endFrame();
   };
 
   private lastFacing = 0;
+  private emitters: Emitter[] = [];
+  private emitterTimer = 0;
 
   /** "!" over crew with new contracts, "?" when you can hand one in. Emissive, above the dark. */
   private updateMarkers(dt: number): void {
@@ -336,8 +375,8 @@ export class ShipScene {
   }
 
   private promptFor(i: ShipInteractable): string {
-    if (i.kind === 'crew') return `[E] TALK TO ${CREW[i.crew!].callsign}`;
-    return `[E] ${i.label}`;
+    if (i.kind === 'crew') return `{interact} TALK TO ${CREW[i.crew!].callsign}`;
+    return `{interact} ${i.label}`;
   }
 
   /** Slow parallax starfield; streaks during a jump. */

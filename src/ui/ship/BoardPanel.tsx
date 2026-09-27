@@ -10,6 +10,7 @@ import { shipActions } from '../../state/shipActions';
 import { shipUi } from '../../state/shipStore';
 import { AtlasSprite } from '../AtlasSprite';
 import { ContractCard } from './Contracts';
+import { ByDevice, Key } from '../Glyph';
 
 /** The operations board in the common room: every contract, and the ship's work orders. */
 export function BoardPanel() {
@@ -34,12 +35,14 @@ export function BoardPanel() {
   const done = all.filter((q) => q.status === 'turnedIn').length;
 
   return (
-    <div className="modal-root">
+    <div className="modal-root" data-nav-scope="board">
       <div className="panel board-panel">
         <div className="panel-title">OPERATIONS <span className="dim">// ЗАДАНИЯ</span></div>
         <div className="tabs">
+          <ByDevice kbm={null} pad={<Key a="prevTab" />} />
           <button className={`tab ${tab === 'contracts' ? 'on' : ''}`} onClick={() => { setTab('contracts'); audio.ui('tab'); }}>CONTRACTS</button>
           <button className={`tab ${tab === 'ship' ? 'on' : ''}`} onClick={() => { setTab('ship'); audio.ui('tab'); }}>SHIP WORK</button>
+          <ByDevice kbm={null} pad={<Key a="nextTab" />} />
           <span className="grow" />
           <span className="dim small">{done}/{all.length} CONTRACTS COMPLETE · {p.credits.toLocaleString()} CR</span>
         </div>
@@ -89,7 +92,7 @@ export function BoardPanel() {
           </div>
         )}
         {msg && <div className={msg.bad ? 'bad small' : 'ok small'}>{msg.text}</div>}
-        <div className="confirm-row"><button className="btn" onClick={() => shipUi.close()}>CLOSE [ESC]</button></div>
+        <div className="confirm-row"><button className="btn" onClick={() => shipUi.close()}>CLOSE <Key a="back" /></button></div>
       </div>
     </div>
   );

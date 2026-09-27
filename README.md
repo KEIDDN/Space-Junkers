@@ -15,6 +15,7 @@ npm run dev        # http://localhost:5180
 npm test           # unit tests (inventory, economy, quests, saves, combat, AI, facility generation)
 npm run build      # type-check + production build
 npm run assets     # rebuild the sprite atlas from /Assets (needs python3 + Pillow + numpy)
+SFX_SRC=/path/to/raw python3 tools/build_sfx.py   # rebuild recorded sounds and music (see ASSET_SOURCES.md)
 ```
 
 ## The loop
@@ -37,23 +38,37 @@ kit, and the hop to Tikhaya is free when you can't pay for it.
 
 ## Controls
 
-| Key | Raid | Ship |
-|---|---|---|
-| WASD | Move | Move |
-| Mouse / LMB | Aim / fire | |
-| Shift | Sprint (gun lowered) | |
-| C | Sneak (silent steps) | |
-| R | Reload, clear a jam | |
-| 1 / 2 / Q / wheel | Primary / sidearm / swap | |
-| 3–6 | Quick slots (meds, grenades at the cursor) | |
-| F | Flashlight | |
-| E | Interact; hold to search, swipe, throw breakers | Talk, use |
-| TAB | Inventory | Stash |
-| M | Tactical map | |
-| ESC | Pause, settings, controls | Close |
+Keyboard and mouse, or any standard controller (Xbox, PlayStation and Nintendo layouts are
+recognised and their button names shown). Prompts follow whichever you touched last.
 
-Inventory: drag to move, R or Space rotates while dragging, Shift-click quick-moves,
+| Action | Keyboard / mouse | Controller |
+|---|---|---|
+| Move | WASD | Left stick (analogue) |
+| Aim / fire | Mouse / LMB | Right stick / RT |
+| Steady aim (slower, tighter, see further) | RMB | LT |
+| Sprint | Shift | L3 (click, latches) |
+| Sneak | C | B |
+| Reload, clear a jam | R | X |
+| Switch weapon | 1 / 2 / Q / wheel | Y |
+| Grenade · treat wounds | G · H | RB · LB |
+| Quick slots | 3–6 | D-pad |
+| Flashlight | F | R3 |
+| Interact; hold to search, swipe, throw breakers | E | A |
+| Inventory / stash | TAB | View |
+| Tactical map | M | Hold View |
+| Pause (ship: menu and settings) | ESC | Menu |
+
+Menus are fully playable on a controller: the D-pad or stick moves focus, A confirms, B goes
+back, LB/RB switch tabs or panels, the right stick scrolls. In inventories A picks an item up
+and puts it down anywhere (grid cells, equipment, quick slots, the sell counter), X quick-moves,
+Y opens its actions (or rotates what you're carrying).
+
+With the mouse: drag to move, R or Space rotates while dragging, Shift-click quick-moves,
 Ctrl-click equips/uses, right-click for actions, drag outside to drop.
+
+Settings (title screen, pause menu, the ship menu): volume, music, screen shake, brightness,
+optional sound cues toward unseen gunfire and alarms, and with a controller connected, aim
+speed, aim assist and vibration.
 
 ## World
 
@@ -77,13 +92,17 @@ unlocks stock, lines and destinations.
 | `tools/build_assets.py` | Cuts sprites out of the painted sheets, strips the haze, snaps them to a pixel grid, builds palette variants, packs `public/assets/sprites.{png,json}`. |
 | `src/core/` | Pure game rules with tests: inventory grids, transfers, profile/save, damage, economy, quests, upgrades, raid results. |
 | `src/data/` | Content: items, weapons, enemies, loot tables, crew, vendors, quests, destinations, facility themes, lore. Tuning happens here. |
-| `src/engine/` | Plumbing: render constants, asset loading, input, camera, synthesized audio. |
+| `src/engine/` | Plumbing: render constants, asset loading, action-based input (keyboard, mouse, gamepad), rumble, camera, audio (synthesized and recorded). |
+| `src/ui/nav/` | Controller navigation for every menu (spatial focus, carrying items). |
+| `tools/build_sfx.py` | Cuts and encodes the recorded sound effects and music. |
 | `src/game/` | Simulation and Pixi rendering. `Game.ts` runs a raid, `ship/ShipScene.ts` the hub. |
 | `src/game/world/facilityGen.ts` | Procedural facilities: rooms, corridors, doors, roles, themed furnishing, sealed vault, exits. |
 | `src/game/render/lighting.ts` | Darkness: light buffer multiplied over the world, wall-occluded lights, flashlight. |
 | `src/state/` | Zustand stores: profile (persisted, versioned), raid, HUD snapshot, ship UI, settings. |
 | `src/ui/`, `src/app/` | React interface. It never runs per frame. |
 | `docs/ROADMAP.md` | Audit of build 0.2 and the slices that took it here. |
+| `docs/SHIPPING_AUDIT.md` | The polish passes and the shipping audit, area by area. |
+| `ASSET_SOURCES.md` | Every external asset, its author, source and license. |
 
 Rendering: the world renders at 640×360 and is scaled up by whole numbers only
 (nearest-neighbour, rounded camera), so pixels stay crisp. React draws only the interface;

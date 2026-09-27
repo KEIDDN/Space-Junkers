@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { audio } from '../engine/audio';
 import { useRaid } from '../state/raidStore';
+import { ByDevice, Key } from './Glyph';
 
 /** A facility terminal: old text typing out on green phosphor. E or walking away closes it. */
 export function TerminalView() {
@@ -24,7 +25,7 @@ export function TerminalView() {
   if (!entry) return null;
   let left = typed;
   return (
-    <div className="term-screen">
+    <div className="term-screen" data-nav-scope="terminal">
       <div className="term-panel crt">
         <div className="term-head">
           <span>{entry.from}</span>
@@ -39,7 +40,7 @@ export function TerminalView() {
             return <div key={i} className="term-line">{show}{left < 0 && left > -line.length && <span className="term-cursor">█</span>}</div>;
           })}
         </div>
-        <div className="term-foot dim">[E] LOG OFF · WALK AWAY TO LEAVE</div>
+        <div className="term-foot dim"><ByDevice kbm={<>[E] LOG OFF · WALK AWAY TO LEAVE</>} pad={<><Key a="back" /> LOG OFF</>} /></div>
       </div>
     </div>
   );
