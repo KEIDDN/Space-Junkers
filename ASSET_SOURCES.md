@@ -40,7 +40,37 @@ The fonts are bundled at build time, so the game needs no network access at runt
 
 ## Audio
 
-All sound is synthesised at runtime with WebAudio (`src/engine/audio.ts`), including the room
-reverb (impulse responses are generated, not recorded). No sample files are used.
+Most of the game's sound is still synthesised at runtime with WebAudio (`src/engine/audio.ts`):
+ambience beds, machinery, alarms, voices, UI tones, and the room reverb (its impulse responses are
+generated, not recorded). Where a recording is clearly better (guns, boots, impacts, weapon
+handling, a few interface switches) the game plays recorded takes, with the synthesised version
+kept as the fallback if a file fails to load.
 
-No external assets were added during the final polish pass.
+`tools/build_sfx.py` cuts, cleans (mono 48 kHz, trimmed, faded, peak -1 dBFS) and encodes the
+recordings into `public/assets/sfx/` and the music into `public/assets/music/`. The raw packs are
+not kept in the repository; download them from the links below to rebuild.
+
+### Recorded sound effects (`public/assets/sfx/`)
+
+| Pack | Author | Source | License | Used for |
+|---|---|---|---|---|
+| The Free Firearm Sound Library (prepared set) | Ben Jaszczak, Brian Nelson, Kevin Heras, Matthew Nanney (Still North Media) | https://opengameart.org/content/the-free-firearm-sound-library | CC0 | Every gunshot, near and far takes: AK-47 (AKR-74), PPSh (PPD-41), Mosin-Nagant (Mosin-K), SKS (SKV), AR-15 (Vektor-7), Carl Gustav M45 (Kedr-9), Bersa .380 (PM-9), 1911 (SP-5), Charles Daly pump (Obrez), Benelli Nova (TOZ-12), Tikka T3 (SVK) |
+| Impact Sounds | Kenney | https://kenney.nl/assets/impact-sounds | CC0 | Rounds hitting walls, flesh and armour plate; bodies falling; floor plate ring and grate rattle under boots; magazines landing |
+| RPG Audio | Kenney | https://kenney.nl/assets/rpg-audio | CC0 | Footsteps, webbing and cloth (drawing, rummaging, handling items), a bag set down, coins (trading), a latch (bolt handles) |
+| Sci-fi Sounds | Kenney | https://kenney.nl/assets/sci-fi-sounds | CC0 | Grenade blasts (explosion crunch and low boom layers) |
+| UI Audio | Kenney | https://kenney.nl/assets/ui-audio | CC0 | Mechanical console switches and ticks in menus |
+| Gun Reload Sound Effects | bmaczero | https://opengameart.org/content/gun-reload-sound-effects | CC0 | Magazine seating, single rounds |
+| 2 Gun Reloads | StarNinjas | https://opengameart.org/content/2-gun-reloads | CC0 | Magazine out, charging handle |
+| Handgun Reload Sound Effect | zer0sol | https://opengameart.org/content/handgun-reload-sound-effect | CC0 | Magazine out, slide |
+| Shotgun Reload Sound Effects | zer0sol | https://opengameart.org/content/shotgun-reload-sound-effects | CC0 | Shells into a tube, the pump |
+
+### Music (`public/assets/music/`)
+
+Music is used sparingly: a theme on the title screen, something warm and quiet aboard the
+Lastochka, and in raids nothing at all until there is danger (see `Game.tensionMusic`).
+
+| Track | Author | Source | License | Used for |
+|---|---|---|---|---|
+| Pondering the Cosmos | Ruskerdax | https://opengameart.org/content/pondering-the-cosmos | CC0 | Title screen |
+| Sirens in Darkness | The Cynic Project (cynicmusic.com, pixelsphere.org) | https://opengameart.org/content/sirens-in-darkness | CC0 (credit requested, given here and in the credits) | Aboard the ship |
+| Narrow Corridors | tinyworlds | https://opengameart.org/content/narrow-corridors | CC0 | Raid tension layer |

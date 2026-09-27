@@ -35,6 +35,8 @@ export function SettingsRows() {
     <>
       <Slider label="VOLUME" value={s.volume} min={0} max={1} step={0.05} show={String(Math.round(s.volume * 100))}
         onChange={(v) => { s.setVolume(v); audio.setMasterVolume(v); }} />
+      <Slider label="MUSIC" value={s.music} min={0} max={1} step={0.05} show={s.music ? String(Math.round(s.music * 100)) : 'OFF'}
+        onChange={(v) => { s.setMusic(v); audio.setMusicVolume(v); }} />
       <Slider label="SCREEN SHAKE" value={s.shake} min={0} max={1} step={0.1} show={String(Math.round(s.shake * 100))} onChange={s.setShake} />
       <Slider label="BRIGHTNESS" value={s.brightness} min={0.8} max={1.6} step={0.1} show={String(Math.round(s.brightness * 100))} onChange={s.setBrightness} />
       <Toggle label="SOUND CUES" on={s.soundCues} note="arrows toward unseen gunfire" onChange={s.setSoundCues} />

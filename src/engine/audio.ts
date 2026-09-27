@@ -8,6 +8,8 @@
  */
 
 export interface GunSound {
+  /** Recorded takes (public/assets/sfx/gun_<sample>_n|f_*.ogg); the synth layers are the fallback. */
+  sample?: string;
   /** Low-frequency body thump (Hz). */
   thump: number;
   /** Brightness of the crack (lowpass cutoff Hz). */
@@ -25,8 +27,10 @@ export type Sfx =
   | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop'
   | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
   | 'breaker' | 'keycard' | 'lift'
-  | 'magout' | 'magin' | 'rack' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet'
+  | 'magout' | 'magin' | 'rack' | 'bolt' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet'
   | 'heartbeat' | 'mutter' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio' | 'zap' | 'hiss';
+
+import { SAMPLE_GROUPS } from './sampleManifest';
 
 /** What a foot lands on. */
 export type Surface = 'deck' | 'plate' | 'grate';
@@ -55,6 +59,15 @@ export class AudioService {
   private reverbOut: GainNode | null = null;
   private convolver: ConvolverNode | null = null;
   private room: RoomAcoustics = ROOMS.facility;
+  /** Recorded takes by group (guns, boots, impacts, handling). Synth covers anything missing. */
+  private samples = new Map<string, AudioBuffer[]>();
+  private samplesLoading: Promise<void> | null = null;
+  private lastTake = new Map<string, number>();
+  /** Music: streamed pieces through their own fader, under the master volume. */
+  private musicBus: GainNode | null = null;
+  private tracks = new Map<MusicTrack, { el: HTMLAudioElement; gain: GainNode }>();
+  private currentTrack: MusicTrack | null = null;
+  private musicVolume = 0.6;
   volume = 0.7;
 
   /** The browser hasn't let sound start yet (it needs a click or a key first). */
@@ -66,6 +79,9 @@ export class AudioService {
   unlock(): void {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') void this.ctx.resume();
+      // Music asked for before the browser allowed sound starts now.
+      const cur = this.currentTrack ? this.tracks.get(this.currentTrack) : null;
+      if (cur?.el.paused) void cur.el.play().catch(() => {});
       return;
     }
     const ctx = new AudioContext();
@@ -97,6 +113,102 @@ export class AudioService {
     const data = this.noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     this.buildReverb();
+    void this.loadSamples();
+  }
+
+  /** Fetch and decode every recorded take. Anything that fails stays synthesized. */
+  loadSamples(): Promise<void> {
+    const ctx = this.ctx;
+    if (!ctx) return Promise.resolve();
+    this.samplesLoading ??= Promise.all(Object.entries(SAMPLE_GROUPS).map(async ([group, n]) => {
+      const takes = await Promise.all(Array.from({ length: n }, async (_, i) => {
+        try {
+          const r = await fetch(`${import.meta.env.BASE_URL}assets/sfx/${group}_${i}.ogg`);
+          return r.ok ? await ctx.decodeAudioData(await r.arrayBuffer()) : null;
+        } catch {
+          return null;
+        }
+      }));
+      const ok = takes.filter((b): b is AudioBuffer => !!b);
+      if (ok.length) this.samples.set(group, ok);
+    })).then(() => undefined);
+    return this.samplesLoading;
+  }
+
+  /**
+   * Play a piece of music (or none), crossfading from whatever was playing. `level` is
+   * this piece's own loudness (0..1) before the player's music volume.
+   */
+  music(track: MusicTrack | null, level = 1, fade = 2): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    if (!this.musicBus) {
+      this.musicBus = ctx.createGain();
+      this.musicBus.gain.value = this.musicVolume;
+      this.musicBus.connect(this.master);
+    }
+    if (track !== this.currentTrack) {
+      const old = this.currentTrack ? this.tracks.get(this.currentTrack) : null;
+      if (old) {
+        old.gain.gain.setTargetAtTime(0, ctx.currentTime, fade / 3);
+        const el = old.el;
+        window.setTimeout(() => {
+          if (this.currentTrack === null || this.tracks.get(this.currentTrack)?.el !== el) el.pause();
+        }, fade * 1000 + 400);
+      }
+      this.currentTrack = track;
+    }
+    if (!track) return;
+    let t = this.tracks.get(track);
+    if (!t) {
+      const el = new Audio(`${import.meta.env.BASE_URL}assets/music/${track}.ogg`);
+      el.loop = true;
+      el.preload = 'auto';
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      ctx.createMediaElementSource(el).connect(gain).connect(this.musicBus);
+      t = { el, gain };
+      this.tracks.set(track, t);
+    }
+    t.gain.gain.setTargetAtTime(level * MUSIC_LEVEL[track], ctx.currentTime, fade / 3);
+    if (t.el.paused) void t.el.play().catch(() => { /* waits for the next unlock */ });
+  }
+
+  /** The player's music volume, 0..1. */
+  setMusicVolume(v: number): void {
+    this.musicVolume = v;
+    if (this.ctx && this.musicBus) this.musicBus.gain.setTargetAtTime(v, this.ctx.currentTime, 0.1);
+  }
+
+  /** Recorded takes are loaded for this group. */
+  hasSample(group: string): boolean {
+    return this.samples.has(group);
+  }
+
+  /**
+   * One take from a recorded group into `out` (never the same take twice running).
+   * Returns false when the group isn't available, so the caller can synthesize instead.
+   */
+  private take(out: AudioNode, group: string, t: number, gain: number, rate = 1, lowpass = 20000): boolean {
+    const list = this.samples.get(group);
+    const ctx = this.ctx;
+    if (!list || !ctx) return false;
+    let i = Math.floor(Math.random() * list.length);
+    if (list.length > 1 && i === this.lastTake.get(group)) i = (i + 1) % list.length;
+    this.lastTake.set(group, i);
+    const src = ctx.createBufferSource();
+    src.buffer = list[i];
+    src.playbackRate.value = rate;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    if (lowpass < 17000) {
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = lowpass;
+      src.connect(f).connect(g).connect(out);
+    } else src.connect(g).connect(out);
+    src.start(t);
+    return true;
   }
 
   /**
@@ -516,30 +628,35 @@ export class AudioService {
     out.gain.value = 0.32;
     out.connect(this.master);
     const t = ctx.currentTime;
+    const r = (a: number, b: number) => a + Math.random() * (b - a);
     switch (kind) {
       case 'hover':
-        this.click(out, t, 4200, 0.12);
+        if (!this.take(out, 'ui_tick', t, 0.3, r(1.05, 1.15))) this.click(out, t, 4200, 0.12);
         break;
       case 'click':
-        this.click(out, t, 2600, 0.5);
-        this.click(out, t + 0.025, 1500, 0.35);
+        // A heavy toggle on an old console.
+        if (!this.take(out, 'ui_switch', t, 0.6, r(0.95, 1.05))) {
+          this.click(out, t, 2600, 0.5);
+          this.click(out, t + 0.025, 1500, 0.35);
+        }
         break;
       case 'tab':
-        this.click(out, t, 1800, 0.45);
+        if (!this.take(out, 'ui_switch', t, 0.45, r(1.2, 1.3))) this.click(out, t, 1800, 0.45);
         this.thump(out, t, 220, 0.04, 0.3);
         break;
       case 'pickup':
-        this.click(out, t, 1900, 0.4);
-        this.noiseBurst(out, t, 0.05, 1600, 0.25);
+        if (!this.take(out, 'cloth', t, 0.4, r(1.3, 1.5))) this.noiseBurst(out, t, 0.05, 1600, 0.25);
+        this.click(out, t, 1900, 0.3);
         break;
       case 'drop':
-        this.thump(out, t, 160, 0.06, 0.55);
-        this.click(out, t + 0.01, 1100, 0.45);
+        if (!this.take(out, 'bagdrop', t, 0.55, r(1.1, 1.25))) this.thump(out, t, 160, 0.06, 0.55);
+        this.click(out, t + 0.01, 1100, 0.35);
         break;
       case 'equip':
+        this.take(out, 'cloth', t, 0.4, r(1.1, 1.2));
         this.click(out, t, 1200, 0.6);
         this.thump(out, t + 0.02, 130, 0.08, 0.6);
-        this.click(out, t + 0.07, 2400, 0.4);
+        if (!this.take(out, 'magin', t + 0.06, 0.35, r(1.1, 1.2))) this.click(out, t + 0.07, 2400, 0.4);
         break;
       case 'error':
         this.tone(out, t, 150, 0.09, 0.9);
@@ -554,6 +671,7 @@ export class AudioService {
         this.thump(out, t, 180, 0.05, 0.4);
         break;
       case 'buy':
+        this.take(out, 'coins', t, 0.4, r(1, 1.1));
         this.click(out, t, 2000, 0.5);
         this.tone(out, t + 0.04, 1180, 0.07, 0.5);
         this.tone(out, t + 0.1, 1570, 0.1, 0.5);
@@ -580,6 +698,7 @@ export class AudioService {
         this.thump(out, t, 50, 0.6, 0.6);
         break;
       case 'sell':
+        this.take(out, 'coins', t, 0.5, r(0.95, 1.05));
         this.tone(out, t, 1570, 0.06, 0.5);
         this.tone(out, t + 0.07, 1180, 0.1, 0.5);
         this.click(out, t + 0.14, 2600, 0.4);
@@ -595,6 +714,11 @@ export class AudioService {
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;
     this.master.connect(this.hearing);
+    // Music carries across scenes.
+    if (this.musicBus) {
+      this.musicBus.disconnect();
+      this.musicBus.connect(this.master);
+    }
     this.setMuffled(false);
     old.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02);
     this.buildReverb();
@@ -616,6 +740,27 @@ export class AudioService {
     const t = ctx.currentTime;
     const pitch = 0.94 + Math.random() * 0.12;
     const close = Math.max(0, 1 - d / 450);
+
+    // The real gun, recorded close and from down range: crossfade by distance, walls
+    // take the top off, the room adds its tail. A sub punch under the big calibres.
+    const key = s.sample;
+    if (key && this.samples.has(`gun_${key}_n`)) {
+      const far = smoothstep(160, 620, d);
+      const rate = 0.97 + Math.random() * 0.06;
+      const lp = muffleHz(muffle);
+      if (far < 0.98) this.take(out, `gun_${key}_n`, t, SAMPLE_GUN * (1 - far), rate, lp);
+      if (far > 0.02) this.take(out, `gun_${key}_f`, t, SAMPLE_GUN * 1.6 * far, rate, lp);
+      if (s.thump < 100) {
+        const sub = ctx.createOscillator();
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(50, t);
+        sub.frequency.exponentialRampToValueAtTime(33, t + 0.25);
+        sub.connect(env(ctx, t, 0.5 * (0.4 + 0.6 * close), 0.003, 0.26)).connect(out);
+        sub.start(t);
+        sub.stop(t + 0.3);
+      }
+      return;
+    }
 
     // Snap: a couple of milliseconds of bright noise. Only really there up close.
     if (close > 0.05) {
@@ -677,6 +822,18 @@ export class AudioService {
     if (!bus) return;
     const { ctx, out, muffle } = bus;
     const t = ctx.currentTime;
+    // Recorded boots; the floor adds its own voice (a plate rings, a grate rattles).
+    if (this.samples.has('step')) {
+      const lp = muffleHz(muffle) * (weight < 0.5 ? 0.22 : 1);
+      const rate = (weight > 1.3 ? 0.9 : weight < 0.5 ? 1.06 : 1) * (0.94 + Math.random() * 0.12);
+      this.take(out, 'step', t, SAMPLE_STEP * (weight < 0.5 ? 0.55 : 1), rate, lp);
+      if (weight >= 0.5) {
+        if (surface === 'plate') this.take(out, 'plate', t + 0.003, 0.1 * weight, 1.25 + Math.random() * 0.25, lp);
+        else if (surface === 'grate') this.take(out, 'metal', t + 0.008, 0.18 * weight, 1.3 + Math.random() * 0.3, lp);
+      }
+      if (weight > 1.3 && Math.random() < 0.5) this.click(out, t + 0.03, 3800 + Math.random() * 1200, 0.12);
+      return;
+    }
     // Heel: a soft thud, lower when heavy.
     const n = this.noiseSource(t, 0.08);
     const f = ctx.createBiquadFilter();
@@ -719,13 +876,14 @@ export class AudioService {
       armor: 0.6, headshot: 0.8, drop: 0.35,
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
       breaker: 0.7, keycard: 0.45, lift: 0.5,
-      magout: 0.2, magin: 0.24, rack: 0.28, breakopen: 0.26, breakclose: 0.3, magdrop: 0.2, draw: 0.14, ricochet: 0.35,
+      magout: 0.2, magin: 0.24, rack: 0.28, bolt: 0.5, breakopen: 0.26, breakclose: 0.3, magdrop: 0.2, draw: 0.14, ricochet: 0.35,
       heartbeat: 0.35, mutter: 0.75, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12, zap: 0.3, hiss: 0.18,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
     const { ctx, out, muffle } = bus;
     const t = ctx.currentTime;
+    if (this.recorded(kind, out, t, muffle)) return;
     switch (kind) {
       case 'dryfire':
         this.click(out, t, 3000, 1);
@@ -1125,6 +1283,67 @@ export class AudioService {
     }
   }
 
+  /**
+   * The recorded version of a sound effect, where there is one (with a little synth
+   * under it where that helps). False: synthesize it.
+   */
+  private recorded(kind: Sfx, out: AudioNode, t: number, muffle: number): boolean {
+    const lp = muffleHz(muffle);
+    const r = (a: number, b: number) => a + Math.random() * (b - a);
+    switch (kind) {
+      case 'impactWall':
+        if (!this.take(out, 'hit_wall', t, 0.85, r(0.85, 1.25), lp)) return false;
+        if (Math.random() < 0.35) this.take(out, 'metal', t, 0.28, r(1.3, 1.7), lp);
+        return true;
+      case 'impactFlesh':
+        if (!this.take(out, 'hit_flesh', t, 0.8, r(0.85, 1.1), lp)) return false;
+        this.thump(out, t, 110, 0.08, 0.5);
+        return true;
+      case 'bodyfall':
+        if (!this.take(out, 'bodyfall', t, 1.1, r(0.9, 1.05), lp)) return false;
+        this.take(out, 'metal', t + r(0.04, 0.09), 0.25, r(0.7, 0.9), lp);
+        return true;
+      case 'armor':
+        if (!this.take(out, 'plate', t, 0.75, r(1.2, 1.5), lp)) return false;
+        this.noiseBurst(out, t, 0.04, 3800 * muffle, 0.4);
+        return true;
+      case 'explosion':
+        if (!this.take(out, 'blast', t, 1.0, r(0.85, 1), lp)) return false;
+        this.take(out, 'boom', t, 1.3, r(0.9, 1), lp);
+        this.thump(out, t, 32, 1.4, 0.9);
+        return true;
+      case 'magout':
+        return this.take(out, 'magout', t, 1, r(0.95, 1.05), lp);
+      case 'magin':
+        return this.take(out, 'magin', t, 1, r(0.95, 1.05), lp);
+      case 'rack':
+        return this.take(out, 'rack', t, 1, r(0.95, 1.05), lp);
+      case 'bolt':
+        // Bolt up and back, then forward and locked down.
+        if (!this.take(out, 'rack', t, 0.8, r(0.78, 0.86), lp)) return false;
+        this.take(out, 'latch', t + 0.16, 0.6, r(0.8, 0.95), lp);
+        return true;
+      case 'shell':
+        return this.take(out, 'shell', t, 0.9, r(0.95, 1.08), lp);
+      case 'cycle':
+        return this.take(out, 'pump', t, 0.75, r(0.96, 1.04), lp);
+      case 'drop':
+        return this.take(out, 'bagdrop', t, 0.9, r(0.9, 1.1), lp);
+      case 'rummage':
+        return this.take(out, 'cloth', t, 0.6, r(1, 1.3), lp);
+      case 'draw':
+        if (!this.take(out, 'cloth', t, 0.55, r(1.15, 1.35), lp)) return false;
+        this.click(out, t + 0.09, 2000, 0.3);
+        return true;
+      case 'magdrop':
+        if (!this.take(out, 'metal', t, 0.7, r(0.68, 0.8), lp)) return false;
+        this.take(out, 'metal', t + r(0.08, 0.12), 0.3, r(0.75, 0.9), lp);
+        return true;
+      default:
+        return false;
+    }
+  }
+
   // ---------------------------------------------------------------------------
 
   private spatialBus(x: number, y: number, gain: number, range = HEARING_RANGE, wetMul = 1) {
@@ -1202,6 +1421,25 @@ export class AudioService {
     o.start(t);
     o.stop(t + dur + 0.02);
   }
+}
+
+export type MusicTrack = 'title' | 'ship' | 'raid';
+
+/** How loud each piece sits at full level: the ship and the raid stay well under the world. */
+const MUSIC_LEVEL: Record<MusicTrack, number> = { title: 0.55, ship: 0.2, raid: 0.3 };
+
+/** Level of recorded takes against the rest of the mix. */
+const SAMPLE_GUN = 1.8;
+const SAMPLE_STEP = 0.55;
+
+function smoothstep(a: number, b: number, x: number): number {
+  const k = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return k * k * (3 - 2 * k);
+}
+
+/** The spatial "muffle" (0.1 far behind walls .. 1 open and near) as a lowpass cutoff. */
+function muffleHz(muffle: number): number {
+  return 380 * Math.pow(52, Math.max(0, Math.min(1, muffle)));
 }
 
 function env(ctx: AudioContext, t: number, peak: number, attack: number, decay: number): GainNode {

@@ -372,6 +372,7 @@ export class Game {
     if (kind === 'extracted') this.opts.onEnd?.('extracted');
     raid.patch({ ending: kind, prompt: null, extractCountdown: null });
     raid.closeOverlay();
+    this.silenceMusic(kind === 'extracted' ? 1.5 : 4);
     if (kind === 'extracted') {
       this.lighting?.flash(this.player.x, this.player.y, 320, 0xd8ffe0, 1.4, 0.4);
       haptics.rumble(0.55, 0.45, 1000);
@@ -393,6 +394,7 @@ export class Game {
         // Hearing goes first; the world slows (and the overlay drains its colour).
         this.audio.setMuffled(true);
         haptics.rumble(1, 0.5, 1300);
+        this.silenceMusic(4);
         if (this.opts.mode === 'facility') raid.patch({ ending: 'dead' });
       }
       this.deadTime += dt;
@@ -470,6 +472,7 @@ export class Game {
     this.survey(dt);
     this.listenToRoom(dt);
     this.heartbeat(dt);
+    this.tensionMusic(dt);
     this.raidClock(dt);
     const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25, menuOpen);
     p.searching = this.interactions.handsBusy ? Math.max(0, p.searching) + dt : -1;
@@ -516,6 +519,42 @@ export class Game {
     });
     this.aimPoint = pt;
     return pt;
+  }
+
+  private tension = 0;
+  private tensionHold = 0;
+  private musicLevel = -1;
+
+  private silenceMusic(fade: number): void {
+    this.tension = 0;
+    this.tensionHold = 0;
+    this.musicLevel = 0;
+    if (this.opts.mode === 'facility') this.audio.music('raid', 0, fade);
+  }
+
+  /**
+   * The raid is silent until it isn't: a low layer rises when someone is hunting you or
+   * rounds are flying, lingers a while after, and swells a little for the last minutes
+   * and the extraction. Then it lets go and the facility's own sounds come back.
+   */
+  private tensionMusic(dt: number): void {
+    if (this.opts.mode !== 'facility') return;
+    const p = this.player;
+    let want = 0;
+    if (p.alive && !this.ending) {
+      const hunted = this.enemies.some((e) => e.alive && e.aware && Math.hypot(e.x - p.x, e.y - p.y) < 700);
+      if (hunted || p.lastHitAgo < 6 || p.lastShotAgo < 4) want = 1;
+      else if (this.interactions.extracting) want = 0.8;
+      else if (this.window - this.elapsed < 120) want = 0.5;
+    }
+    if (want > 0) this.tensionHold = 12;
+    else this.tensionHold -= dt;
+    const target = want > 0 ? want : this.tensionHold > 0 ? this.tension : 0;
+    this.tension += (target - this.tension) * Math.min(1, dt * (target > this.tension ? 0.9 : 0.12));
+    if (Math.abs(this.tension - this.musicLevel) > 0.04 || (target === 0 && this.tension < 0.02 && this.musicLevel > 0)) {
+      this.musicLevel = this.tension < 0.02 ? 0 : this.tension;
+      this.audio.music('raid', this.musicLevel, 1);
+    }
   }
 
   private heartTimer = 0;

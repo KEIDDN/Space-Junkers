@@ -1,4 +1,5 @@
-import { useRef, useState, type ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
+import { useSettings } from '../state/settingsStore';
 import { DESTINATION } from '../data/destinations';
 import { facilityName } from '../data/themes';
 import { audio } from '../engine/audio';
@@ -27,6 +28,17 @@ export function App() {
   const [scene, setScene] = useState<Scene>({ kind: 'title' });
   const [cover, setCover] = useState<Cover | null>(null);
   const timers = useRef<number[]>([]);
+  const musicVolume = useSettings((s) => s.music);
+  useEffect(() => audio.setMusicVolume(musicVolume), [musicVolume]);
+
+  // What plays under each place: a theme on the title, something warm and quiet aboard,
+  // and in a raid nothing at all until there is danger (the game raises it).
+  useEffect(() => {
+    audio.unlock();
+    if (scene.kind === 'title') audio.music('title', 1, 3);
+    else if (scene.kind === 'ship') audio.music('ship', 1, 4);
+    else audio.music(scene.mode === 'facility' ? 'raid' : null, 0, 2);
+  }, [scene]);
 
   /** Go dark, swap scenes behind the cover, type the lines, then reveal. */
   const transition = (next: Scene, lines: string[], hold: number, tone: Cover['tone'] = 'plain') => {

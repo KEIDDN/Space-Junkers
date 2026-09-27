@@ -94,7 +94,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 2.5, shake: 0.14, gunKick: 3,
     noiseRadius: 380, moveSpeedMul: 1,
     tracerColor: 0xffe6a0, casingColor: BRASS, flashScale: 1,
-    sound: { thump: 150, crack: 5200, decay: 0.09, tail: 0.35, gain: 0.8 },
+    sound: { sample: 'pm9', thump: 150, crack: 5200, decay: 0.09, tail: 0.35, gain: 0.8 },
   },
   sp5: {
     id: 'sp5', name: 'SP-5 "Rzhavy"', archetype: 'pistol', caliber: '9x18', sprite: 'gun_6',
@@ -105,7 +105,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 2.8, shake: 0.15, gunKick: 3,
     noiseRadius: 380, moveSpeedMul: 1,
     tracerColor: 0xff9a60, casingColor: BRASS, flashScale: 1,
-    sound: { thump: 140, crack: 4200, decay: 0.1, tail: 0.35, gain: 0.75 },
+    sound: { sample: 'sp5', thump: 140, crack: 4200, decay: 0.1, tail: 0.35, gain: 0.75 },
   },
 
   // --- SMGs ----------------------------------------------------------------
@@ -118,7 +118,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 1.3, shake: 0.06, gunKick: 2,
     noiseRadius: 400, moveSpeedMul: 1,
     tracerColor: 0xffd890, casingColor: BRASS, flashScale: 1,
-    sound: { thump: 145, crack: 4800, decay: 0.06, tail: 0.25, gain: 0.55 },
+    sound: { sample: 'kedr', thump: 145, crack: 4800, decay: 0.06, tail: 0.25, gain: 0.55 },
   },
   ppd41: {
     id: 'ppd41', name: 'PPD-41 Drum SMG', archetype: 'smg', caliber: '9x18', sprite: 'gun_11',
@@ -129,7 +129,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 1.6, shake: 0.08, gunKick: 2,
     noiseRadius: 420, moveSpeedMul: 0.97,
     tracerColor: 0xffd890, casingColor: BRASS, flashScale: 1,
-    sound: { thump: 130, crack: 4200, decay: 0.07, tail: 0.3, gain: 0.6 },
+    sound: { sample: 'ppd41', thump: 130, crack: 4200, decay: 0.07, tail: 0.3, gain: 0.6 },
   },
 
   // --- Shotguns ------------------------------------------------------------
@@ -142,7 +142,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 7.5, shake: 0.45, gunKick: 6,
     noiseRadius: 520, moveSpeedMul: 1,
     tracerColor: 0xffc070, casingColor: SHELL, flashScale: 2,
-    sound: { thump: 80, crack: 2400, decay: 0.22, tail: 0.75, gain: 1.15 },
+    sound: { sample: 'obrez', thump: 80, crack: 2400, decay: 0.22, tail: 0.75, gain: 1.15 },
   },
   toz12: {
     id: 'toz12', name: 'TOZ-12 Pump', archetype: 'shotgun', caliber: '12ga', sprite: 'gun_23',
@@ -153,7 +153,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 7, shake: 0.42, gunKick: 6,
     noiseRadius: 520, moveSpeedMul: 0.93,
     tracerColor: 0xffc070, casingColor: SHELL, flashScale: 2,
-    sound: { thump: 85, crack: 2600, decay: 0.2, tail: 0.7, gain: 1.1 },
+    sound: { sample: 'toz12', thump: 85, crack: 2600, decay: 0.2, tail: 0.7, gain: 1.1 },
   },
 
   // --- Rifles --------------------------------------------------------------
@@ -166,7 +166,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 3.6, shake: 0.18, gunKick: 3,
     noiseRadius: 560, moveSpeedMul: 0.93,
     tracerColor: 0xfff0b0, casingColor: BRASS, flashScale: 1,
-    sound: { thump: 100, crack: 3500, decay: 0.13, tail: 0.65, gain: 0.95 },
+    sound: { sample: 'skv', thump: 100, crack: 3500, decay: 0.13, tail: 0.65, gain: 0.95 },
   },
   akr74: {
     id: 'akr74', name: 'AKR-74 Rifle', archetype: 'rifle', caliber: '545', sprite: 'gun_36',
@@ -177,7 +177,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 3.2, shake: 0.17, gunKick: 3,
     noiseRadius: 560, moveSpeedMul: 0.92,
     tracerColor: 0xfff0b0, casingColor: BRASS, flashScale: 1,
-    sound: { thump: 105, crack: 3600, decay: 0.12, tail: 0.6, gain: 0.95 },
+    sound: { sample: 'akr74', thump: 105, crack: 3600, decay: 0.12, tail: 0.6, gain: 0.95 },
   },
   vektor: {
     id: 'vektor', name: 'Vektor-7 Bullpup', archetype: 'rifle', caliber: '545', sprite: 'gun_33',
@@ -188,7 +188,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 2.6, shake: 0.13, gunKick: 2,
     noiseRadius: 540, moveSpeedMul: 0.95,
     tracerColor: 0xc8f0ff, casingColor: STEEL, flashScale: 1,
-    sound: { thump: 115, crack: 4100, decay: 0.1, tail: 0.55, gain: 0.9 },
+    sound: { sample: 'vektor', thump: 115, crack: 4100, decay: 0.1, tail: 0.55, gain: 0.9 },
   },
 
   // --- Marksman ------------------------------------------------------------
@@ -201,7 +201,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 9.5, shake: 0.5, gunKick: 7,
     noiseRadius: 720, moveSpeedMul: 0.88,
     tracerColor: 0xffffff, casingColor: BRASS, flashScale: 2,
-    sound: { thump: 68, crack: 2900, decay: 0.26, tail: 1.2, gain: 1.25 },
+    sound: { sample: 'mosin', thump: 68, crack: 2900, decay: 0.26, tail: 1.2, gain: 1.25 },
   },
   svk: {
     id: 'svk', name: 'SVK Marksman', archetype: 'marksman', caliber: '762', sprite: 'gun_49',
@@ -212,7 +212,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     cameraKick: 9, shake: 0.5, gunKick: 7,
     noiseRadius: 700, moveSpeedMul: 0.85,
     tracerColor: 0xffffff, casingColor: BRASS, flashScale: 2,
-    sound: { thump: 70, crack: 3000, decay: 0.24, tail: 1.1, gain: 1.2 },
+    sound: { sample: 'svk', thump: 70, crack: 3000, decay: 0.24, tail: 1.1, gain: 1.2 },
   },
 };
 

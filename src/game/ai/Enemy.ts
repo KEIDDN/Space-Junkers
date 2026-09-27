@@ -94,6 +94,8 @@ export class Enemy implements Hittable {
   /** Seconds since this enemy last fired (muzzle flash reveals it in the dark). */
   lastShotAgo = 99;
   private mutterTimer = 6 + Math.random() * 30;
+  /** A bolt or pump being worked after a shot: you can hear what they carry. */
+  private cycleTimer = -1;
 
   constructor(
     private ctx: GameContext,
@@ -291,6 +293,13 @@ export class Enemy implements Hittable {
     this.suppression = Math.max(0, this.suppression - dt * 0.35);
     this.edge = Math.max(0, this.edge - dt * 0.03);
     this.weapon.update(dt);
+    if (this.cycleTimer >= 0) {
+      this.cycleTimer -= dt;
+      if (this.cycleTimer < 0) {
+        this.ctx.audio.sfx(this.weapon.def.archetype === 'marksman' ? 'bolt' : 'cycle', this.x, this.y);
+        this.view.pulse('rack');
+      }
+    }
 
     if (this.pendingAlert) {
       this.pendingAlert.t -= dt;
@@ -610,6 +619,7 @@ export class Enemy implements Hittable {
     const aim = toTarget + (Math.random() - 0.5) * 2 * err * DEG;
     discharge(this.ctx, this.view, w, this.x, this.y, aim, 'enemy', 0);
     this.lastShotAgo = 0;
+    if (w.def.cycled && w.ammo > 0) this.cycleTimer = Math.min(0.28, 0.45 / w.def.fireRate);
     this.burstLeft--;
     if (this.burstLeft <= 0) {
       this.burstLeft = randInt(this.def.burst);

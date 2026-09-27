@@ -420,10 +420,10 @@ export class Player implements Hittable {
 
   /** Work the action: the gun jerks back and, after a shot, the spent case flies. */
   private rack(eject: boolean): void {
-    this.ctx.audio.sfx('cycle', this.x, this.y);
+    const def = this.weapon?.def;
+    this.ctx.audio.sfx(def?.archetype === 'marksman' ? 'bolt' : 'cycle', this.x, this.y);
     this.ctx.haptics?.pulse(0.3, 0.25, 70);
     this.view.pulse('rack');
-    const def = this.weapon?.def;
     if (eject && def) {
       const p = this.view.ejectWorld(this.x, this.y);
       this.ctx.effects.casing(p.x, p.y + GUN_HEIGHT, this.aim, def.casingColor, def.archetype === 'shotgun');
