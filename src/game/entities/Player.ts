@@ -713,6 +713,7 @@ export class Player implements Hittable {
     this.weapon?.draw();
     this.equipView();
     this.ctx.audio.sfx('draw', this.x, this.y);
+    this.ctx.haptics?.pulse(0.08, 0.22, 50);
   }
 
   private notice(text: string, tone: 'bad' | 'ok' | 'warn'): void {
