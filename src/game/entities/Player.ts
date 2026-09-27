@@ -2,7 +2,7 @@ import { anim } from '../../engine/assets';
 import type { Input } from '../../engine/input';
 import { GUN_HEIGHT } from '../../engine/config';
 import { ITEMS, itemDef, type ArmorDef, type MedDef } from '../../data/items';
-import { WEAPONS } from '../../data/weapons';
+import { WEAPONS, reloadStyleOf } from '../../data/weapons';
 import { HEADSHOT_MUL, bleedChance, resolveHit } from '../../core/damage';
 import { createItem, loadoutItems, speedMultiplier, type ItemInstance, type Loadout } from '../../core/inventory';
 import type { Operator } from '../../core/profile';
@@ -12,7 +12,8 @@ import type { Hittable } from '../combat/projectiles';
 import { WeaponState, type AmmoSource } from '../combat/weapon';
 import type { GameContext } from '../context';
 import { moveCircle } from '../world/collision';
-import { ActorView } from './ActorView';
+import { ActorView, type HandAction, type Pose } from './ActorView';
+import { playAnimEvents, weaponAction } from './handling';
 
 export type { Operator };
 
@@ -31,6 +32,9 @@ const SPRINT_OUT = 0.16;
 const STEP_NOISE = { sneak: 0, walk: 64, sprint: 170 };
 /** Movement multiplier while applying a medical item. */
 const USING_SPEED = 0.45;
+/** Grenade throw: wind-up until release, then recovery (seconds). */
+const THROW_RELEASE = 0.24;
+const THROW_TIME = 0.5;
 
 interface ArmedSlot {
   uid: string;
@@ -41,6 +45,13 @@ interface UsingItem {
   uid: string;
   def: MedDef;
   t: number;
+}
+
+interface Throwing {
+  uid: string;
+  effect: 'frag' | 'smoke';
+  t: number;
+  released: boolean;
 }
 
 /** What the HUD needs to know about vitals, beyond hp. */
@@ -101,6 +112,9 @@ export class Player implements Hittable {
   private aimX = 0;
   private aimY = 0;
   private throwCooldown = 0;
+  private throwing: Throwing | null = null;
+  /** Seconds spent searching something with E this stretch (set by the game), or -1. */
+  searching = -1;
   /** Called with a short message for the HUD feed (armor broke, bleeding...). */
   onNotice: ((text: string, tone: 'bad' | 'ok' | 'warn') => void) | null = null;
 
@@ -285,14 +299,22 @@ export class Player implements Hittable {
     if (handsFree) this.handleHands(dt, input);
     else this.weapon?.update(dt);
     this.updateUsing(dt);
+    this.updateThrow(dt);
     this.updateCycle(dt);
 
     // --- Visuals
-    // Sprinting: face where you run, gun down.
+    // Sprinting: face where you run, gun carried across the chest.
     if (this.sprinting && moved > 0.01) this.aim = Math.atan2(this.vy, this.vx);
     const backwards = moved > 0 && (this.vx * Math.cos(this.aim) < -5);
-    const raise = !w || w.busy || this.using || this.sprintOut > 0 ? 0 : 1;
-    this.view.update(dt, this.x, this.y, this.aim, moved, backwards, raise);
+    const pose: Pose = {
+      raise: this.sprintOut > 0 && !this.sprinting ? 0.4 : 1,
+      gait: this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk',
+      vx: this.vx,
+      vy: this.vy,
+      action: this.handAction(),
+    };
+    this.view.update(dt, this.x, this.y, this.aim, moved, backwards, pose);
+    playAnimEvents(this.ctx, this.view, this.x, this.y, this.aim, this.weapon?.def ?? null);
     if (this.view.stepped) {
       const gait = this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk';
       this.ctx.audio.sfx('step', this.x, this.y, gait === 'sprint' ? 1.8 : gait === 'sneak' ? 0.35 : 1);
@@ -300,6 +322,14 @@ export class Player implements Hittable {
       const noise = STEP_NOISE[gait] * (this.speedMul < 0.9 ? 1.3 : 1);
       if (noise > 0) this.ctx.emitNoise(this.x, this.y, noise);
     }
+  }
+
+  /** What the hands are doing right now, for the body animation. */
+  private handAction(): HandAction | null {
+    if (this.throwing) return { kind: 'throw', t: this.throwing.t / THROW_TIME };
+    if (this.using) return { kind: 'heal', t: this.using.t / this.using.def.useTime, quick: this.using.def.useTime < 1.2 };
+    if (this.searching >= 0) return { kind: 'search', t: this.searching };
+    return weaponAction(this.weapon);
   }
 
   private handleHands(dt: number, input: Input): void {
@@ -326,7 +356,12 @@ export class Player implements Hittable {
     if (!w) return;
     const reloadingBefore = w.reloading;
     w.update(dt);
-    if (w.roundLoaded) this.ctx.audio.sfx('shell', this.x, this.y);
+    if (w.roundLoaded) {
+      this.ctx.audio.sfx('shell', this.x, this.y);
+      this.view.pulse('round');
+    }
+    // A pump or bolt gun that was run dry gets worked once the last round is in.
+    if (w.reloaded && w.def.reloadPerRound && !w.tactical) this.rack(false);
     if (w.roundLoaded || w.reloaded || (reloadingBefore && !w.reloading)) this.writeBack(this.current);
 
     if (input.wasPressed('KeyR')) this.reload();
@@ -364,7 +399,18 @@ export class Player implements Hittable {
   private updateCycle(dt: number): void {
     if (this.cycleTimer < 0) return;
     this.cycleTimer -= dt;
-    if (this.cycleTimer < 0) this.ctx.audio.sfx('cycle', this.x, this.y);
+    if (this.cycleTimer < 0) this.rack(true);
+  }
+
+  /** Work the action: the gun jerks back and, after a shot, the spent case flies. */
+  private rack(eject: boolean): void {
+    this.ctx.audio.sfx('cycle', this.x, this.y);
+    this.view.pulse('rack');
+    const def = this.weapon?.def;
+    if (eject && def) {
+      const p = this.view.ejectWorld(this.x, this.y);
+      this.ctx.effects.casing(p.x, p.y + GUN_HEIGHT, this.aim, def.casingColor, def.archetype === 'shotgun');
+    }
   }
 
   /**
@@ -397,7 +443,9 @@ export class Player implements Hittable {
       this.writeBack(this.current);
     }
     if (!w.startReload()) return false;
-    this.ctx.audio.reload(w.def.reloadPerRound ? 0.35 : w.def.reloadTime, this.x, this.y);
+    // Magazine and break-action reloads make their sounds as the hands get there.
+    const style = reloadStyleOf(w.def);
+    if (style === 'tube' || style === 'clip') this.ctx.audio.sfx('draw', this.x, this.y);
     // Reloading is audible: a careful enemy will hear your magazine hit the floor.
     this.ctx.emitNoise(this.x, this.y, 110);
     return true;
@@ -444,12 +492,12 @@ export class Player implements Hittable {
     if (!this.alive || this.using) return false;
     const def = itemDef(it.id);
     if (def.kind === 'grenade') {
-      if (this.throwCooldown > 0) return false;
+      if (this.throwCooldown > 0 || this.throwing) return false;
       this.throwCooldown = 0.8;
       this.weapon?.cancelReload();
-      this.ctx.throwGrenade(this.x, this.y - 2, this.aimX, this.aimY, def.effect, 'player');
-      this.sprintOut = 0.45; // arm comes back before the gun does
-      raid.consume(it.uid);
+      // Wind up first: the grenade leaves the hand a beat later, at wherever you aim then.
+      this.throwing = { uid: it.uid, effect: def.effect, t: 0, released: false };
+      this.ctx.audio.sfx('draw', this.x, this.y);
       return true;
     }
     if (def.kind !== 'med') return false;
@@ -467,6 +515,24 @@ export class Player implements Hittable {
 
   private cancelUse(): void {
     this.using = null;
+  }
+
+  private updateThrow(dt: number): void {
+    const th = this.throwing;
+    if (!th) return;
+    th.t += dt;
+    if (!th.released && th.t >= THROW_RELEASE) {
+      th.released = true;
+      const it = loadoutItems(useRaid.getState().loadout).find((i) => i.uid === th.uid);
+      if (it) {
+        this.ctx.throwGrenade(this.x, this.y - 2, this.aimX, this.aimY, th.effect, 'player');
+        raid.consume(it.uid);
+      }
+    }
+    if (th.t >= THROW_TIME) {
+      this.throwing = null;
+      this.sprintOut = 0.2; // arm comes back before the gun does
+    }
   }
 
   private updateUsing(dt: number): void {
@@ -500,6 +566,7 @@ export class Player implements Hittable {
     }
     raid.consume(it.uid, def.pooled ? Math.max(1, drain) : 0);
     this.ctx.audio.sfx('heal', this.x, this.y);
+    this.ctx.effects.healPuff(this.x, this.y);
   }
 
   private updateVitals(dt: number): void {
@@ -565,6 +632,7 @@ export class Player implements Hittable {
     this.hp = 0;
     this.alive = false;
     this.using = null;
+    this.throwing = null;
     this.view.playDeath();
     this.ctx.hitstop(0.12);
   }
@@ -576,7 +644,7 @@ export class Player implements Hittable {
     this.cancelUse();
     this.weapon?.draw();
     this.equipView();
-    this.ctx.audio.sfx('switch', this.x, this.y);
+    this.ctx.audio.sfx('draw', this.x, this.y);
   }
 
   private notice(text: string, tone: 'bad' | 'ok' | 'warn'): void {

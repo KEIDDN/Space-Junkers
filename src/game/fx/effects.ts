@@ -17,8 +17,11 @@ interface Particle {
   size: number;
   gravity: number;
   drag: number;
-  kind: 'spark' | 'blood' | 'casing' | 'dust';
-  bounced: boolean;
+  kind: 'spark' | 'blood' | 'casing' | 'dust' | 'mag' | 'heal';
+  /** Floor contacts so far (casings bounce twice, magazines once). */
+  bounces: number;
+  /** Tumble phase, for spinning casings. */
+  spin: number;
 }
 
 interface Timed {
@@ -172,16 +175,42 @@ export class Effects {
     this.addDecal(s);
   }
 
-  /** Eject a spent casing sideways from the gun. */
-  casing(x: number, y: number, aimAngle: number, color: number, shotgun: boolean): void {
-    const side = Math.cos(aimAngle) >= 0 ? -1 : 1;
-    const a = aimAngle + (Math.PI / 2) * side + (Math.random() - 0.5) * 0.6;
-    const sp = 50 + Math.random() * 40;
+  /**
+   * Eject a spent casing: up and back out of the port, tumbling, bouncing twice with a
+   * tinkle before it settles. (x, y) is the ground point under the ejection port.
+   * @param power 1 = a normal ejection, lower for shells that just drop out.
+   */
+  casing(x: number, y: number, aimAngle: number, color: number, shotgun: boolean, power = 1): void {
+    // The port is on the gun's right: in this 3/4 view that flings brass toward the camera
+    // and a little behind the shooter, so it lands in a loose scatter, not at the feet.
+    const right = Math.cos(aimAngle) >= 0 ? 1 : -1;
+    const a = aimAngle + (Math.PI / 2) * right + 0.45 * right + (Math.random() - 0.5) * 0.7;
+    const sp = (45 + Math.random() * 45) * power;
     this.spawn({
-      kind: 'casing', x, y, z: GUN_HEIGHT, vx: Math.cos(a) * sp - Math.cos(aimAngle) * 20,
-      vy: Math.sin(a) * sp * 0.6, vz: 70 + Math.random() * 50, life: 3, color,
-      size: shotgun ? 3 : 2, gravity: GRAVITY, drag: 1.5,
+      kind: 'casing', x, y, z: GUN_HEIGHT, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6,
+      vz: (60 + Math.random() * 50) * (0.5 + power * 0.5), life: 3, color,
+      size: shotgun ? 3 : 2, gravity: GRAVITY, drag: 1.2,
     });
+  }
+
+  /** A magazine falls out of the gun and clatters to the floor. */
+  dropMag(x: number, y: number, aimAngle: number, length: number): void {
+    const a = aimAngle + Math.PI / 2 * (Math.cos(aimAngle) >= 0 ? 1 : -1) * 0.3;
+    this.spawn({
+      kind: 'mag', x, y, z: GUN_HEIGHT - 4, vx: Math.cos(a) * 12, vy: 6 + Math.random() * 6, vz: 10,
+      life: 4, color: 0x2a2724, size: length, gravity: GRAVITY, drag: 2,
+    });
+  }
+
+  /** Treatment took: a few pale green motes rise off the body. */
+  healPuff(x: number, y: number): void {
+    for (let i = 0; i < 7; i++) {
+      this.spawn({
+        kind: 'heal', x: x + (Math.random() - 0.5) * 12, y: y - 1, z: 6 + Math.random() * 16, vx: (Math.random() - 0.5) * 6, vy: 0,
+        vz: 14 + Math.random() * 16, life: 0.6 + Math.random() * 0.5, color: Math.random() < 0.5 ? 0x9dffb0 : 0xe8fff0, size: 1,
+        gravity: -10, drag: 1,
+      });
+    }
   }
 
   update(dt: number): void {
@@ -203,14 +232,20 @@ export class Effects {
       }
       p.vz -= p.gravity * dt;
       p.z += p.vz * dt;
+      if (p.kind === 'heal') {
+        if (p.life <= 0) this.removeParticle(i);
+        continue;
+      }
       if (p.z <= 0) {
         p.z = 0;
-        if (p.kind === 'casing' && !p.bounced && p.vz < -30) {
-          p.bounced = true;
-          p.vz *= -0.35;
-          p.vx *= 0.5;
-          p.vy *= 0.5;
-          this.audio.sfx('casing', p.x, p.y);
+        const maxBounces = p.kind === 'casing' ? 2 : p.kind === 'mag' ? 1 : 0;
+        if (p.bounces < maxBounces && p.vz < -30) {
+          p.bounces++;
+          p.vz *= p.kind === 'mag' ? -0.25 : -0.4;
+          p.vx *= 0.55;
+          p.vy *= 0.55;
+          p.spin += 1;
+          this.audio.sfx(p.kind === 'mag' ? 'magdrop' : 'casing', p.x, p.y, p.bounces === 1 ? 1 : 0.5);
           continue;
         }
         p.vz = 0;
@@ -219,18 +254,20 @@ export class Effects {
           this.removeParticle(i);
           continue;
         }
-        if (p.kind === 'casing' && Math.abs(p.vx) + Math.abs(p.vy) < 6) {
+        if ((p.kind === 'casing' || p.kind === 'mag') && Math.abs(p.vx) + Math.abs(p.vy) < 6) {
           this.restCasing(p);
           this.removeParticle(i);
           continue;
         }
-        if (p.kind === 'casing') {
+        if (p.kind === 'casing' || p.kind === 'mag') {
           p.vx *= Math.exp(-6 * dt);
           p.vy *= Math.exp(-6 * dt);
         }
+      } else if (p.kind === 'casing') {
+        p.spin += dt * 22;
       }
       if (p.life <= 0) {
-        if (p.kind === 'casing') this.restCasing(p);
+        if (p.kind === 'casing' || p.kind === 'mag') this.restCasing(p);
         this.removeParticle(i);
       }
     }
@@ -251,9 +288,32 @@ export class Effects {
     g.clear();
     glow.clear();
     for (const p of this.particles) {
+      const px = Math.round(p.x);
+      const py = Math.round(p.y - p.z);
+      if (p.kind === 'casing') {
+        // Tumbling brass: alternates lying and standing, with a glint.
+        const upright = (Math.floor(p.spin) & 1) === 1;
+        const w = upright ? 1 : p.size;
+        const h = upright ? p.size : 1;
+        if (p.z > 0.5) g.rect(px, Math.round(p.y), w, 1).fill({ color: 0x000000, alpha: 0.35 });
+        g.rect(px, py, w, h).fill({ color: p.color });
+        g.rect(px, py, 1, 1).fill({ color: 0xfff0c0, alpha: 0.7 });
+        continue;
+      }
+      if (p.kind === 'mag') {
+        if (p.z > 0.5) g.rect(px, Math.round(p.y), 2, 1).fill({ color: 0x000000, alpha: 0.35 });
+        g.rect(px, py, 2, p.size).fill({ color: p.color });
+        g.rect(px, py, 2, 1).fill({ color: 0x5a544c });
+        continue;
+      }
+      if (p.kind === 'heal') {
+        const a = Math.min(1, p.life * 2);
+        glow.rect(px, py - 1, 1, 3).fill({ color: p.color, alpha: a });
+        glow.rect(px - 1, py, 3, 1).fill({ color: p.color, alpha: a });
+        continue;
+      }
       const alpha = p.kind === 'dust' ? Math.max(0, p.life * 2) : 1;
-      const h = p.kind === 'casing' ? 1 : p.size;
-      (p.kind === 'spark' ? glow : g).rect(Math.round(p.x), Math.round(p.y - p.z), p.size, h).fill({ color: p.color, alpha });
+      (p.kind === 'spark' ? glow : g).rect(px, py, p.size, p.size).fill({ color: p.color, alpha });
     }
   }
 
@@ -270,9 +330,9 @@ export class Effects {
 
   // ---------------------------------------------------------------------------
 
-  private spawn(p: Omit<Particle, 'bounced'>): void {
+  private spawn(p: Omit<Particle, 'bounces' | 'spin'>): void {
     if (this.particles.length > 600) this.particles.shift();
-    this.particles.push({ ...p, bounced: false });
+    this.particles.push({ ...p, bounces: 0, spin: Math.random() * 2 });
   }
 
   private removeParticle(i: number): void {
@@ -283,9 +343,14 @@ export class Effects {
   private restCasing(p: Particle): void {
     const s = new Sprite(Texture.WHITE);
     s.tint = p.color;
-    const vertical = Math.random() < 0.4;
-    s.width = vertical ? 1 : p.size;
-    s.height = vertical ? p.size : 1;
+    if (p.kind === 'mag') {
+      s.width = p.size;
+      s.height = 2;
+    } else {
+      const vertical = Math.random() < 0.4;
+      s.width = vertical ? 1 : p.size;
+      s.height = vertical ? p.size : 1;
+    }
     s.position.set(Math.round(p.x), Math.round(p.y));
     this.decals.addChild(s);
     this.casings.push(s);

@@ -1,5 +1,6 @@
 import { GUN_HEIGHT } from '../../engine/config';
 import { ITEMS, type AmmoDef } from '../../data/items';
+import { reloadStyleOf } from '../../data/weapons';
 import type { GameContext } from '../context';
 import type { ActorView } from '../entities/ActorView';
 import { hasLineOfSight } from '../world/collision';
@@ -55,7 +56,11 @@ export function discharge(
   ctx.lightFlash(muzzle.x, muzzle.y + GUN_HEIGHT * 0.5, def.flashScale > 1 ? 150 : 110, 0xffc27a, 0.8);
   if (def.pellets > 1 || def.archetype === 'marksman') ctx.effects.smoke(muzzle.x, muzzle.y, 2);
   else if (Math.random() < 0.3) ctx.effects.smoke(muzzle.x, muzzle.y, 1);
-  ctx.effects.casing(x, y, aim, def.casingColor, def.archetype === 'shotgun');
+  // Bolt and pump guns eject when worked; a break-action keeps its shells until opened.
+  if (!def.cycled && reloadStyleOf(def) !== 'break') {
+    const port = view.ejectWorld(x, y);
+    ctx.effects.casing(port.x, port.y + GUN_HEIGHT, aim, def.casingColor, def.archetype === 'shotgun');
+  }
   view.kick(def.gunKick);
   ctx.audio.gunshot(def.sound, x, y);
   ctx.emitNoise(x, y, def.noiseRadius);

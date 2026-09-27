@@ -24,7 +24,8 @@ export type Sfx =
   | 'door' | 'rummage' | 'loot' | 'flashlight' | 'beacon' | 'alarm' | 'extracted'
   | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop'
   | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
-  | 'breaker' | 'keycard' | 'lift';
+  | 'breaker' | 'keycard' | 'lift'
+  | 'magout' | 'magin' | 'rack' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw';
 
 const HEARING_RANGE = 900;
 const GUNSHOT_RANGE = 1700;
@@ -384,6 +385,7 @@ export class AudioService {
       armor: 0.6, headshot: 0.8, drop: 0.35,
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
       breaker: 0.7, keycard: 0.45, lift: 0.5,
+      magout: 0.45, magin: 0.55, rack: 0.6, breakopen: 0.55, breakclose: 0.65, magdrop: 0.35, draw: 0.3,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
@@ -598,6 +600,48 @@ export class AudioService {
         break;
       case 'breath':
         this.noiseBurst(out, t, 0.35, 600, 0.35);
+        break;
+      case 'magout':
+        // Release catch, then the magazine sliding out of the well.
+        this.click(out, t, 1700, 0.8);
+        this.noiseBurst(out, t + 0.02, 0.07, 2600 * muffle, 0.35);
+        this.click(out, t + 0.08, 900, 0.4);
+        break;
+      case 'magin':
+        // Seated: a solid clack with a little body.
+        this.thump(out, t, 190, 0.06, 0.5);
+        this.click(out, t, 1400, 1);
+        this.click(out, t + 0.012, 3200, 0.45);
+        break;
+      case 'rack':
+        // Charging handle back (scrape) and slammed home.
+        this.noiseBurst(out, t, 0.06, 3200 * muffle, 0.4);
+        this.click(out, t + 0.02, 2300, 0.6);
+        this.click(out, t + 0.1, 1700, 1);
+        this.thump(out, t + 0.1, 230, 0.05, 0.4);
+        this.click(out, t + 0.11, 3600, 0.35);
+        break;
+      case 'breakopen':
+        this.thump(out, t, 140, 0.08, 0.6);
+        this.click(out, t, 1100, 0.8);
+        this.noiseBurst(out, t + 0.01, 0.1, 900 * muffle, 0.3);
+        break;
+      case 'breakclose':
+        this.click(out, t, 1300, 1);
+        this.thump(out, t, 160, 0.07, 0.6);
+        this.click(out, t + 0.01, 2800, 0.5);
+        break;
+      case 'magdrop':
+        // Steel magazine clattering on deck plating.
+        this.click(out, t, 900, 0.7);
+        this.click(out, t + 0.05, 1400, 0.45);
+        this.click(out, t + 0.11, 700, 0.3);
+        this.tone(out, t, 2100 + Math.random() * 300, 0.05, 0.15);
+        break;
+      case 'draw':
+        // Webbing and a hand on the grip.
+        this.noiseBurst(out, t, 0.12, 1300 * muffle, 0.25);
+        this.click(out, t + 0.09, 2000, 0.35);
         break;
       case 'breaker': {
         // Heavy lever, contactor slam, then the mains hum coming up.

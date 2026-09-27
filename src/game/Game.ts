@@ -391,6 +391,7 @@ export class Game {
     this.survey(dt);
     this.raidClock(dt);
     const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25, menuOpen);
+    p.searching = this.interactions.handsBusy ? Math.max(0, p.searching) + dt : -1;
     if (menuOpen && this.input.wasPressed('KeyE')) raid.closeOverlay();
     const zone = this.map.exitAt(p.x, p.y);
     raid.patch({

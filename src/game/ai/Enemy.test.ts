@@ -5,7 +5,12 @@ vi.mock('../entities/ActorView', () => ({
   ActorView: class {
     stepped = false;
     thudded = false;
+    events = [];
     container = {};
+    pulse() {}
+    ejectWorld(x: number, y: number) {
+      return { x, y: y - 17 };
+    }
     setWeapon() {}
     update() {}
     hitFlash() {}

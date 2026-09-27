@@ -8,7 +8,8 @@ import { discharge } from '../combat/fire';
 import type { Hittable } from '../combat/projectiles';
 import { WeaponState } from '../combat/weapon';
 import type { GameContext } from '../context';
-import { ActorView } from '../entities/ActorView';
+import { ActorView, type Pose } from '../entities/ActorView';
+import { playAnimEvents, weaponAction } from '../entities/handling';
 import { hasLineOfSight, moveCircle } from '../world/collision';
 import { findPath } from '../world/pathfinding';
 
@@ -538,8 +539,16 @@ export class Enemy implements Hittable {
 
     const moved = Math.hypot(this.x - ox, this.y - oy);
     const backwards = (this.x - ox) * Math.cos(this.facing) < -0.05;
-    const raise = this.weapon.reloading ? 0 : 1;
-    this.view.update(dt, this.x, this.y, this.facing, moved, backwards, raise);
+    // Unaware guards carry the gun low; once they know you're there it comes up.
+    const pose: Pose = {
+      raise: this.aware || this.state === 'alert' ? 1 : this.state === 'investigate' || this.state === 'search' ? 0.65 : 0.35,
+      gait: running ? 'run' : 'walk',
+      vx: (this.x - ox) / Math.max(dt, 1e-4),
+      vy: (this.y - oy) / Math.max(dt, 1e-4),
+      action: weaponAction(this.weapon),
+    };
+    this.view.update(dt, this.x, this.y, this.facing, moved, backwards, pose);
+    playAnimEvents(this.ctx, this.view, this.x, this.y, this.facing, this.weapon.def);
     if (this.view.stepped) this.ctx.audio.sfx('step', this.x, this.y, running ? 1.7 : 1);
   }
 
@@ -569,7 +578,8 @@ export class Enemy implements Hittable {
   private shoot(target: Target): void {
     const w = this.weapon;
     if (w.ammo === 0) {
-      if (w.startReload()) this.ctx.audio.reload(w.def.reloadTime, this.x, this.y);
+      // The reload is heard through its animation (mag out, mag in, rack).
+      w.startReload();
       return;
     }
     // Only fire when roughly facing the target.

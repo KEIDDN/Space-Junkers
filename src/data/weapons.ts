@@ -2,6 +2,9 @@ import type { GunSound } from '../engine/audio';
 
 export type WeaponArchetype = 'pistol' | 'smg' | 'shotgun' | 'rifle' | 'marksman';
 
+/** How a gun is reloaded: swap a magazine, break it open, or feed rounds one by one. */
+export type ReloadStyle = 'mag' | 'break' | 'tube' | 'clip';
+
 /** Ammunition families. A weapon only accepts rounds of its caliber. */
 export type Caliber = '9x18' | '12ga' | '545' | '762';
 
@@ -40,6 +43,8 @@ export interface WeaponDef {
   cycled?: boolean;
   /** Loads one round at a time (seconds per round) instead of swapping a magazine. */
   reloadPerRound?: number;
+  /** Break-action guns open instead of swapping a magazine. Default: from the other fields. */
+  reloadStyle?: ReloadStyle;
 
   /** Base cone half-angle in degrees. */
   spread: number;
@@ -131,7 +136,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
   obrez: {
     id: 'obrez', name: 'Obrez Sawn-off', archetype: 'shotgun', caliber: '12ga', sprite: 'gun_22',
     grip: { x: 22, y: 16 }, muzzle: { x: 46, y: 12 },
-    damage: 12, pellets: 9, fireRate: 3.5, automatic: false, magSize: 2, reloadTime: 1.8, drawTime: 0.25,
+    damage: 12, pellets: 9, fireRate: 3.5, automatic: false, magSize: 2, reloadTime: 1.8, drawTime: 0.25, reloadStyle: 'break',
     spread: 10, moveSpread: 1.5, bloomPerShot: 0, bloomMax: 0, bloomRecovery: 10,
     bulletSpeed: 700, range: 220, knockback: 70,
     cameraKick: 7.5, shake: 0.45, gunKick: 6,
@@ -210,6 +215,13 @@ export const WEAPONS: Record<string, WeaponDef> = {
     sound: { thump: 70, crack: 3000, decay: 0.24, tail: 1.1, gain: 1.2 },
   },
 };
+
+/** How this gun's reload is performed. */
+export function reloadStyleOf(def: WeaponDef): ReloadStyle {
+  if (def.reloadStyle) return def.reloadStyle;
+  if (def.reloadPerRound) return def.archetype === 'shotgun' ? 'tube' : 'clip';
+  return 'mag';
+}
 
 /** Loadout for the gunplay test range, in hotkey order. */
 export const TEST_LOADOUT = ['pm9', 'ppd41', 'toz12', 'akr74', 'svk'];

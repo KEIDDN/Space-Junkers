@@ -137,6 +137,11 @@ export class Interactions {
     return this.extractRemaining !== null;
   }
 
+  /** The player's hands are busy searching, swiping or throwing a breaker (not reading). */
+  get handsBusy(): boolean {
+    return this.searching !== null && !('entry' in this.searching && this.searching.kind === 'terminal');
+  }
+
   /** Containers (not bodies or piles), for the tactical map. */
   containerStates(): { tx: number; ty: number; searched: boolean; empty: boolean }[] {
     const grids = useRaid.getState().containers;
