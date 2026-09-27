@@ -337,6 +337,11 @@ export class ActorView {
     return { x: px + ox * cos - oy * sin, y: py + ox * sin + oy * cos };
   }
 
+  /** The gun's drawn angle (world), for effects that stick to the muzzle. */
+  get muzzleAngle(): number {
+    return this.drawnAngle;
+  }
+
   /** Where a spent casing leaves the gun (ejection port, a little behind the grip). */
   ejectWorld(x: number, y: number): { x: number; y: number } {
     return { x: x + this.drawnX + Math.cos(this.drawnAngle) * 3, y: y + this.drawnY + Math.sin(this.drawnAngle) * 3 - 1 };

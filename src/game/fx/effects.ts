@@ -2,6 +2,8 @@ import { Container, Graphics, Sprite, Texture } from 'pixi.js';
 import { anim } from '../../engine/assets';
 import type { AudioService } from '../../engine/audio';
 import { GUN_HEIGHT } from '../../engine/config';
+import type { WeaponArchetype } from '../../data/weapons';
+import { flashCentre, flashFrames } from './flashes';
 import type { TileMap } from '../world/tilemap';
 
 interface Particle {
@@ -28,7 +30,15 @@ interface Timed {
   sprite: Sprite;
   life: number;
   maxLife: number;
+  vx: number;
   vy: number;
+  /** Scale growth per second (smoke billows). */
+  grow: number;
+  /** Starting alpha; fades to 0 over the life when > 0 (flashes keep theirs). */
+  fade: number;
+  /** Stays on a moving point (a muzzle that's recoiling), with an offset along it. */
+  follow?: () => { x: number; y: number; angle: number };
+  along?: number;
 }
 
 const MAX_DECALS = 220;
@@ -60,41 +70,95 @@ export class Effects {
     this.overlay.addChild(this.glowGfx);
   }
 
-  muzzleFlash(x: number, y: number, angle: number, scale: number): void {
-    // Light burst: briefly lights the floor around the shooter.
-    const glow = new Sprite(glowTexture());
+  /**
+   * A shot's flash: a shaped pixel flame per weapon type and a tight hot glow.
+   * (The floor light is the lighting system's job.)
+   */
+  muzzleFlash(x: number, y: number, angle: number, kind: WeaponArchetype, follow?: () => { x: number; y: number; angle: number }): void {
+    const big = kind === 'shotgun' || kind === 'marksman';
+    const glow = new Sprite(muzzleGlowTexture());
     glow.anchor.set(0.5);
     glow.blendMode = 'add';
-    glow.position.set(Math.round(x), Math.round(y));
-    glow.scale.set(scale > 1 ? 2 : 1);
-    glow.alpha = 0.55;
+    glow.position.set(Math.round(x + Math.cos(angle) * 4), Math.round(y + Math.sin(angle) * 4));
+    glow.scale.set(big ? 1.6 : kind === 'rifle' ? 1.15 : 0.85);
+    glow.alpha = big ? 0.8 : 0.65;
     this.overlay.addChild(glow);
-    this.timed.push({ sprite: glow, life: 0.05, maxLife: 0.05, vy: 0 });
+    const glowLife = big ? 0.06 : 0.04;
+    this.timed.push({ sprite: glow, life: glowLife, maxLife: glowLife, vx: 0, vy: 0, grow: 0, fade: 0, follow, along: 4 });
 
-    const frames = anim('fx_flash');
+    const frames = flashFrames(kind);
     const s = new Sprite(frames[(Math.random() * frames.length) | 0]);
-    s.anchor.set(0.1, 0.5);
+    s.anchor.set(0, (flashCentre(kind) + 0.5) / s.texture.height);
     s.position.set(Math.round(x), Math.round(y));
     s.rotation = angle;
-    s.scale.set(scale);
+    // Flip the flame's asymmetric bits now and then so bursts don't repeat.
+    if (Math.random() < 0.5) s.scale.y = -1;
     this.overlay.addChild(s);
-    this.timed.push({ sprite: s, life: 0.05, maxLife: 0.05, vy: 0 });
+    const life = big ? 0.055 : 0.04;
+    this.timed.push({ sprite: s, life, maxLife: life, vx: 0, vy: 0, grow: 0, fade: 0, follow, along: 0 });
   }
 
-  smoke(x: number, y: number, amount = 1): void {
+  /**
+   * Gun smoke: puffs pushed out along the barrel that slow, rise and spread.
+   * @param angle direction the puffs are blown (the aim), or undefined for a plain rise.
+   */
+  smoke(x: number, y: number, amount = 1, angle?: number, push = 30): void {
     const frames = anim('fx_smoke');
     for (let i = 0; i < amount; i++) {
       const s = new Sprite(frames[(Math.random() * frames.length) | 0]);
       s.anchor.set(0.5);
       s.position.set(Math.round(x + (Math.random() - 0.5) * 6), Math.round(y + (Math.random() - 0.5) * 4));
-      s.alpha = 0.35;
+      s.scale.set(0.6 + Math.random() * 0.3);
+      s.alpha = 0.32;
+      s.tint = 0xcfc8bc;
       this.lit.addChild(s);
-      const life = 0.5 + Math.random() * 0.4;
-      this.timed.push({ sprite: s, life, maxLife: life, vy: -14 });
+      const life = 0.6 + Math.random() * 0.6;
+      const sp = angle === undefined ? 0 : push * (0.6 + Math.random() * 0.8);
+      this.timed.push({
+        sprite: s, life, maxLife: life,
+        vx: angle === undefined ? (Math.random() - 0.5) * 6 : Math.cos(angle) * sp,
+        vy: (angle === undefined ? 0 : Math.sin(angle) * sp * 0.6) - 10 - Math.random() * 8,
+        grow: 0.9, fade: 0.32,
+      });
     }
   }
 
-  /** Bullet hitting a wall. (x, y) ground point, (nx, ny) surface normal. */
+  /**
+   * A round meeting a wall: chips and dust, a mark on the face if we can see it, and now
+   * and then a ricochet singing off at a shallow angle.
+   * @param dx, dy the bullet's direction (for ricochets); omit for armor hits.
+   * @returns true if it ricocheted.
+   */
+  bulletWall(x: number, y: number, nx: number, ny: number, dx: number, dy: number): boolean {
+    this.wallImpact(x, y, nx, ny);
+    // Only south faces are drawn as walls with a face; mark them where the round struck.
+    if (ny > 0.5) {
+      const mark = new Graphics();
+      mark.rect(0, 0, 2, 2).fill({ color: 0x100d0b });
+      mark.rect(0, -1, 2, 1).fill({ color: 0x6f675c, alpha: 0.7 });
+      mark.position.set(Math.round(x - 1), Math.round(y - GUN_HEIGHT + (Math.random() - 0.5) * 4));
+      this.addDecal(mark);
+    }
+    const dot = dx * nx + dy * ny;
+    if (Math.abs(dot) < 0.45 && Math.random() < 0.35) {
+      // Reflect and send a hot streak off.
+      const rx = dx - 2 * dot * nx;
+      const ry = dy - 2 * dot * ny;
+      for (let i = 0; i < 3; i++) {
+        const sp = 260 + Math.random() * 120;
+        const j = (Math.random() - 0.5) * 0.3;
+        this.spawn({
+          kind: 'spark', x, y, z: GUN_HEIGHT, vx: (rx + j) * sp, vy: (ry - j) * sp, vz: 10 + Math.random() * 30,
+          life: 0.08 + Math.random() * 0.06, color: 0xfff4d0, size: 1, gravity: 50, drag: 1,
+        });
+      }
+      this.audio.sfx('ricochet', x, y);
+      return true;
+    }
+    return false;
+  }
+
+  /** Sparks and dust where something hard was hit. (x, y) ground point, (nx, ny) surface normal. */
   wallImpact(x: number, y: number, nx: number, ny: number): void {
     for (let i = 0; i < 6; i++) {
       const a = Math.atan2(ny, nx) + (Math.random() - 0.5) * 2.2;
@@ -138,7 +202,7 @@ export class Effects {
     glow.scale.set(4);
     glow.alpha = 1;
     this.overlay.addChild(glow);
-    this.timed.push({ sprite: glow, life: 0.16, maxLife: 0.16, vy: 0 });
+    this.timed.push({ sprite: glow, life: 0.16, maxLife: 0.16, vx: 0, vy: 0, grow: 0, fade: 0 });
     for (let i = 0; i < 34; i++) {
       const a = Math.random() * Math.PI * 2;
       const sp = 80 + Math.random() * 260;
@@ -275,8 +339,21 @@ export class Effects {
     for (let i = this.timed.length - 1; i >= 0; i--) {
       const t = this.timed[i];
       t.life -= dt;
-      t.sprite.y += t.vy * dt;
-      if (t.vy !== 0) t.sprite.alpha = 0.35 * Math.max(0, t.life / t.maxLife);
+      if (t.follow) {
+        const m = t.follow();
+        const k = t.along ?? 0;
+        t.sprite.position.set(Math.round(m.x + Math.cos(m.angle) * k), Math.round(m.y + Math.sin(m.angle) * k));
+        if (!k) t.sprite.rotation = m.angle;
+      }
+      if (t.vx || t.vy) {
+        t.sprite.x += t.vx * dt;
+        t.sprite.y += t.vy * dt;
+        const k = Math.exp(-2.2 * dt);
+        t.vx *= k;
+        t.vy = t.vy * k - 6 * dt; // slows down, keeps rising
+      }
+      if (t.grow) t.sprite.scale.set(t.sprite.scale.x + t.grow * dt * Math.sign(t.sprite.scale.x || 1), t.sprite.scale.y + t.grow * dt);
+      if (t.fade > 0) t.sprite.alpha = t.fade * Math.max(0, t.life / t.maxLife);
       if (t.life <= 0) {
         t.sprite.destroy();
         this.timed.splice(i, 1);
@@ -371,6 +448,27 @@ export class Effects {
     this.decalSprites.push(s);
     if (this.decalSprites.length > MAX_DECALS) this.decalSprites.shift()!.destroy();
   }
+}
+
+let muzzleGlowTex: Texture | null = null;
+
+/** A small, hot, stepped glow for muzzle flashes. */
+function muzzleGlowTexture(): Texture {
+  if (muzzleGlowTex) return muzzleGlowTex;
+  const size = 32;
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d')!;
+  const bands = [[16, 0.08, '255, 170, 90'], [11, 0.16, '255, 190, 110'], [6, 0.34, '255, 220, 150'], [3, 0.6, '255, 245, 210']] as const;
+  for (const [r, a, rgb] of bands) {
+    g.fillStyle = `rgba(${rgb}, ${a})`;
+    for (let y = -r; y < r; y++) {
+      const w = Math.floor(Math.sqrt(r * r - y * y));
+      g.fillRect(size / 2 - w, size / 2 + y, w * 2, 1);
+    }
+  }
+  muzzleGlowTex = Texture.from(c);
+  return muzzleGlowTex;
 }
 
 let glowTex: Texture | null = null;

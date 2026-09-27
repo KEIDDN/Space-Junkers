@@ -52,10 +52,17 @@ export function discharge(
     });
   }
 
-  ctx.effects.muzzleFlash(muzzle.x, muzzle.y, aim, def.flashScale);
+  // The flash rides the muzzle through the recoil instead of hanging where the shot left.
+  const follow = () => {
+    const m = view.muzzleWorld(view.container.x, view.container.y);
+    return { x: m.x, y: m.y, angle: view.muzzleAngle };
+  };
+  ctx.effects.muzzleFlash(muzzle.x, muzzle.y, aim, def.archetype, follow);
   ctx.lightFlash(muzzle.x, muzzle.y + GUN_HEIGHT * 0.5, def.flashScale > 1 ? 150 : 110, 0xffc27a, 0.8);
-  if (def.pellets > 1 || def.archetype === 'marksman') ctx.effects.smoke(muzzle.x, muzzle.y, 2);
-  else if (Math.random() < 0.3) ctx.effects.smoke(muzzle.x, muzzle.y, 1);
+  // Smoke: shotguns and big rifles belch it; automatics build a haze; pistols a wisp.
+  const heavy = def.archetype === 'shotgun' || def.archetype === 'marksman';
+  if (heavy) ctx.effects.smoke(muzzle.x, muzzle.y, 3, aim, 55);
+  else if (Math.random() < (def.automatic ? 0.45 : 0.6)) ctx.effects.smoke(muzzle.x, muzzle.y, 1, aim, 25);
   // Bolt and pump guns eject when worked; a break-action keeps its shells until opened.
   if (!def.cycled && reloadStyleOf(def) !== 'break') {
     const port = view.ejectWorld(x, y);

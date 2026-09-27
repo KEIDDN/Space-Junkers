@@ -25,7 +25,7 @@ export type Sfx =
   | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop'
   | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
   | 'breaker' | 'keycard' | 'lift'
-  | 'magout' | 'magin' | 'rack' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw';
+  | 'magout' | 'magin' | 'rack' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet';
 
 const HEARING_RANGE = 900;
 const GUNSHOT_RANGE = 1700;
@@ -39,6 +39,11 @@ export class AudioService {
   private shaper!: WaveShaperNode;
   private listenerX = 0;
   private listenerY = 0;
+  /** Reverb send: every positional sound feeds it, more so when far or behind walls. */
+  private reverbIn: GainNode | null = null;
+  private reverbOut: GainNode | null = null;
+  private convolver: ConvolverNode | null = null;
+  private room: RoomAcoustics = ROOMS.facility;
   volume = 0.7;
 
   /** Must be called from a user gesture (browser autoplay policy). */
@@ -71,6 +76,27 @@ export class AudioService {
     this.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const data = this.noise.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    this.buildReverb();
+  }
+
+  /**
+   * Set the acoustics of the space the listener is in: a cramped steel ship, a concrete
+   * plant, an ice cavern. Everything positional is heard through it.
+   */
+  setRoom(kind: keyof typeof ROOMS): void {
+    this.room = ROOMS[kind] ?? ROOMS.facility;
+    if (this.convolver && this.ctx) this.convolver.buffer = impulse(this.ctx, this.room);
+  }
+
+  private buildReverb(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    this.reverbIn = ctx.createGain();
+    this.convolver = ctx.createConvolver();
+    this.convolver.buffer = impulse(ctx, this.room);
+    this.reverbOut = ctx.createGain();
+    this.reverbOut.gain.value = this.room.level;
+    this.reverbIn.connect(this.convolver).connect(this.reverbOut).connect(this.master);
   }
 
   setMasterVolume(v: number): void {
@@ -322,58 +348,79 @@ export class AudioService {
   destroy(): void {
     if (!this.ctx) return;
     const old = this.master;
+    const oldReverb = this.reverbOut;
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;
     this.master.connect(this.shaper);
     old.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02);
-    setTimeout(() => old.disconnect(), 200);
+    this.buildReverb();
+    setTimeout(() => {
+      old.disconnect();
+      oldReverb?.disconnect();
+    }, 200);
   }
 
+  /**
+   * A gunshot in layers: the supersonic snap, the powder crack, the body thump, a sub-bass
+   * punch for big calibres, and the action cycling. The room does the tail.
+   * Close shots are sharp and dry; far ones are a dull boom rolling around the walls.
+   */
   gunshot(s: GunSound, x: number, y: number): void {
-    // Gunfire carries much further than anything else: distant fights are a dull thud.
-    const bus = this.spatialBus(x, y, s.gain, GUNSHOT_RANGE);
+    const bus = this.spatialBus(x, y, s.gain, GUNSHOT_RANGE, 1.5);
     if (!bus) return;
-    const { ctx, out, muffle } = bus;
+    const { ctx, out, muffle, d } = bus;
     const t = ctx.currentTime;
     const pitch = 0.94 + Math.random() * 0.12;
+    const close = Math.max(0, 1 - d / 450);
+
+    // Snap: a couple of milliseconds of bright noise. Only really there up close.
+    if (close > 0.05) {
+      const snap = this.noiseSource(t, 0.01);
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 2500;
+      snap.connect(hp).connect(env(ctx, t, 1.1 * close, 0.0005, 0.012)).connect(out);
+    }
 
     // Crack
     const crack = this.noiseSource(t, s.decay + 0.05);
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
     lp.frequency.value = s.crack * pitch * muffle;
-    const cg = env(ctx, t, 1.0, 0.001, s.decay);
-    crack.connect(lp).connect(cg).connect(out);
+    crack.connect(lp).connect(env(ctx, t, 1.0, 0.001, s.decay)).connect(out);
 
     // Body thump
     const osc = ctx.createOscillator();
     osc.type = 'sine';
     osc.frequency.setValueAtTime(s.thump * pitch, t);
     osc.frequency.exponentialRampToValueAtTime(s.thump * 0.35, t + 0.14);
-    const og = env(ctx, t, 1.1, 0.001, 0.16);
-    osc.connect(og).connect(out);
+    osc.connect(env(ctx, t, 1.1, 0.001, 0.16)).connect(out);
     osc.start(t);
     osc.stop(t + 0.2);
 
-    // Room tail: gives the facility a sense of space.
-    const tail = this.noiseSource(t, s.tail + 0.05);
+    // Sub punch for shotguns and full-power rifle rounds: felt more than heard.
+    if (s.thump < 100) {
+      const sub = ctx.createOscillator();
+      sub.type = 'sine';
+      sub.frequency.setValueAtTime(52, t);
+      sub.frequency.exponentialRampToValueAtTime(34, t + 0.25);
+      sub.connect(env(ctx, t, 0.9, 0.003, 0.28)).connect(out);
+      sub.start(t);
+      sub.stop(t + 0.32);
+    }
+
+    // The action cycling: slide or bolt carrier slamming home, audible up close.
+    if (close > 0.2 && s.decay < 0.2) {
+      this.click(out, t + 0.03 + Math.random() * 0.01, 2600, 0.22 * close);
+      this.click(out, t + 0.045, 1500, 0.14 * close);
+    }
+
+    // A short slap off the nearest walls; the convolver carries the long tail.
+    const tail = this.noiseSource(t, s.tail * 0.6 + 0.05);
     const tlp = ctx.createBiquadFilter();
     tlp.type = 'lowpass';
-    tlp.frequency.value = 700 * muffle;
-    const tg = env(ctx, t + 0.01, 0.35, 0.02, s.tail);
-    tail.connect(tlp).connect(tg).connect(out);
-  }
-
-  /** Mag out, mag in, chamber: spread across the reload duration. */
-  reload(duration: number, x: number, y: number): void {
-    const bus = this.spatialBus(x, y, 0.5);
-    if (!bus) return;
-    const t = bus.ctx.currentTime;
-    this.click(bus.out, t + duration * 0.12, 1800, 0.5);
-    this.click(bus.out, t + duration * 0.62, 1200, 0.8);
-    this.click(bus.out, t + duration * 0.66, 2600, 0.4);
-    this.click(bus.out, t + duration * 0.9, 2200, 0.6);
-    this.click(bus.out, t + duration * 0.95, 3200, 0.5);
+    tlp.frequency.value = 900 * muffle;
+    tail.connect(tlp).connect(env(ctx, t + 0.015, 0.22, 0.01, s.tail * 0.6)).connect(out);
   }
 
   sfx(kind: Sfx, x = this.listenerX, y = this.listenerY, gainMul = 1): void {
@@ -385,7 +432,7 @@ export class AudioService {
       armor: 0.6, headshot: 0.8, drop: 0.35,
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
       breaker: 0.7, keycard: 0.45, lift: 0.5,
-      magout: 0.45, magin: 0.55, rack: 0.6, breakopen: 0.55, breakclose: 0.65, magdrop: 0.35, draw: 0.3,
+      magout: 0.45, magin: 0.55, rack: 0.6, breakopen: 0.55, breakclose: 0.65, magdrop: 0.35, draw: 0.3, ricochet: 0.35,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
@@ -601,6 +648,29 @@ export class AudioService {
       case 'breath':
         this.noiseBurst(out, t, 0.35, 600, 0.35);
         break;
+      case 'ricochet': {
+        // The classic whine: a falling, slightly wobbling pitch.
+        const o = ctx.createOscillator();
+        o.type = 'sine';
+        const f0 = 2600 + Math.random() * 900;
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.exponentialRampToValueAtTime(f0 * 0.35, t + 0.32);
+        const vib = ctx.createOscillator();
+        vib.frequency.value = 38;
+        const vg = ctx.createGain();
+        vg.gain.value = 60;
+        vib.connect(vg).connect(o.frequency);
+        const f = ctx.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = 5000 * muffle;
+        o.connect(f).connect(env(ctx, t, 0.5, 0.004, 0.3)).connect(out);
+        o.start(t);
+        vib.start(t);
+        o.stop(t + 0.36);
+        vib.stop(t + 0.36);
+        this.click(out, t, 3500, 0.5);
+        break;
+      }
       case 'magout':
         // Release catch, then the magazine sliding out of the well.
         this.click(out, t, 1700, 0.8);
@@ -687,7 +757,7 @@ export class AudioService {
 
   // ---------------------------------------------------------------------------
 
-  private spatialBus(x: number, y: number, gain: number, range = HEARING_RANGE) {
+  private spatialBus(x: number, y: number, gain: number, range = HEARING_RANGE, wetMul = 1) {
     const ctx = this.ctx;
     if (!ctx) return null;
     const dx = x - this.listenerX;
@@ -706,7 +776,13 @@ export class AudioService {
     const pan = ctx.createStereoPanner();
     pan.pan.value = Math.max(-0.8, Math.min(0.8, dx / 320));
     out.connect(pan).connect(this.master);
-    return { ctx, out, muffle };
+    // Distance and walls shift a sound from direct to reflected: that's how you hear far.
+    if (this.reverbIn) {
+      const send = ctx.createGain();
+      send.gain.value = Math.min(1.2, (0.16 + d / 900 + (muffle < 0.5 ? 0.3 : 0)) * wetMul);
+      out.connect(send).connect(this.reverbIn);
+    }
+    return { ctx, out, muffle, d };
   }
 
   private noiseSource(t: number, dur: number): AudioBufferSourceNode {
@@ -764,6 +840,53 @@ function env(ctx: AudioContext, t: number, peak: number, attack: number, decay: 
   g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + attack);
   g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
   return g;
+}
+
+/** How a space sounds: tail length, how fast highs die, early reflections, overall level. */
+export interface RoomAcoustics {
+  seconds: number;
+  /** 0 = bright ringing metal .. 1 = dark, absorbent. */
+  damp: number;
+  /** Seconds to the first wall reflections. */
+  early: number;
+  level: number;
+}
+
+export const ROOMS = {
+  ship: { seconds: 0.7, damp: 0.25, early: 0.004, level: 0.55 },
+  range: { seconds: 1.1, damp: 0.45, early: 0.008, level: 0.6 },
+  facility: { seconds: 1.6, damp: 0.55, early: 0.012, level: 0.7 },
+  tikhaya: { seconds: 1.7, damp: 0.5, early: 0.012, level: 0.7 },
+  merzlota: { seconds: 2.4, damp: 0.35, early: 0.02, level: 0.75 },
+  krasnaya: { seconds: 1.3, damp: 0.65, early: 0.01, level: 0.65 },
+  kombinat: { seconds: 1.1, damp: 0.3, early: 0.008, level: 0.6 },
+  sirin: { seconds: 2.8, damp: 0.7, early: 0.025, level: 0.8 },
+} satisfies Record<string, RoomAcoustics>;
+
+/** A synthetic impulse response: early taps, then a decaying noise tail that darkens. */
+function impulse(ctx: AudioContext, r: RoomAcoustics): AudioBuffer {
+  const rate = ctx.sampleRate;
+  const len = Math.floor(rate * r.seconds);
+  const buf = ctx.createBuffer(2, len, rate);
+  for (let ch = 0; ch < 2; ch++) {
+    const data = buf.getChannelData(ch);
+    let y = 0;
+    for (let i = 0; i < len; i++) {
+      const t = i / rate;
+      const k = t / r.seconds;
+      const decay = Math.exp(-6.9 * k) * (1 - k);
+      // One-pole lowpass whose cutoff falls as the tail ages: highs die first.
+      const a = Math.min(0.97, 0.15 + r.damp * 0.75 * Math.sqrt(k) + r.damp * 0.1);
+      y += (1 - a) * ((Math.random() * 2 - 1) - y);
+      data[i] = y * decay * (t < r.early ? 0 : 1) * 2.2;
+    }
+    // Early reflections: a handful of discrete taps off nearby walls.
+    for (let n = 0; n < 6; n++) {
+      const at = Math.floor((r.early + n * r.early * (0.6 + Math.random() * 0.8)) * rate);
+      if (at < len) data[at] += (Math.random() < 0.5 ? -1 : 1) * (0.5 - n * 0.06);
+    }
+  }
+  return buf;
 }
 
 /** One audio engine for the whole app: the game world and the interface share it. */

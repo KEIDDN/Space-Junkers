@@ -80,6 +80,7 @@ export class ShipScene {
     this.fit();
     this.input = new Input(this.app.canvas);
     audio.unlock();
+    audio.setRoom('ship');
     audio.startAmbience('ship');
     this.build();
     this.app.ticker.add(this.tick);

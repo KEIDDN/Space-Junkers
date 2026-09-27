@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, type Ticker } from 'pixi.js';
 import { loadAssets } from '../engine/assets';
-import { audio } from '../engine/audio';
+import { audio, type ROOMS } from '../engine/audio';
 import { Camera } from '../engine/camera';
 import { GUN_HEIGHT, MAX_DT, VIEW_H, VIEW_W } from '../engine/config';
 import { Input } from '../engine/input';
@@ -243,6 +243,7 @@ export class Game {
     this.camera.shakeScale = useSettings.getState().shake;
     const map = this.map;
     this.audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
+    this.audio.setRoom(facility ? (this.theme.id as keyof typeof ROOMS) : 'range');
     this.audio.startAmbience('facility');
     this.effects = new Effects(this.map, this.audio);
     this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map) : null;
@@ -670,7 +671,7 @@ export class Game {
   }
 
   private onBulletWall = (b: Bullet, hit: RayHit): void => {
-    this.effects.wallImpact(hit.x, hit.y, hit.nx, hit.ny);
+    this.effects.bulletWall(hit.x, hit.y, hit.nx, hit.ny, b.dx, b.dy);
     this.audio.sfx('impactWall', hit.x, hit.y);
     // Bullets snapping into walls nearby are something enemies notice.
     if (b.faction === 'player') this.ctx.emitNoise(hit.x, hit.y, 90);

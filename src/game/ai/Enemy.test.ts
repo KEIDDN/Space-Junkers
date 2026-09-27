@@ -6,7 +6,8 @@ vi.mock('../entities/ActorView', () => ({
     stepped = false;
     thudded = false;
     events = [];
-    container = {};
+    container = { x: 0, y: 0 };
+    muzzleAngle = 0;
     pulse() {}
     ejectWorld(x: number, y: number) {
       return { x, y: y - 17 };
@@ -47,8 +48,8 @@ function ctx(extra: Partial<GameContext> = {}): GameContext & { shots: number; g
     shots: 0,
     grenades: 0,
     projectiles: { fire: () => { c.shots++; } },
-    effects: { muzzleFlash() {}, smoke() {}, casing() {} },
-    audio: { sfx() {}, gunshot() {}, reload() {} },
+    effects: { muzzleFlash() {}, smoke() {}, casing() {}, dropMag() {} },
+    audio: { sfx() {}, gunshot() {} },
     camera: { shake() {}, kick() {} },
     emitNoise() {},
     hitstop() {},
