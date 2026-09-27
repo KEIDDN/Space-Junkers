@@ -327,7 +327,11 @@ export class Player implements Hittable {
     if (this.view.stepped) {
       const gait = this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk';
       if (gait === 'sprint') this.ctx.effects.stepDust(this.x, this.y, Math.atan2(this.vy, this.vx));
-      this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), gait === 'sprint' ? 1.8 : gait === 'sneak' ? 0.3 : 1, true);
+      const weight = gait === 'sprint' ? 1.8 : gait === 'sneak' ? 0.3 : 1;
+      this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), weight, true);
+      const kit = useRaid.getState().loadout;
+      const plates = kit.armor ? Math.min(1, ((ITEMS[kit.armor.id] as ArmorDef).cls - 1) / 3) : 0;
+      this.ctx.audio.gearStep(this.x, this.y, plates, !!kit.backpack, weight, true);
       // Your own footsteps are information for them, too. Heavy loads clatter.
       const noise = STEP_NOISE[gait] * (this.speedMul < 0.9 ? 1.3 : 1);
       if (noise > 0) this.ctx.emitNoise(this.x, this.y, noise);

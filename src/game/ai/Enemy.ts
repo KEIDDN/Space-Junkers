@@ -565,6 +565,7 @@ export class Enemy implements Hittable {
     playAnimEvents(this.ctx, this.view, this.x, this.y, this.facing, this.weapon.def);
     if (this.view.stepped) {
       this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), running ? 1.7 : 1);
+      if (this.armor) this.ctx.audio.gearStep(this.x, this.y, Math.min(1, ((ITEMS[this.armor.id] as ArmorDef).cls - 1) / 3), false, running ? 1.7 : 1);
       if (running) this.ctx.effects.stepDust(this.x, this.y, Math.atan2(this.y - oy, this.x - ox));
     }
   }
