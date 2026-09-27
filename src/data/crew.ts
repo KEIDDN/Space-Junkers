@@ -57,7 +57,7 @@ export const CREW: Record<CrewId, CrewDef> = {
     intro: [
       'So you\'re the new one. Good. The last one owed me money.',
       'This is my ship. Fifty years old, held together with tape and prayer. Mostly tape.',
-      'You go down, you bring things up, I turn things into Credits. Simple. The Commonwealth ran on less.',
+      'You go down, you bring things up, I turn things into kosmorubli. Simple. The Commonwealth ran on less.',
     ],
     greetings: [
       'Ah, {name}. Buying or selling? Both is also acceptable.',

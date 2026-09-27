@@ -31,7 +31,7 @@ function ShipHud() {
         <div className="dim small">DAY {day} · {course ? `IN ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING OVER OTETS'}</div>
       </div>
       <div className="hud-tr crt-text">
-        <div className="label">CREDITS</div>
+        <div className="label">KOSMORUBLI <span className="dim">// КР</span></div>
         <div className="big-mid">{credits.toLocaleString()}</div>
       </div>
       {notices.length > 0 && !panel && (

@@ -99,8 +99,8 @@ function Tooltip() {
       <div className="tt-foot">
         <span>{itemWeight(item).toFixed(item.qty > 1 || itemWeight(item) < 1 ? 2 : 1)} KG</span>
         {item.crew ? <span className="dim">CREW ISSUE · NO RESALE</span>
-          : price != null ? <span className="warn">SELLS {price.toLocaleString()} CR</span>
-            : <span>≈ {itemValueDeep(item).toLocaleString()} CR</span>}
+          : price != null ? <span className="warn">SELLS {price.toLocaleString()} KR</span>
+            : <span>≈ {itemValueDeep(item).toLocaleString()} KR</span>}
       </div>
     </div>
   );
@@ -132,8 +132,8 @@ function menuActions(ops: InventoryOps, uid: string): { label: string; run: () =
     for (let i = 0; i < 4; i++) out.push({ label: `BIND TO [${i + 3}]`, run: () => ops.bindQuick(i, d.id) });
   }
   const fix = ops.repairPrice?.(item);
-  if (ops.repair && fix) out.push({ label: `REPAIR (${fix.toLocaleString()} CR)`, run: () => ops.repair!(uid) });
-  if (ops.sell && (ops.sellPrice?.(item) ?? 0) > 0) out.push({ label: `SELL (${ops.sellPrice!(item)!.toLocaleString()} CR)`, run: () => ops.sell!(uid) });
+  if (ops.repair && fix) out.push({ label: `REPAIR (${fix.toLocaleString()} KR)`, run: () => ops.repair!(uid) });
+  if (ops.sell && (ops.sellPrice?.(item) ?? 0) > 0) out.push({ label: `SELL (${ops.sellPrice!(item)!.toLocaleString()} KR)`, run: () => ops.sell!(uid) });
   if (ops.drop) out.push({ label: 'DROP', run: () => ops.drop!(uid) });
   return out;
 }

@@ -23,7 +23,7 @@ export function LoadoutPanel({ title }: { title: string }) {
       <header className="inv-head">
         <span className="inv-title">{title}</span>
         <span className={`inv-meta ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : ''}`}>{weight.toFixed(1)} KG</span>
-        <span className="inv-meta">{value.toLocaleString()} CR</span>
+        <span className="inv-meta">{value.toLocaleString()} KR</span>
       </header>
       <div className="equip-layout">
         <div className="equip-col">

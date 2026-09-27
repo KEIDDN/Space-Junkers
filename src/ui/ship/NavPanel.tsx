@@ -92,14 +92,14 @@ export function NavPanel() {
                   <span>FUEL</span>
                   {onTab
                     ? <span className="ok">ON FEDYA'S TAB</span>
-                    : <span className={credits < cost ? 'bad' : 'warn'}>{cost.toLocaleString()} CR{cost < d.cost ? ' (OVERHAULED)' : ''}</span>}
+                    : <span className={credits < cost ? 'bad' : 'warn'}>{cost.toLocaleString()} KR{cost < d.cost ? ' (OVERHAULED)' : ''}</span>}
                 </div>
                 {onTab && <div className="dim small">"You're broke, kid. Tikhaya's close. Pay me when you're not."</div>}
                 {here ? (
                   <div className="ok nav-status">IN ORBIT. THE AIRLOCK IS READY.</div>
                 ) : (
                   <button className="deploy" data-pad-shortcut="X" onClick={jump} disabled={credits < cost}>
-                    [ SET COURSE · {onTab ? 'ON THE TAB' : `${cost.toLocaleString()} CR`} ] <ByDevice kbm={null} pad={<Key a="alt" />} />
+                    [ SET COURSE · {onTab ? 'ON THE TAB' : `${cost.toLocaleString()} KR`} ] <ByDevice kbm={null} pad={<Key a="alt" />} />
                   </button>
                 )}
                 {error && <div className="bad small">{error}</div>}
@@ -113,7 +113,7 @@ export function NavPanel() {
           </div>
         </div>
         <div className="nav-foot dim small">
-          {course ? `CURRENT ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING POSITION OVER OTETS'} · {credits.toLocaleString()} CR · <Key a="back" /> CLOSE
+          {course ? `CURRENT ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING POSITION OVER OTETS'} · {credits.toLocaleString()} KR · <Key a="back" /> CLOSE
         </div>
       </div>
     </div>

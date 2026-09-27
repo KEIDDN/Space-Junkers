@@ -7,7 +7,7 @@ import type { Profile } from '../../core/profile';
 
 export function rewardText(r: QuestReward): string {
   const parts: string[] = [];
-  if (r.credits) parts.push(`${r.credits.toLocaleString()} CR`);
+  if (r.credits) parts.push(`${r.credits.toLocaleString()} KR`);
   for (const [id, n] of r.items ?? []) parts.push(`${ITEMS[id].stack > 1 || n === 1 ? '' : `${n}× `}${ITEMS[id].name}${ITEMS[id].stack > 1 ? ` ×${n}` : ''}`);
   if (r.destination) parts.push(`COORDINATES: ${DESTINATION[r.destination].name}`);
   if (r.trust) parts.push('TRUST');

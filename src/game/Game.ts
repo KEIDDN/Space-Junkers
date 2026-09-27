@@ -580,7 +580,7 @@ export class Game {
       const d = ITEMS[it.id];
       if (!d || RARITY_ORDER[d.rarity] < RARITY_ORDER.rare) continue;
       this.audio.ui('valuable');
-      raid.notice(`${d.name.toUpperCase()} · ${itemValueDeep(it).toLocaleString()} CR`, 'loot', it.id);
+      raid.notice(`${d.name.toUpperCase()} · ${itemValueDeep(it).toLocaleString()} KR`, 'loot', it.id);
       break;
     }
   }

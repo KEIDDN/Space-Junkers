@@ -262,7 +262,7 @@ export function Hud() {
       {facility && (
         <div className="hud-tr crt-text">
           <div className="label">FOUND IN RAID · AT RISK</div>
-          <div><span className="big-mid">{haul.toLocaleString()}</span> <span className="dim">CR</span></div>
+          <div><span className="big-mid">{haul.toLocaleString()}</span> <span className="dim">KR</span></div>
           <div className={`small ${weight > 34 ? 'bad' : weight > 22 ? 'warn' : 'dim'}`}>{weight} KG CARRIED</div>
         </div>
       )}

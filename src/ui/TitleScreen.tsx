@@ -119,7 +119,7 @@ export function TitleScreen({ onContinue, onRange }: Props) {
           <div className="title-menu">
             {started && (
               <button className="menu-btn big" onPointerEnter={hover} onClick={() => { audio.ui('click'); onContinue(); }}>
-                CONTINUE <span className="dim">· DAY {useProfile.getState().day} · {credits.toLocaleString()} CR · {stats.extractions} EXTRACTION{stats.extractions === 1 ? '' : 'S'}</span>
+                CONTINUE <span className="dim">· DAY {useProfile.getState().day} · {credits.toLocaleString()} KR · {stats.extractions} EXTRACTION{stats.extractions === 1 ? '' : 'S'}</span>
               </button>
             )}
             <button className={`menu-btn big ${confirmWipe ? 'danger armed' : ''}`} onPointerEnter={hover} onClick={() => {

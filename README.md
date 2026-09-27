@@ -14,7 +14,7 @@ npm install
 npm run dev        # http://localhost:5180
 npm test           # unit tests (inventory, economy, quests, saves, combat, AI, facility generation)
 npm run build      # type-check + production build
-npm run assets     # rebuild the sprite atlas from /Assets (needs python3 + Pillow + numpy)
+npm run assets     # rebuild the character and world atlases from /Assets (needs python3 + Pillow + numpy)
 SFX_SRC=/path/to/raw python3 tools/build_sfx.py   # rebuild recorded sounds and music (see ASSET_SOURCES.md)
 ```
 
@@ -32,6 +32,9 @@ SFX_SRC=/path/to/raw python3 tools/build_sfx.py   # rebuild recorded sounds and 
    orbit so long: miss the window and you're M.I.A.
 6. **Return.** Extract and everything you carry comes home. Die and it stays on your body.
    Sell, hand in contracts, upgrade, go again.
+
+Money is **kosmorubli** (КР, *KR* on screen), the orbital rouble: the Commonwealth printed
+them for its colonies, and out here nobody has anything better.
 
 You can never be soft-locked. Death still costs you everything you carried, but the ship keeps
 a reserve: come back aboard with no gun that can fire or no pack, and Molot leaves a crew-issue

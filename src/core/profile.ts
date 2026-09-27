@@ -164,7 +164,7 @@ export function migrate(raw: unknown, fromVersion: number): { profile: Profile; 
     }
     if (credited) {
       p.credits += credited;
-      notes.push(`Stash overflow sold for ${credited} CR.`);
+      notes.push(`Stash overflow sold for ${credited} KR.`);
     }
     p.flags.started = true;
     notes.push('Save upgraded from build 0.2. Your stash was moved to the ship.');

@@ -48,7 +48,7 @@ export const shipActions = {
     if (!d || !p.destinations.includes(destination)) return { ok: false, error: 'No coordinates for that.' };
     if (p.course?.destination === destination) return { ok: false, error: 'Already there.' };
     const { cost } = jumpCost(p, destination, d.cost);
-    if (p.credits < cost) return { ok: false, error: 'Not enough Credits for fuel.' };
+    if (p.credits < cost) return { ok: false, error: 'Not enough kosmorubli for fuel.' };
     useProfile.getState().apply({ credits: p.credits - cost, course: { destination, seed: randomSeed() } });
     shipUi.patch({ jumping: true });
     return { ok: true };
