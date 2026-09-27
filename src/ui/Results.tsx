@@ -1,18 +1,23 @@
-import { ITEMS, RARITY_COLOR } from '../data/items';
-import { useExpedition } from '../state/expeditionStore';
+import { RARITY_COLOR, itemDef } from '../data/items';
+import { itemValueDeep, loadoutItems, loadoutValue } from '../core/inventory';
+import { foundItems, haulValue } from '../core/raidResult';
+import { audio } from '../engine/audio';
+import { useRaid } from '../state/raidStore';
 import { AtlasSprite } from './AtlasSprite';
 
+/** After-action report: what came home, or what was left on the floor. */
 export function Results({ onContinue }: { onContinue: () => void }) {
-  const { status, bag, kills, seed, startedAt, endedAt } = useExpedition();
+  const { status, loadout, brought, kills, seed, startedAt, endedAt } = useRaid();
   const extracted = status === 'extracted';
-  const total = bag.reduce((n, id) => n + (ITEMS[id]?.value ?? 0), 0);
   const secs = Math.max(0, Math.round((endedAt - startedAt) / 1000));
   const time = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
-  // Group identical items.
-  const counts = new Map<string, number>();
-  for (const id of bag) counts.set(id, (counts.get(id) ?? 0) + 1);
-  const rows = [...counts.entries()].sort((a, b) => ITEMS[b[0]].value - ITEMS[a[0]].value);
+  const found = foundItems(loadout, brought);
+  const rows = (extracted ? found : loadoutItems(loadout))
+    .filter((i) => !i.crew || !extracted)
+    .sort((a, b) => itemValueDeep(b) - itemValueDeep(a));
+  const haul = haulValue(loadout, brought);
+  const lost = loadoutValue(loadout);
 
   return (
     <div className="screen crt">
@@ -21,27 +26,28 @@ export function Results({ onContinue }: { onContinue: () => void }) {
         <div className="small dim">
           FACILITY #{String(seed).padStart(6, '0')} · TIME {time} · HOSTILES NEUTRALISED {kills}
         </div>
+        <div className="results-sub">{extracted ? 'RECOVERED FROM THE FACILITY' : 'LEFT ON YOUR BODY'}</div>
         <div className="loot-list">
-          {rows.length === 0 && <div className="dim small">NOTHING RECOVERED.</div>}
-          {rows.map(([id, qty]) => {
-            const it = ITEMS[id];
+          {rows.length === 0 && <div className="dim small">{extracted ? 'NOTHING FOUND. AT LEAST YOU\'RE ALIVE.' : 'NOTHING. YOU WENT IN WITH NOTHING.'}</div>}
+          {rows.map((it) => {
+            const d = itemDef(it.id);
             return (
-              <div key={id} className={`loot-row ${extracted ? '' : 'lost'}`}>
-                <AtlasSprite name={it.icon} scale={1} />
-                <span style={{ color: RARITY_COLOR[it.rarity] }}>{it.name}</span>
-                <span className="dim">×{qty}</span>
+              <div key={it.uid} className={`loot-row ${extracted ? '' : 'lost'}`}>
+                <span className="loot-icon"><AtlasSprite name={d.icon} fit={{ w: 44, h: 26 }} /></span>
+                <span style={{ color: RARITY_COLOR[d.rarity] }}>{d.name}</span>
+                {it.qty > 1 && <span className="dim">×{it.qty}</span>}
                 <span className="grow" />
-                <span>{(it.value * qty).toLocaleString()} CR</span>
+                <span>{itemValueDeep(it).toLocaleString()} CR</span>
               </div>
             );
           })}
         </div>
         <div className="results-total">
           {extracted
-            ? <>BANKED TO SHIP STASH: <span className="warn">{total.toLocaleString()} CR</span></>
-            : <>LOST WITH YOUR BODY: <span className="bad">{total.toLocaleString()} CR</span></>}
+            ? <>HAUL: <span className="warn">{haul.toLocaleString()} CR</span> <span className="dim small">· carried home to the ship</span></>
+            : <>LOST WITH YOUR BODY: <span className="bad">{lost.toLocaleString()} CR</span></>}
         </div>
-        <button className="deploy" onClick={onContinue}>[ RETURN TO SHIP ]</button>
+        <button className="deploy" onClick={() => { audio.ui('click'); onContinue(); }}>[ RETURN TO SHIP ]</button>
       </div>
     </div>
   );

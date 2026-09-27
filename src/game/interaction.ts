@@ -4,26 +4,34 @@ import type { AudioService } from '../engine/audio';
 import { TILE } from '../engine/config';
 import type { Input } from '../engine/input';
 import { Rng } from '../engine/rng';
-import { CONTAINERS, rollLoot, type ContainerDef } from '../data/loot';
-import type { ContainerPlacement, TileMap } from './world/tilemap';
+import { CONTAINERS, rollContainer } from '../data/loot';
+import type { Grid } from '../core/inventory';
+import { raid, useRaid } from '../state/raidStore';
+import type { TileMap } from './world/tilemap';
 
-const REACH = 40; // px from player to container centre
+const REACH = 40; // px from player to lootable
+const CLOSE_DIST = 64; // walking this far from an open container closes it
 const EXTRACT_TIME = 12; // seconds holding the zone
 const ALARM_INTERVAL = 4;
 const ALARM_RADIUS = 720;
 
-interface LootBox {
-  def: ContainerDef;
-  place: ContainerPlacement;
-  sprite: Sprite;
-  x: number;
-  y: number;
+export type LootKind = 'container' | 'body' | 'pile';
+
+interface Lootable {
+  id: string;
+  kind: LootKind;
+  label: string;
+  /** Current interaction point (bodies can slide). */
+  pos(): { x: number; y: number };
+  /** Seconds to search the first time (0 = open immediately). */
+  searchTime: number;
   searched: boolean;
-  seed: number;
+  sprite: Sprite | null;
+  /** Rolls the contents the first time it's opened. */
+  roll(): Grid;
 }
 
 export interface InteractionEvents {
-  onLoot(items: string[]): void;
   onNoise(x: number, y: number, radius: number): void;
   onLight(x: number, y: number, radius: number, color: number, intensity: number): void;
   onExtracted(): void;
@@ -36,26 +44,27 @@ export interface InteractionView {
 }
 
 /**
- * Player-world interactions: searching containers (hold E) and extraction
- * (E in the zone starts a countdown that sounds an alarm; stay in the zone to leave).
+ * Player-world interactions: searching containers and bodies (hold E), opening searched
+ * ones and item piles (E), and extraction (E in the zone starts a countdown that sounds an
+ * alarm; stay in the zone to leave).
  */
 export class Interactions {
-  /** Container sprites, depth-sorted with actors. */
-  readonly sprites: Sprite[] = [];
   /** World-space UI (progress bars, zone markings) drawn above the darkness. */
   readonly overlay = new Container();
 
-  private boxes: LootBox[] = [];
+  private lootables: Lootable[] = [];
   private bar = new Graphics();
-  private searching: LootBox | null = null;
+  private searching: Lootable | null = null;
   private progress = 0;
   private rummageTimer = 0;
   private extractRemaining: number | null = null;
   private alarmTimer = 0;
   private beaconTimer = 0;
   private done = false;
+  private pileCount = 0;
 
-  constructor(private map: TileMap, private audio: AudioService, private ev: InteractionEvents) {
+  /** @param layer depth-sorted actor layer; container and pile sprites go in it. */
+  constructor(private map: TileMap, private audio: AudioService, private ev: InteractionEvents, private layer: Container) {
     map.containers.forEach((place, i) => {
       const def = CONTAINERS[place.type];
       const sprite = new Sprite(tex(def.sprite));
@@ -64,8 +73,13 @@ export class Interactions {
       const y = place.ty * TILE + TILE - 3;
       sprite.position.set(x, y);
       sprite.zIndex = y;
-      this.sprites.push(sprite);
-      this.boxes.push({ def, place, sprite, x, y: y - 10, searched: false, seed: map.seed * 7919 + i * 104729 });
+      this.layer.addChild(sprite);
+      const seed = (map.seed * 7919 + i * 104729) >>> 0;
+      this.lootables.push({
+        id: `c${i}`, kind: 'container', label: def.label, pos: () => ({ x, y: y - 10 }),
+        searchTime: def.searchTime, searched: false, sprite,
+        roll: () => rollContainer(new Rng(seed), def, place.risk),
+      });
     });
     this.overlay.addChild(this.zoneMarkings(), this.bar);
   }
@@ -74,16 +88,54 @@ export class Interactions {
     return this.extractRemaining !== null;
   }
 
+  /** A body becomes lootable when its owner dies. */
+  addBody(id: string, pos: () => { x: number; y: number }, contents: Grid): void {
+    this.lootables.push({ id, kind: 'body', label: 'BODY', pos, searchTime: 1.1, searched: false, sprite: null, roll: () => contents });
+  }
+
   /**
-   * @param busy player can't interact right now (dead, hurt this frame, etc.)
-   * @param moving player is moving (cancels searching)
+   * Drop items at a spot: joins a pile within reach, or starts a new one.
+   * @returns the pile's container id (contents are managed by the raid store).
    */
-  update(dt: number, input: Input, px: number, py: number, busy: boolean, moving: boolean): InteractionView {
+  dropPile(x: number, y: number): string {
+    for (const l of this.lootables) {
+      if (l.kind !== 'pile') continue;
+      const p = l.pos();
+      if (Math.hypot(p.x - x, p.y - y) < 24) return l.id;
+    }
+    const id = `pile${this.pileCount++}`;
+    const sprite = new Sprite(tex('item_sack'));
+    sprite.anchor.set(0.5, 1);
+    sprite.scale.set(0.5);
+    sprite.position.set(Math.round(x), Math.round(y + 4));
+    sprite.zIndex = y;
+    this.layer.addChild(sprite);
+    this.lootables.push({ id, kind: 'pile', label: 'DROPPED ITEMS', pos: () => ({ x, y }), searchTime: 0, searched: true, sprite, roll: () => ({ w: 6, h: 5, items: [] }) });
+    return id;
+  }
+
+  /**
+   * @param busy player can't interact right now (dead)
+   * @param moving player is moving (cancels searching)
+   * @param menuOpen the inventory is open: E closes it instead of interacting
+   */
+  update(dt: number, input: Input, px: number, py: number, busy: boolean, moving: boolean, menuOpen: boolean): InteractionView {
     this.bar.clear();
+    this.refreshPiles();
     if (this.done) return { prompt: null, countdown: null, inZone: false };
 
     const inZone = this.map.inExtraction(px, py);
     const extracting = this.extractRemaining !== null;
+
+    // Walking away from an open container closes it.
+    const open = useRaid.getState().open;
+    if (open) {
+      const l = this.lootables.find((q) => q.id === open.id);
+      if (l) {
+        const p = l.pos();
+        if (Math.hypot(p.x - px, p.y - py) > CLOSE_DIST) raid.patch({ open: null });
+      }
+    }
 
     // --- Extraction countdown
     if (this.extractRemaining !== null) {
@@ -111,7 +163,7 @@ export class Interactions {
       }
     }
 
-    if (busy) {
+    if (busy || menuOpen) {
       this.searching = null;
       return { prompt: null, countdown: this.extractRemaining, inZone };
     }
@@ -122,22 +174,29 @@ export class Interactions {
         this.alarmTimer = 0;
         this.beaconTimer = 0;
       }
-      return { prompt: '[E] SIGNAL EXTRACTION. Alarm will sound', countdown: null, inZone };
+      return { prompt: '[E] SIGNAL EXTRACTION. The alarm will sound', countdown: null, inZone };
     }
 
-    // --- Containers
-    let nearest: LootBox | null = null;
+    // --- Lootables
+    let nearest: Lootable | null = null;
     let best = REACH;
-    for (const b of this.boxes) {
-      if (b.searched) continue;
-      const d = Math.hypot(b.x - px, b.y - py);
+    for (const l of this.lootables) {
+      if (l.kind === 'pile' && !this.pileHasItems(l)) continue;
+      const p = l.pos();
+      const d = Math.hypot(p.x - px, p.y - py);
       if (d < best) {
         best = d;
-        nearest = b;
+        nearest = l;
       }
     }
     if (this.searching && this.searching !== nearest) this.searching = null;
     if (!nearest) return { prompt: null, countdown: this.extractRemaining, inZone };
+
+    if (nearest.searched) {
+      if (input.wasPressed('KeyE')) this.open(nearest);
+      const n = useRaid.getState().containers[nearest.id]?.items.length ?? 0;
+      return { prompt: `[E] OPEN ${nearest.label}${n ? '' : ' (EMPTY)'}`, countdown: this.extractRemaining, inZone };
+    }
 
     const holding = input.isDown('KeyE');
     if (holding && !moving) {
@@ -145,39 +204,57 @@ export class Interactions {
         this.searching = nearest;
         this.progress = 0;
       }
-      this.progress += dt / nearest.def.searchTime;
+      this.progress += dt / nearest.searchTime;
       this.rummageTimer -= dt;
+      const p = nearest.pos();
       if (this.rummageTimer <= 0) {
         this.rummageTimer = 0.28;
-        this.audio.sfx('rummage', nearest.x, nearest.y);
-        this.ev.onNoise(nearest.x, nearest.y, 70);
+        this.audio.sfx('rummage', p.x, p.y);
+        this.ev.onNoise(p.x, p.y, 70);
       }
-      this.drawBar(nearest, Math.min(1, this.progress));
-      if (this.progress >= 1) this.open(nearest);
+      this.drawBar(p.x, p.y, Math.min(1, this.progress));
+      if (this.progress >= 1) this.finishSearch(nearest);
     } else {
       this.searching = null;
       this.progress = 0;
     }
-    const label = nearest.def.tier === 'valuable' ? 'SECURE CASE' : nearest.def.tier === 'military' ? 'MILITARY CRATE' : 'SUPPLY BOX';
-    return { prompt: `[HOLD E] SEARCH ${label}`, countdown: this.extractRemaining, inZone };
+    return { prompt: `[HOLD E] SEARCH ${nearest.label}`, countdown: this.extractRemaining, inZone };
   }
 
-  private open(b: LootBox): void {
-    b.searched = true;
+  private finishSearch(l: Lootable): void {
+    l.searched = true;
     this.searching = null;
-    b.sprite.tint = 0x5a5550;
-    const items = rollLoot(new Rng(b.seed), b.def, b.place.risk);
-    if (items.length) {
-      this.audio.sfx('loot', b.x, b.y);
-      this.ev.onLoot(items);
-    } else {
-      this.audio.sfx('dryfire', b.x, b.y);
+    if (!raid.hasContainer(l.id)) raid.setContainer(l.id, l.roll());
+    const p = l.pos();
+    const n = useRaid.getState().containers[l.id].items.length;
+    this.audio.sfx(n ? 'loot' : 'dryfire', p.x, p.y);
+    this.open(l);
+  }
+
+  private open(l: Lootable): void {
+    if (!raid.hasContainer(l.id)) raid.setContainer(l.id, l.roll());
+    raid.openContainer(l.id, l.label);
+    this.audio.sfx('rummage', l.pos().x, l.pos().y);
+  }
+
+  private pileHasItems(l: Lootable): boolean {
+    return (useRaid.getState().containers[l.id]?.items.length ?? 0) > 0;
+  }
+
+  /** Searched containers go dark when empty; empty piles disappear. */
+  private refreshPiles(): void {
+    const containers = useRaid.getState().containers;
+    for (const l of this.lootables) {
+      if (!l.sprite || !l.searched) continue;
+      const empty = (containers[l.id]?.items.length ?? 0) === 0;
+      if (l.kind === 'pile') l.sprite.visible = !empty;
+      else l.sprite.tint = empty ? 0x4a4642 : 0x8a847c;
     }
   }
 
-  private drawBar(b: LootBox, p: number): void {
-    const x = Math.round(b.x - 12);
-    const y = Math.round(b.y - 26);
+  private drawBar(bx: number, by: number, p: number): void {
+    const x = Math.round(bx - 12);
+    const y = Math.round(by - 26);
     this.bar.rect(x - 1, y - 1, 26, 4).fill({ color: 0x000000, alpha: 0.8 });
     this.bar.rect(x, y, Math.round(24 * p), 2).fill({ color: 0xf2a33a });
   }

@@ -83,7 +83,7 @@ export function newProfile(operator: Operator = 'm'): Profile {
 
   let stash = emptyGrid(STASH_WIDTH, STASH_BASE_ROWS);
   stash = addAll(stash, [
-    createItem('obrez'),
+    createItem('obrez', { loaded: 2 }),
     createItem('ammo_12buck', { qty: 20 }),
     createItem('ammo_9x18', { qty: 60 }),
     createItem('carkit'),

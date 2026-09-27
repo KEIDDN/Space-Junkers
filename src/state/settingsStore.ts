@@ -1,22 +1,18 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Operator } from '../game/entities/Player';
 
+/** Player preferences. Kept apart from the save so resetting progress keeps them. */
 interface SettingsState {
-  operator: Operator;
   volume: number;
-  setOperator(op: Operator): void;
   setVolume(v: number): void;
 }
 
 export const useSettings = create<SettingsState>()(
   persist(
     (set) => ({
-      operator: 'm',
       volume: 0.7,
-      setOperator: (operator) => set({ operator }),
-      setVolume: (volume) => set({ volume }),
+      setVolume: (volume) => set({ volume: Math.max(0, Math.min(1, volume)) }),
     }),
-    { name: 'space-junkers.settings' },
+    { name: 'space-junkers.settings', version: 1, migrate: (s) => ({ volume: (s as { volume?: number })?.volume ?? 0.7 }) as SettingsState },
   ),
 );

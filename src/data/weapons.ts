@@ -38,6 +38,8 @@ export interface WeaponDef {
   jamChance?: number;
   /** Manually cycled between shots (plays a bolt/pump sound). */
   cycled?: boolean;
+  /** Loads one round at a time (seconds per round) instead of swapping a magazine. */
+  reloadPerRound?: number;
 
   /** Base cone half-angle in degrees. */
   spread: number;
@@ -140,7 +142,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
   toz12: {
     id: 'toz12', name: 'TOZ-12 Pump', archetype: 'shotgun', caliber: '12ga', sprite: 'gun_23',
     grip: { x: 23, y: 16 }, muzzle: { x: 62, y: 12 },
-    damage: 12, pellets: 9, fireRate: 1.4, automatic: false, magSize: 6, reloadTime: 2.6, drawTime: 0.4, cycled: true,
+    damage: 12, pellets: 9, fireRate: 1.4, automatic: false, magSize: 6, reloadTime: 2.6, drawTime: 0.4, cycled: true, reloadPerRound: 0.42,
     spread: 7.5, moveSpread: 2, bloomPerShot: 0, bloomMax: 0, bloomRecovery: 10,
     bulletSpeed: 760, range: 270, knockback: 60,
     cameraKick: 7, shake: 0.42, gunKick: 6,
@@ -188,7 +190,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
   mosin: {
     id: 'mosin', name: 'Mosin-K Bolt Rifle', archetype: 'marksman', caliber: '762', sprite: 'gun_48',
     grip: { x: 48, y: 17 }, muzzle: { x: 101, y: 11 },
-    damage: 120, pellets: 1, fireRate: 0.9, automatic: false, magSize: 5, reloadTime: 3.2, drawTime: 0.6, cycled: true,
+    damage: 120, pellets: 1, fireRate: 0.9, automatic: false, magSize: 5, reloadTime: 3.2, drawTime: 0.6, cycled: true, reloadPerRound: 0.5,
     spread: 0.12, moveSpread: 8, bloomPerShot: 0, bloomMax: 0, bloomRecovery: 6,
     bulletSpeed: 1900, range: 1150, knockback: 170,
     cameraKick: 9.5, shake: 0.5, gunKick: 7,

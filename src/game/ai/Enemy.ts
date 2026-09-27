@@ -1,7 +1,9 @@
 import { anim } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import type { EnemyDef } from '../../data/enemies';
+import { ITEMS, defaultAmmo, type ArmorDef, type WeaponItemDef } from '../../data/items';
 import { WEAPONS } from '../../data/weapons';
+import { HEADSHOT_MUL, resolveHit } from '../../core/damage';
 import { discharge } from '../combat/fire';
 import type { Hittable } from '../combat/projectiles';
 import { WeaponState } from '../combat/weapon';
@@ -36,7 +38,12 @@ export class Enemy implements Hittable {
   readonly view: ActorView;
 
   private facing = Math.random() * Math.PI * 2;
-  private weapon: WeaponState;
+  readonly weapon: WeaponState;
+  /** Weapon item id (dropped on death). */
+  readonly weaponItem: string;
+  /** Worn armor as [item id, durability], or null. */
+  armor: { id: string; dur: number } | null = null;
+  helmet: { id: string; dur: number } | null = null;
   private kx = 0; // knockback velocity
   private ky = 0;
   private stagger = 0;
@@ -72,8 +79,14 @@ export class Enemy implements Hittable {
       flash: anim(`${def.anim}_walk_flash`),
       death: anim(`${def.anim}_dead`),
     });
-    this.weapon = new WeaponState(WEAPONS[def.weapon], Infinity);
+    this.weaponItem = def.weapons[Math.floor(Math.random() * def.weapons.length)];
+    const gun = WEAPONS[(ITEMS[this.weaponItem] as WeaponItemDef).weapon];
+    this.weapon = new WeaponState(gun, Infinity);
+    this.weapon.ammoId = defaultAmmo(gun.caliber).id;
     this.view.setWeapon(this.weapon.def);
+    const chance = def.armorChance ?? 1;
+    if (def.armor && Math.random() < chance) this.armor = { id: def.armor, dur: (ITEMS[def.armor] as ArmorDef).durability };
+    if (def.helmet && Math.random() < chance) this.helmet = { id: def.helmet, dur: (ITEMS[def.helmet] as ArmorDef).durability };
     if (route && route.length > 1) this.setState('patrol');
   }
 
@@ -116,8 +129,25 @@ export class Enemy implements Hittable {
   // ---------------------------------------------------------------------------
   // Damage
 
-  takeDamage(amount: number, dirX: number, dirY: number, knockback: number, fromX: number, fromY: number): boolean {
-    if (!this.alive) return false;
+  /**
+   * A bullet hit. Helmets take headshots, armor takes the rest.
+   * @returns killed, and whether armor stopped most of it.
+   */
+  takeDamage(
+    raw: number, pen: number, headshot: boolean, dirX: number, dirY: number, knockback: number,
+    fromX: number, fromY: number,
+  ): { killed: boolean; blocked: boolean } {
+    if (!this.alive) return { killed: false, blocked: false };
+    let amount = headshot ? raw * HEADSHOT_MUL : raw;
+    let blocked = false;
+    const worn = headshot ? this.helmet : this.armor;
+    if (worn) {
+      const d = ITEMS[worn.id] as ArmorDef;
+      const r = resolveHit(amount, pen, { cls: d.cls, dur: worn.dur, maxDur: d.durability });
+      amount = r.damage;
+      blocked = r.blocked;
+      worn.dur = Math.max(0, worn.dur - r.armorDamage);
+    }
     this.hp -= amount;
     this.kx += dirX * knockback;
     this.ky += dirY * knockback;
@@ -127,7 +157,7 @@ export class Enemy implements Hittable {
       this.alive = false;
       this.setState('dead');
       this.view.playDeath();
-      return true;
+      return { killed: true, blocked };
     }
     // Getting shot reveals roughly where the shooter is.
     if (this.state !== 'combat') {
@@ -136,7 +166,7 @@ export class Enemy implements Hittable {
       this.reactTimer = Math.min(this.reactTimer, this.def.reactionTime * 0.5);
     }
     if (!this.retreated && this.hp < this.def.hp * this.def.retreatBelow) this.startRetreat(fromX, fromY);
-    return false;
+    return { killed: false, blocked };
   }
 
   // ---------------------------------------------------------------------------
@@ -336,7 +366,15 @@ export class Enemy implements Hittable {
     // Both actors share the ground plane, so ground-to-ground is the true firing line.
     const toTarget = Math.atan2(target.y - this.y, target.x - this.x);
     if (Math.abs(angleDiff(toTarget, this.facing)) > 0.25) return;
-    if (w.tryFire(true, true) !== 'fired') return;
+    const r = w.tryFire(true, true, Math.random());
+    if (r === 'jammed') {
+      // A jam is an opening. It's audible, so a sharp player can push.
+      this.ctx.audio.sfx('jam', this.x, this.y);
+      w.startReload();
+      this.burstPause = 0.9;
+      return;
+    }
+    if (r !== 'fired') return;
     const aim = toTarget + (Math.random() - 0.5) * 2 * this.def.aimError * DEG;
     discharge(this.ctx, this.view, w, this.x, this.y, aim, 'enemy', 0);
     this.lastShotAgo = 0;

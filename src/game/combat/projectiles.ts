@@ -27,14 +27,30 @@ export interface Bullet {
   travelled: number;
   range: number;
   damage: number;
+  /** Armor penetration class of the round. */
+  pen: number;
   knockback: number;
   faction: Faction;
   color: number;
 }
 
+export interface ShotSpec {
+  speed: number;
+  range: number;
+  damage: number;
+  pen: number;
+  knockback: number;
+  faction: Faction;
+  color: number;
+}
+
+/** Perpendicular miss distance (px) under which a hit counts as a headshot. */
+export const HEADSHOT_RADIUS = 2.5;
+
 export interface ProjectileEvents {
   onWall(b: Bullet, hit: RayHit): void;
-  onActor(b: Bullet, target: Hittable, x: number, y: number): void;
+  /** `headshot`: the bullet's line passed through the centre of the target. */
+  onActor(b: Bullet, target: Hittable, x: number, y: number, headshot: boolean): void;
 }
 
 const TRACER_TIME = 0.022; // seconds of travel shown as the tracer streak
@@ -47,10 +63,7 @@ const MAX_TRACER = 34;
 export class Projectiles {
   private pool: Bullet[] = [];
 
-  fire(
-    x: number, y: number, angle: number, speed: number, range: number,
-    damage: number, knockback: number, faction: Faction, color: number,
-  ): void {
+  fire(x: number, y: number, angle: number, spec: ShotSpec): void {
     let b = this.pool.find((p) => !p.active);
     if (!b) {
       b = {} as Bullet;
@@ -61,13 +74,14 @@ export class Projectiles {
     b.y = b.oy = y;
     b.dx = Math.cos(angle);
     b.dy = Math.sin(angle);
-    b.speed = speed;
+    b.speed = spec.speed;
     b.travelled = 0;
-    b.range = range;
-    b.damage = damage;
-    b.knockback = knockback;
-    b.faction = faction;
-    b.color = color;
+    b.range = spec.range;
+    b.damage = spec.damage;
+    b.pen = spec.pen;
+    b.knockback = spec.knockback;
+    b.faction = spec.faction;
+    b.color = spec.color;
   }
 
   update(dt: number, map: TileMap, targets: readonly Hittable[], ev: ProjectileEvents): void {
@@ -100,7 +114,9 @@ export class Projectiles {
         b.x += (nx - b.x) * bestT;
         b.y += (ny - b.y) * bestT;
         b.active = false;
-        ev.onActor(b, bestTarget, b.x, b.y);
+        // Distance from the target's centre to the bullet's line.
+        const miss = Math.abs((bestTarget.x - b.x) * b.dy - (bestTarget.y - b.y) * b.dx);
+        ev.onActor(b, bestTarget, b.x, b.y, miss < HEADSHOT_RADIUS);
         continue;
       }
       b.x = nx;

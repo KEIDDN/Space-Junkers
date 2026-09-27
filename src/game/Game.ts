@@ -1,19 +1,23 @@
 import { Application, Container, Graphics, type Ticker } from 'pixi.js';
 import { loadAssets } from '../engine/assets';
-import { AudioService } from '../engine/audio';
+import { audio } from '../engine/audio';
 import { Camera } from '../engine/camera';
 import { GUN_HEIGHT, MAX_DT, VIEW_H, VIEW_W } from '../engine/config';
 import { Input } from '../engine/input';
+import { Rng } from '../engine/rng';
 import { ENEMIES } from '../data/enemies';
-import { TEST_LOADOUT } from '../data/weapons';
+import { ITEMS, type ArmorDef, type WeaponItemDef } from '../data/items';
+import { BODY_GRID, BODY_POCKETS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
+import { WEAPONS } from '../data/weapons';
 import { TEST_RANGE } from '../data/testRange';
-import { expedition, useExpedition } from '../state/expeditionStore';
+import { addToGrid, createItem, emptyGrid, loadoutCount, loadoutWeight, type Grid } from '../core/inventory';
+import type { Operator } from '../core/profile';
+import { raid, useRaid } from '../state/raidStore';
 import { syncHud } from '../state/hudStore';
-import { useProfile } from '../state/profileStore';
 import { Enemy } from './ai/Enemy';
 import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
 import type { GameContext } from './context';
-import { Player, type Operator } from './entities/Player';
+import { Player } from './entities/Player';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
 import { Lighting } from './render/lighting';
@@ -29,10 +33,12 @@ export interface GameOptions {
   seed: number;
   operator: Operator;
   volume: number;
+  /** Called once when a facility raid ends. */
+  onEnd?: (status: 'extracted' | 'dead') => void;
 }
 
 /** Seconds the K.I.A. screen shows before a facility run ends. */
-const DEATH_LINGER = 2.2;
+const DEATH_LINGER = 2.4;
 
 /**
  * Owns the Pixi application and the game loop for one play session.
@@ -51,7 +57,7 @@ export class Game {
   private host: HTMLElement | null = null;
 
   private input!: Input;
-  private audio = new AudioService();
+  private audio = audio;
   private camera!: Camera;
   private map!: TileMap;
   private projectiles = new Projectiles();
@@ -61,6 +67,7 @@ export class Game {
   private doors: Doors | null = null;
   private interactions!: Interactions;
   private ctx!: GameContext;
+  private unsubscribe: (() => void) | null = null;
 
   private worldLit = new Container();
   private worldGlow = new Container();
@@ -73,6 +80,7 @@ export class Game {
   private hitstopTime = 0;
   private deadTime = 0;
   private ended = false;
+  paused = false;
 
   constructor(private opts: GameOptions) {}
 
@@ -103,11 +111,12 @@ export class Game {
     this.audio.volume = this.opts.volume;
     window.addEventListener('pointerdown', this.unlockAudio);
     window.addEventListener('keydown', this.unlockAudio);
+    this.audio.unlock();
 
     this.overlay = new ScreenOverlay();
     this.startRun();
     this.app.ticker.add(this.tick);
-    if (import.meta.env.DEV) (window as unknown as { __sj: Game }).__sj = this;
+    if (import.meta.env.DEV) Object.assign(window, { __sj: this, __raid: useRaid });
   }
 
   /** Dev-only inspection used by automated play tests. */
@@ -115,10 +124,38 @@ export class Game {
     return {
       camera: { left: this.camera.left, top: this.camera.top },
       player: { x: Math.round(this.player.x), y: Math.round(this.player.y), hp: this.player.hp },
-      enemies: this.enemies.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), hp: e.hp, state: e.state })),
+      enemies: this.enemies.map((e) => ({ x: Math.round(e.x), y: Math.round(e.y), hp: e.hp, state: e.state, alive: e.alive })),
       extraction: this.map.extraction,
-      containers: this.map.containers.map((c) => ({ tx: c.tx, ty: c.ty })),
+      containers: this.map.containers.map((c) => ({ tx: c.tx, ty: c.ty, type: c.type })),
     };
+  }
+
+  /** Dev-only: teleport the player (automated play tests). */
+  debugTeleport(x: number, y: number): void {
+    this.player.x = x;
+    this.player.y = y;
+    this.camera.snapTo(x, y);
+  }
+
+  /** Dev-only: stand on a free tile next to a tile (e.g. a container). */
+  debugStandNear(tx: number, ty: number): void {
+    for (const [dx, dy] of [[0, 1], [1, 0], [-1, 0], [0, -1]]) {
+      if (!this.map.isSolid(tx + dx, ty + dy)) {
+        this.debugTeleport((tx + dx) * 32 + 16, (ty + dy) * 32 + 16);
+        return;
+      }
+    }
+  }
+
+  /** Dev-only: kill an enemy by index. */
+  debugKill(i: number): void {
+    const e = this.enemies[i];
+    if (e?.alive) this.onBulletActor({ dx: 1, dy: 0, damage: 999, pen: 9, knockback: 50 } as Bullet, e, e.x, e.y, false);
+  }
+
+  setVolume(v: number): void {
+    this.audio.volume = v;
+    this.audio.setMasterVolume(v);
   }
 
   destroy(): void {
@@ -126,6 +163,7 @@ export class Game {
     this.destroyed = true;
     if (!this.initialised) return; // init() will clean up when it resumes
     this.app.ticker.remove(this.tick);
+    this.unsubscribe?.();
     window.removeEventListener('resize', this.fit);
     window.removeEventListener('pointerdown', this.unlockAudio);
     window.removeEventListener('keydown', this.unlockAudio);
@@ -140,6 +178,7 @@ export class Game {
 
   private startRun(): void {
     // Tear down the previous run's display objects (textures are shared and kept).
+    this.unsubscribe?.();
     this.app.stage.removeChildren();
     this.worldLit.destroy({ children: true });
     this.worldGlow.destroy({ children: true });
@@ -155,7 +194,6 @@ export class Game {
     this.ended = false;
 
     this.map = this.opts.mode === 'facility' ? generateFacility(this.opts.seed) : mapFromAscii(TEST_RANGE);
-    expedition.start(this.opts.mode, this.opts.seed);
     this.camera = new Camera(this.map.pixelWidth, this.map.pixelHeight);
     this.effects = new Effects(this.map, this.audio);
     this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map) : null;
@@ -178,21 +216,20 @@ export class Game {
     const { ground, props } = buildMapView(this.map);
     this.doors = this.map.doors.length ? new Doors(this.map, this.audio, this.ctx.emitNoise) : null;
     this.interactions = new Interactions(this.map, this.audio, {
-      onLoot: (items) => expedition.addLoot(items),
       onNoise: this.ctx.emitNoise,
       onLight: this.ctx.lightFlash,
       onExtracted: () => this.endRun('extracted'),
-    });
+    }, this.actorLayer);
 
     this.worldLit.addChild(ground);
     if (this.doors) this.worldLit.addChild(this.doors.container);
     this.worldLit.addChild(this.effects.decals, this.actorLayer, this.effects.lit);
     this.worldGlow.addChild(this.interactions.overlay, this.effects.overlay, this.tracers);
     for (const p of props) this.actorLayer.addChild(p);
-    for (const s of this.interactions.sprites) this.actorLayer.addChild(s);
 
     const spawn = this.map.spawns.find((s) => s.kind === 'player')!;
-    this.player = new Player(this.ctx, spawn.x, spawn.y, this.opts.operator, TEST_LOADOUT);
+    this.player = new Player(this.ctx, spawn.x, spawn.y, this.opts.operator);
+    this.player.onNotice = (text, tone) => raid.notice(text, tone);
     this.actorLayer.addChild(this.player.view.container);
 
     this.enemies = this.map.spawns
@@ -200,6 +237,11 @@ export class Game {
       .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null));
     for (const e of this.enemies) this.actorLayer.addChild(e.view.container);
     this.targets = [this.player, ...this.enemies];
+
+    // The inventory UI can change what's equipped at any moment.
+    this.unsubscribe = useRaid.subscribe((s, prev) => {
+      if (s.loadout !== prev.loadout) this.player.syncLoadout(s.loadout);
+    });
 
     this.app.stage.addChild(this.worldLit);
     if (this.lighting) this.app.stage.addChild(this.lighting.overlay);
@@ -210,24 +252,30 @@ export class Game {
   private endRun(status: 'extracted' | 'dead'): void {
     if (this.ended) return;
     this.ended = true;
-    const bag = useExpedition.getState().bag;
-    if (status === 'extracted') useProfile.getState().bankLoot(bag);
-    else useProfile.getState().recordDeath();
-    expedition.end(status);
+    raid.end(status);
+    this.opts.onEnd?.(status);
   }
 
   private tick = (ticker: Ticker): void => {
     const dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
 
+    if (this.paused) {
+      this.input.endFrame();
+      return;
+    }
+
     if (!this.player.alive) {
       this.deadTime += dt;
       if (this.opts.mode === 'range' && this.input.wasPressed('KeyR')) {
+        raid.start('range', 0, 'range', useRaid.getState().loadout);
         this.startRun();
         this.input.endFrame();
         return;
       }
       if (this.opts.mode === 'facility' && this.deadTime > DEATH_LINGER) this.endRun('dead');
     }
+
+    if (this.input.wasPressed('Tab') && this.player.alive) raid.toggleInventory();
 
     if (this.hitstopTime > 0) {
       this.hitstopTime -= dt;
@@ -240,8 +288,11 @@ export class Game {
 
   private simulate(dt: number): void {
     const p = this.player;
+    const menuOpen = useRaid.getState().inventoryOpen;
+    this.runCommands();
+
     const aim = this.camera.toWorld(this.input.mouseX, this.input.mouseY);
-    p.update(dt, this.input, aim.x, aim.y);
+    p.update(dt, this.input, aim.x, aim.y, !menuOpen);
 
     // How visible the player is: flashlight and gunfire give you away.
     const lightHere = this.lighting ? this.lighting.levelAt(p.x, p.y) : 1;
@@ -255,13 +306,34 @@ export class Game {
     });
     this.effects.update(dt);
 
-    const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25);
-    expedition.patch({
+    const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25, menuOpen);
+    if (menuOpen && this.input.wasPressed('KeyE')) raid.closeInventory();
+    raid.patch({
       prompt: view.prompt,
       extractCountdown: view.countdown === null ? null : Math.ceil(view.countdown * 10) / 10,
       extractInZone: view.inZone,
       flashlight: p.flashlight,
     });
+  }
+
+  /** Requests queued by the inventory UI (drop, use). */
+  private runCommands(): void {
+    for (const c of raid.takeCommands()) {
+      if (c.type === 'use') {
+        const it = useRaid.getState().loadout;
+        const item = [it.pockets, it.backpack?.contents].flatMap((g) => g?.items ?? []).find((q) => q.item.uid === c.uid)?.item;
+        if (item) this.player.useItem(item);
+      } else if (c.type === 'drop') {
+        const id = this.interactions.dropPile(this.player.x, this.player.y + 2);
+        const grid = useRaid.getState().containers[id] ?? emptyGrid(GROUND_GRID[0], GROUND_GRID[1]);
+        const r = addToGrid(grid, c.item);
+        let g = r.grid;
+        // A full pile grows rather than eating the item.
+        if (r.rest) g = addToGrid({ ...g, h: g.h + 4 }, r.rest).grid;
+        raid.setContainer(id, g);
+        this.audio.sfx('drop', this.player.x, this.player.y);
+      }
+    }
   }
 
   private render(dt: number): void {
@@ -286,20 +358,38 @@ export class Game {
     const psy = p.y - GUN_HEIGHT - this.camera.top;
     const dist = Math.hypot(this.input.mouseX - psx, this.input.mouseY - psy);
     const moveFactor = Math.min(1, p.speed / 112);
-    const spreadPx = Math.tan((w.spread(moveFactor) * Math.PI) / 180) * dist;
+    const spreadPx = w ? Math.tan((w.spread(moveFactor) * Math.PI) / 180) * dist : 6;
+    const menuOpen = useRaid.getState().inventoryOpen;
+    const st = p.status;
     this.overlay.update(dt, this.input.mouseX, this.input.mouseY, spreadPx,
-      w.reloading ? w.reloadProgress : -1, psx, psy, p.hp / p.maxHp);
+      w?.reloading ? w.reloadProgress : st.using >= 0 ? st.using : -1, psx, psy, p.hp / p.maxHp, !menuOpen && p.alive, st.bleeding);
 
+    const lo = useRaid.getState().loadout;
+    const armor = lo.armor ? (lo.armor.dur ?? 0) / (ITEMS[lo.armor.id] as ArmorDef).durability : -1;
+    const helmet = lo.helmet ? (lo.helmet.dur ?? 0) / (ITEMS[lo.helmet.id] as ArmorDef).durability : -1;
+    const quick = lo.quick.map((id) => (id ? `${id}:${loadoutCount(lo, id)}` : '')).join('|');
     const hostiles = this.enemies.filter((e) => e.alive).length;
     syncHud({
       hp: Math.ceil(p.hp),
       maxHp: p.maxHp,
-      weaponName: w.def.name,
+      bleeding: st.bleeding,
+      regen: st.regen,
+      boosted: st.boosted,
+      armor: Math.round(armor * 20) / 20,
+      helmet: Math.round(helmet * 20) / 20,
+      using: st.using < 0 ? -1 : Math.round(st.using * 20) / 20,
+      usingName: st.usingName,
+      armed: !!w,
+      weaponName: w?.def.name ?? 'UNARMED',
       weaponSlot: p.current,
-      ammo: w.ammo,
-      magSize: w.def.magSize,
-      reserve: w.reserve,
-      reloading: w.reloading,
+      ammo: w?.ammo ?? 0,
+      magSize: w?.def.magSize ?? 0,
+      reserve: p.carriedAmmo(),
+      ammoName: w?.ammoId ? ITEMS[w.ammoId].short : '',
+      reloading: !!w?.reloading,
+      jammed: !!w?.jammed,
+      quick,
+      weight: Math.round(loadoutWeight(lo)),
       hostiles,
       dead: !p.alive,
       cleared: hostiles === 0,
@@ -309,6 +399,7 @@ export class Game {
   /**
    * In the dark you only see enemies that are in your line of sight AND lit (by your
    * flashlight, a lamp, or their own muzzle flash). Otherwise you only hear them.
+   * Corpses stay faintly visible once seen, so bodies can be found again.
    */
   private updateEnemyVisibility(dt: number): void {
     const p = this.player;
@@ -330,29 +421,59 @@ export class Game {
     if (b.faction === 'player') this.ctx.emitNoise(hit.x, hit.y, 90);
   };
 
-  private onBulletActor = (b: Bullet, target: Hittable, x: number, y: number): void => {
-    this.effects.bloodHit(x, y, b.dx, b.dy, 6);
-    this.audio.sfx('impactFlesh', x, y);
+  private onBulletActor = (b: Bullet, target: Hittable, x: number, y: number, headshot: boolean): void => {
     if (target === this.player) {
-      this.player.takeDamage(b.damage, b.dx, b.dy);
+      const blocked = this.player.takeHit(b.damage, b.pen, b.dx, b.dy, headshot);
+      if (blocked) this.effects.wallImpact(x, y, -b.dx, -b.dy);
+      else this.effects.bloodHit(x, y, b.dx, b.dy, headshot ? 12 : 6);
+      this.audio.sfx('impactFlesh', x, y);
       this.overlay.damaged(Math.atan2(-b.dy, -b.dx));
       return;
     }
     const enemy = target as Enemy;
-    const killed = enemy.takeDamage(b.damage, b.dx, b.dy, b.knockback, this.player.x, this.player.y);
-    if (killed) {
-      expedition.kill();
-      this.overlay.kill();
+    const r = enemy.takeDamage(b.damage, b.pen, headshot, b.dx, b.dy, b.knockback, this.player.x, this.player.y);
+    if (r.blocked) {
+      this.effects.wallImpact(x, y, -b.dx, -b.dy);
+      this.audio.sfx('armor', x, y);
+    } else {
+      this.effects.bloodHit(x, y, b.dx, b.dy, headshot ? 12 : 6);
+      this.audio.sfx('impactFlesh', x, y);
+    }
+    if (r.killed) {
+      raid.kill();
+      this.overlay.kill(headshot);
       this.effects.bloodPool(enemy.x, enemy.y, true);
       this.effects.bloodHit(x, y, b.dx, b.dy, 14);
-      this.audio.sfx('kill', x, y);
-      this.hitstopTime = Math.max(this.hitstopTime, 0.045);
+      this.audio.sfx(headshot ? 'headshot' : 'kill', x, y);
+      this.hitstopTime = Math.max(this.hitstopTime, headshot ? 0.07 : 0.045);
       this.camera.shake(0.15);
+      this.addBody(enemy);
     } else {
-      this.overlay.hit();
-      if (Math.random() < 0.5) this.effects.bloodPool(x + b.dx * 10, y + b.dy * 10, false);
+      if (headshot) this.audio.sfx('headshot', x, y);
+      this.overlay.hit(r.blocked, headshot);
+      if (!r.blocked && Math.random() < 0.5) this.effects.bloodPool(x + b.dx * 10, y + b.dy * 10, false);
     }
   };
+
+  /** A corpse carries its gun, some rounds, whatever armor survived, and pocket junk. */
+  private addBody(e: Enemy): void {
+    const i = this.enemies.indexOf(e);
+    const rng = new Rng((this.opts.seed * 31 + i * 7717) >>> 0);
+    let grid: Grid = emptyGrid(BODY_GRID[0], BODY_GRID[1]);
+    const gunDef = WEAPONS[(ITEMS[e.weaponItem] as WeaponItemDef).weapon];
+    grid = addToGrid(grid, createItem(e.weaponItem, { loaded: Math.min(e.weapon.ammo, gunDef.magSize), ammoType: e.weapon.ammoId ?? undefined })).grid;
+    const rounds = rng.int(e.def.ammo[0], e.def.ammo[1]);
+    if (rounds > 0 && e.weapon.ammoId) grid = addToGrid(grid, createItem(e.weapon.ammoId, { qty: rounds })).grid;
+    for (const worn of [e.armor, e.helmet]) {
+      if (worn && worn.dur > 0) grid = addToGrid(grid, createItem(worn.id, { dur: Math.round(worn.dur) })).grid;
+    }
+    const n = rng.int(e.def.pockets[0], e.def.pockets[1]);
+    for (let k = 0; k < n; k++) {
+      const id = rollItemId(rng, BODY_POCKETS, 0.2);
+      if (id) grid = addToGrid(grid, foundInstance(rng, id)).grid;
+    }
+    this.interactions.addBody(`body${i}`, () => ({ x: e.x, y: e.y }), grid);
+  }
 
   /** Largest whole-number scale that fits the window, keeping pixels square and crisp. */
   private fit = (): void => {

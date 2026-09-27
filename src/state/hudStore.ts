@@ -7,12 +7,32 @@ import { create } from 'zustand';
 export interface HudState {
   hp: number;
   maxHp: number;
+  bleeding: boolean;
+  regen: boolean;
+  boosted: boolean;
+  /** 0..1 durability of worn armor / helmet, or -1 if none. */
+  armor: number;
+  helmet: number;
+  /** Item being used (medkit...) and its progress 0..1, or -1. */
+  using: number;
+  usingName: string | null;
+
+  armed: boolean;
   weaponName: string;
   weaponSlot: number;
   ammo: number;
   magSize: number;
+  /** Rounds carried of the loaded type. */
   reserve: number;
+  ammoName: string;
   reloading: boolean;
+  jammed: boolean;
+
+  /** Quick slots: bound item id and how many are carried. */
+  quick: string;
+  /** Carried weight, kg (rounded). */
+  weight: number;
+
   hostiles: number;
   dead: boolean;
   cleared: boolean;
@@ -21,12 +41,24 @@ export interface HudState {
 export const useHud = create<HudState>(() => ({
   hp: 100,
   maxHp: 100,
+  bleeding: false,
+  regen: false,
+  boosted: false,
+  armor: -1,
+  helmet: -1,
+  using: -1,
+  usingName: null,
+  armed: false,
   weaponName: '',
   weaponSlot: 0,
   ammo: 0,
   magSize: 0,
   reserve: 0,
+  ammoName: '',
   reloading: false,
+  jammed: false,
+  quick: '',
+  weight: 0,
   hostiles: 0,
   dead: false,
   cleared: false,
@@ -35,12 +67,10 @@ export const useHud = create<HudState>(() => ({
 /** Shallow-compare and write only changed fields. */
 export function syncHud(next: HudState): void {
   const cur = useHud.getState();
-  let changed = false;
   for (const k in next) {
     if (next[k as keyof HudState] !== cur[k as keyof HudState]) {
-      changed = true;
-      break;
+      useHud.setState(next);
+      return;
     }
   }
-  if (changed) useHud.setState(next);
 }

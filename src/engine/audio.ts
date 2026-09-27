@@ -19,11 +19,14 @@ export interface GunSound {
   gain: number;
 }
 
-type Sfx =
+export type Sfx =
   | 'dryfire' | 'switch' | 'step' | 'casing' | 'impactWall' | 'impactFlesh' | 'hurt' | 'kill'
-  | 'door' | 'rummage' | 'loot' | 'flashlight' | 'beacon' | 'alarm' | 'extracted';
+  | 'door' | 'rummage' | 'loot' | 'flashlight' | 'beacon' | 'alarm' | 'extracted'
+  | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop';
 
 const HEARING_RANGE = 900;
+
+export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab';
 
 export class AudioService {
   private ctx: AudioContext | null = null;
@@ -66,14 +69,83 @@ export class AudioService {
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   }
 
+  setMasterVolume(v: number): void {
+    this.volume = v;
+    if (this.ctx) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
+  }
+
   setListener(x: number, y: number): void {
     this.listenerX = x;
     this.listenerY = y;
   }
 
+  /** Non-positional interface sounds (menus, inventory). Short, dry, mechanical. */
+  ui(kind: UiSfx): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const out = ctx.createGain();
+    out.gain.value = 0.32;
+    out.connect(this.master);
+    const t = ctx.currentTime;
+    switch (kind) {
+      case 'hover':
+        this.click(out, t, 4200, 0.12);
+        break;
+      case 'click':
+        this.click(out, t, 2600, 0.5);
+        this.click(out, t + 0.025, 1500, 0.35);
+        break;
+      case 'tab':
+        this.click(out, t, 1800, 0.45);
+        this.thump(out, t, 220, 0.04, 0.3);
+        break;
+      case 'pickup':
+        this.click(out, t, 1900, 0.4);
+        this.noiseBurst(out, t, 0.05, 1600, 0.25);
+        break;
+      case 'drop':
+        this.thump(out, t, 160, 0.06, 0.55);
+        this.click(out, t + 0.01, 1100, 0.45);
+        break;
+      case 'equip':
+        this.click(out, t, 1200, 0.6);
+        this.thump(out, t + 0.02, 130, 0.08, 0.6);
+        this.click(out, t + 0.07, 2400, 0.4);
+        break;
+      case 'error':
+        this.tone(out, t, 150, 0.09, 0.9);
+        this.tone(out, t + 0.1, 120, 0.12, 0.9);
+        break;
+      case 'open':
+        this.noiseBurst(out, t, 0.08, 2400, 0.25);
+        this.click(out, t + 0.05, 1600, 0.45);
+        break;
+      case 'close':
+        this.click(out, t, 1400, 0.45);
+        this.thump(out, t, 180, 0.05, 0.4);
+        break;
+      case 'buy':
+        this.click(out, t, 2000, 0.5);
+        this.tone(out, t + 0.04, 1180, 0.07, 0.5);
+        this.tone(out, t + 0.1, 1570, 0.1, 0.5);
+        break;
+      case 'sell':
+        this.tone(out, t, 1570, 0.06, 0.5);
+        this.tone(out, t + 0.07, 1180, 0.1, 0.5);
+        this.click(out, t + 0.14, 2600, 0.4);
+        break;
+    }
+  }
+
+  /** Silence everything that's playing (scene change). The context stays alive. */
   destroy(): void {
-    void this.ctx?.close();
-    this.ctx = null;
+    if (!this.ctx) return;
+    const old = this.master;
+    this.master = this.ctx.createGain();
+    this.master.gain.value = this.volume;
+    this.master.connect(this.shaper);
+    old.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02);
+    setTimeout(() => old.disconnect(), 200);
   }
 
   gunshot(s: GunSound, x: number, y: number): void {
@@ -127,6 +199,8 @@ export class AudioService {
       dryfire: 0.45, switch: 0.4, step: 0.14, casing: 0.12,
       impactWall: 0.35, impactFlesh: 0.7, hurt: 0.9, kill: 0.6,
       door: 0.45, rummage: 0.3, loot: 0.5, flashlight: 0.4, beacon: 0.35, alarm: 0.55, extracted: 0.7,
+      shell: 0.45, cycle: 0.55, jam: 0.6, unjam: 0.55, inject: 0.45, bandage: 0.4, heal: 0.25,
+      armor: 0.6, headshot: 0.8, drop: 0.35,
     };
     const bus = this.spatialBus(x, y, gains[kind]);
     if (!bus) return;
@@ -227,6 +301,60 @@ export class AudioService {
         this.tone(out, t + 0.12, 659, 0.35, 1);
         this.tone(out, t + 0.24, 784, 0.6, 1);
         break;
+      case 'shell':
+        // A round pushed into a tube: click then a dull seat.
+        this.click(out, t, 2400, 0.7);
+        this.thump(out, t + 0.02, 180, 0.05, 0.5);
+        break;
+      case 'cycle':
+        // Pump or bolt: back and forward, metal on metal.
+        this.click(out, t, 1300, 0.9);
+        this.noiseBurst(out, t + 0.01, 0.06, 2600 * muffle, 0.35);
+        this.click(out, t + 0.13, 1900, 1);
+        this.thump(out, t + 0.13, 140, 0.05, 0.6);
+        break;
+      case 'jam':
+        this.click(out, t, 900, 0.8);
+        this.noiseBurst(out, t + 0.03, 0.05, 1200 * muffle, 0.4);
+        break;
+      case 'unjam':
+        this.click(out, t, 1500, 0.8);
+        this.click(out, t + 0.18, 2200, 0.9);
+        this.click(out, t + 0.3, 1700, 0.7);
+        break;
+      case 'inject':
+        this.click(out, t, 3200, 0.6);
+        this.noiseBurst(out, t + 0.05, 0.25, 5000, 0.18);
+        break;
+      case 'bandage': {
+        // Fabric tearing: noise that rises in brightness.
+        const n = this.noiseSource(t, 0.45);
+        const f = ctx.createBiquadFilter();
+        f.type = 'bandpass';
+        f.Q.value = 0.9;
+        f.frequency.setValueAtTime(900, t);
+        f.frequency.linearRampToValueAtTime(2600, t + 0.4);
+        n.connect(f).connect(env(ctx, t, 0.7, 0.05, 0.38)).connect(out);
+        break;
+      }
+      case 'heal':
+        this.tone(out, t, 392, 0.25, 0.7);
+        this.tone(out, t + 0.1, 523, 0.35, 0.7);
+        break;
+      case 'armor':
+        // A round flattening on a plate: bright ping and grit.
+        this.tone(out, t, 2900 + Math.random() * 600, 0.14, 0.9);
+        this.noiseBurst(out, t, 0.05, 3800 * muffle, 0.6);
+        this.thump(out, t, 120, 0.06, 0.6);
+        break;
+      case 'headshot':
+        this.noiseBurst(out, t, 0.03, 6000 * muffle, 0.9);
+        this.thump(out, t + 0.01, 90, 0.16, 1);
+        break;
+      case 'drop':
+        this.thump(out, t, 110, 0.09, 0.8);
+        this.noiseBurst(out, t, 0.06, 700, 0.4);
+        break;
     }
   }
 
@@ -256,6 +384,15 @@ export class AudioService {
     src.buffer = this.noise;
     src.start(t, Math.random() * 0.5, dur);
     return src;
+  }
+
+  private noiseBurst(out: AudioNode, t: number, dur: number, freq: number, gain: number): void {
+    const ctx = this.ctx!;
+    const n = this.noiseSource(t, dur + 0.02);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = freq;
+    n.connect(f).connect(env(ctx, t, gain, 0.002, dur)).connect(out);
   }
 
   private click(out: AudioNode, t: number, freq: number, gain: number): void {
@@ -297,3 +434,6 @@ function env(ctx: AudioContext, t: number, peak: number, attack: number, decay: 
   g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
   return g;
 }
+
+/** One audio engine for the whole app: the game world and the interface share it. */
+export const audio = new AudioService();

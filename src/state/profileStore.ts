@@ -129,6 +129,8 @@ export const useProfile = create<ProfileStore>()(
         pendingNotices.push(...notes);
         return profile;
       },
+      // Write the repaired/resolved save straight back, so an abandoned raid resolves exactly once.
+      onRehydrateStorage: () => (state) => state?.apply({}),
       merge: (persisted, current) => {
         const repaired = repair(persisted as Profile).profile;
         const { profile, notice } = resolveAbandonedRaid(repaired);

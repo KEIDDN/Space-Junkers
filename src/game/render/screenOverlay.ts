@@ -16,6 +16,9 @@ export class ScreenOverlay {
   private pain = new Sprite(Texture.WHITE);
   private hitmark = 0;
   private killmark = 0;
+  private hitBlocked = false;
+  private hitHead = false;
+  private bleedPulse = 0;
   private damageDirs: { angle: number; t: number }[] = [];
 
   constructor() {
@@ -27,12 +30,16 @@ export class ScreenOverlay {
     this.container.addChild(vignette, this.pain, this.indicators, this.cross);
   }
 
-  hit(): void {
+  /** @param blocked armor stopped most of it (grey marker) */
+  hit(blocked = false, headshot = false): void {
     this.hitmark = HITMARK_TIME;
+    this.hitBlocked = blocked;
+    this.hitHead = headshot;
   }
 
-  kill(): void {
-    this.killmark = KILLMARK_TIME;
+  kill(headshot = false): void {
+    this.killmark = KILLMARK_TIME * (headshot ? 1.4 : 1);
+    this.hitHead = headshot;
   }
 
   /** Damage came from `angle` (world direction from player toward the attacker). */
@@ -46,13 +53,17 @@ export class ScreenOverlay {
    * @param reload 0..1 reload progress, or -1
    */
   update(dt: number, mx: number, my: number, spreadPx: number, reload: number,
-    playerSx: number, playerSy: number, hpFrac: number): void {
+    playerSx: number, playerSy: number, hpFrac: number, showCrosshair = true, bleeding = false): void {
     this.hitmark = Math.max(0, this.hitmark - dt);
     this.killmark = Math.max(0, this.killmark - dt);
 
-    // Pain flash decays; low health keeps a slow pulse.
+    // Pain flash decays; low health keeps a slow pulse, bleeding a heartbeat.
     const lowHp = hpFrac < 0.35 && hpFrac > 0 ? (0.08 + 0.06 * Math.sin(performance.now() / 180)) : 0;
-    this.pain.alpha = Math.max(lowHp, this.pain.alpha - dt * 1.2);
+    this.bleedPulse = bleeding ? (this.bleedPulse + dt) % 1.1 : 0;
+    const beat = bleeding ? Math.max(0, 0.16 - this.bleedPulse * 0.5) : 0;
+    this.pain.alpha = Math.max(lowHp, beat, this.pain.alpha - dt * 1.2);
+
+    this.cross.visible = showCrosshair;
 
     // Lines are drawn on pixel centres (+0.5), fills on pixel corners.
     const px = Math.round(mx);
@@ -62,7 +73,9 @@ export class ScreenOverlay {
     const gap = Math.round(Math.max(3, Math.min(40, spreadPx)));
     const g = this.cross;
     g.clear();
-    const col = this.killmark > 0 ? 0xff3b30 : this.hitmark > 0 ? 0xffb14a : 0xe8e2d0;
+    const col = this.killmark > 0 ? 0xff3b30
+      : this.hitmark > 0 ? (this.hitBlocked ? 0x9aa3ad : this.hitHead ? 0xffe066 : 0xffb14a)
+        : 0xe8e2d0;
     const len = 4;
     // Dark outline first so the crosshair reads on any floor.
     for (const [w, c, a] of [[3, 0x000000, 0.6], [1, col, 1]] as const) {
@@ -74,7 +87,7 @@ export class ScreenOverlay {
     }
     g.rect(px, py, 1, 1).fill({ color: col });
     if (this.hitmark > 0 || this.killmark > 0) {
-      const s = this.killmark > 0 ? 6 : 4;
+      const s = this.killmark > 0 ? (this.hitHead ? 8 : 6) : this.hitHead ? 5 : 4;
       g.moveTo(x - s - 2, y - s - 2).lineTo(x - 2, y - 2)
         .moveTo(x + s + 2, y - s - 2).lineTo(x + 2, y - 2)
         .moveTo(x - s - 2, y + s + 2).lineTo(x - 2, y + 2)

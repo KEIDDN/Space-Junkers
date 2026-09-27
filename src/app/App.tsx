@@ -1,14 +1,24 @@
 import { useState } from 'react';
-import { expedition } from '../state/expeditionStore';
+import { deploy as deployProfile } from '../core/raidResult';
+import { getProfile, useProfile } from '../state/profileStore';
+import { raid, rangeLoadout } from '../state/raidStore';
 import { GameView } from '../ui/GameView';
 import { MainMenu } from '../ui/MainMenu';
 
-export type RunConfig = { mode: 'range' | 'facility'; seed: number };
+export type RunConfig = { mode: 'range' | 'facility'; seed: number; destination?: string };
 
 export function App() {
   const [run, setRun] = useState<(RunConfig & { key: number }) | null>(null);
   const deploy = (cfg: RunConfig) => {
-    expedition.start(cfg.mode, cfg.seed); // fresh expedition state before the view mounts
+    if (cfg.mode === 'facility') {
+      const destination = cfg.destination ?? 'tikhaya';
+      const p = getProfile();
+      // Mark the raid in the save before anything else: from here on, leaving means losing the kit.
+      useProfile.getState().apply(deployProfile(p, destination, cfg.seed));
+      raid.start('facility', cfg.seed, destination, p.loadout);
+    } else {
+      raid.start('range', 0, 'range', rangeLoadout());
+    }
     setRun({ ...cfg, key: Date.now() });
   };
   if (!run) return <MainMenu onDeploy={deploy} />;
