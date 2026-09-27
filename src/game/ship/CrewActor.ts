@@ -20,6 +20,8 @@ export class CrewActor {
   private pingpong = 1;
   private gestureTimer = 3 + Math.random() * 6;
   private gestureLeft = 0;
+  /** Set on the frame they start fiddling with their station (for its sound). */
+  busied = false;
 
   constructor(readonly station: CrewStation, sprite: string) {
     const a = (n: CrewAnim) => anim(`crew_${sprite}_${n}`);
@@ -36,6 +38,7 @@ export class CrewActor {
   }
 
   update(dt: number, px: number, py: number, talking: boolean): void {
+    this.busied = false;
     const seated = this.station.anim === 'sit';
     const near = Math.hypot(px - this.station.x, py - this.station.y) < 90;
     let want: CrewAnim = this.station.anim;
@@ -47,6 +50,7 @@ export class CrewActor {
       if (this.gestureTimer <= 0 && this.gestureLeft <= 0) {
         this.gestureLeft = 2 + Math.random() * 2;
         this.gestureTimer = 6 + Math.random() * 8;
+        this.busied = true;
       }
       if (this.gestureLeft > 0) {
         this.gestureLeft -= dt;

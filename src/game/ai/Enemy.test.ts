@@ -49,13 +49,14 @@ function ctx(extra: Partial<GameContext> = {}): GameContext & { shots: number; g
     grenades: 0,
     projectiles: { fire: () => { c.shots++; } },
     effects: { muzzleFlash() {}, smoke() {}, casing() {}, dropMag() {} },
-    audio: { sfx() {}, gunshot() {} },
+    audio: { sfx() {}, gunshot() {}, step() {} },
     camera: { shake() {}, kick() {} },
     emitNoise() {},
     hitstop() {},
     lightFlash() {},
     smokeBetween: () => false,
     throwGrenade: () => { c.grenades++; },
+    surfaceAt: () => 'deck',
     ...extra,
   };
   return c as unknown as GameContext & { shots: number; grenades: number };

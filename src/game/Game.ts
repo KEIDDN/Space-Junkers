@@ -10,7 +10,7 @@ import { loreEntry } from '../data/lore';
 import { themeFor, type Theme } from '../data/themes';
 import { ENEMIES } from '../data/enemies';
 import { ITEMS, type ArmorDef, type WeaponItemDef } from '../data/items';
-import { BODY_GRID, BODY_POCKETS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
+import { BODY_GRID, BODY_POCKETS, CONTAINERS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
 import { WEAPONS } from '../data/weapons';
 import { TEST_RANGE } from '../data/testRange';
 import { addToGrid, createItem, emptyGrid, loadoutCount, loadoutWeight, type Grid } from '../core/inventory';
@@ -27,10 +27,11 @@ import { Player } from './entities/Player';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
 import { Lighting } from './render/lighting';
-import { DEFAULT_LOOK, buildMapView } from './render/mapView';
+import { DEFAULT_LOOK, buildMapView, floorAt, type MapLook } from './render/mapView';
 import { ScreenOverlay } from './render/screenOverlay';
 import type { TacticalSnapshot } from './tactical';
 import { hasLineOfSight, type RayHit } from './world/collision';
+import { emitterLevels, emittersFrom, type Emitter } from './world/emitters';
 import { Doors } from './world/doors';
 import { generateFacility } from './world/facilityGen';
 import { Tile, mapFromAscii, type TileMap } from './world/tilemap';
@@ -95,6 +96,7 @@ export class Game {
   private deadTime = 0;
   private ended = false;
   private theme: Theme = themeFor(undefined);
+  private look: MapLook = DEFAULT_LOOK;
   /** Raid clock (seconds) and the orbit window. */
   private elapsed = 0;
   private window = Infinity;
@@ -104,6 +106,8 @@ export class Game {
   /** Tiles the operator has seen, for the tactical map. */
   private explored = new Uint8Array(0);
   private surveyTimer = 0;
+  private emitters: Emitter[] = [];
+  private emitterTimer = 0;
   private terminalAt: { x: number; y: number } | null = null;
   paused = false;
 
@@ -244,7 +248,11 @@ export class Game {
     const map = this.map;
     this.audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
     this.audio.setRoom(facility ? (this.theme.id as keyof typeof ROOMS) : 'range');
-    this.audio.startAmbience('facility');
+    this.audio.startAmbience('facility', facility ? this.theme.id : 'range');
+    this.emitters = emittersFrom([
+      ...this.map.props,
+      ...this.map.containers.map((c) => ({ sprite: CONTAINERS[c.type]?.sprite ?? '', x: c.tx * 32 + 16, y: c.ty * 32 + 16 })),
+    ]);
     this.effects = new Effects(this.map, this.audio);
     this.lighting = this.map.ambient < 1 ? new Lighting(this.app.renderer, this.map) : null;
 
@@ -263,6 +271,10 @@ export class Game {
       lightFlash: (x, y, r, color, intensity) => this.lighting?.flash(x, y, r, color, intensity),
       smokeBetween: (x0, y0, x1, y1) => this.grenades.blocks(x0, y0, x1, y1),
       throwGrenade: (fx, fy, tx, ty, kind, faction) => this.grenades.throw(fx, fy, tx, ty, kind, faction),
+      surfaceAt: (x, y) => {
+        const f = floorAt(this.look, Math.floor(x / 32), Math.floor(y / 32));
+        return f === 'floor_grate' ? 'grate' : f === 'floor_plate' ? 'plate' : 'deck';
+      },
     };
     this.grenades = new Grenades(this.map, this.audio, {
       onNoise: (x, y, r) => this.ctx.emitNoise(x, y, r),
@@ -270,8 +282,8 @@ export class Game {
     });
 
     const t = this.theme;
-    const look = facility ? { floor: t.floor, floorTint: t.floorTint, wall: t.wall, wallTint: t.wallTint, trim: t.trim } : DEFAULT_LOOK;
-    const { ground, props } = buildMapView(this.map, look);
+    this.look = facility ? { floor: t.floor, floorTint: t.floorTint, wall: t.wall, wallTint: t.wallTint, trim: t.trim } : DEFAULT_LOOK;
+    const { ground, props } = buildMapView(this.map, this.look);
     this.doors = this.map.doors.length ? new Doors(this.map, this.audio, this.ctx.emitNoise) : null;
     this.interactions = new Interactions(this.map, this.audio, {
       onNoise: this.ctx.emitNoise,
@@ -390,6 +402,8 @@ export class Game {
 
     this.trackRooms(dt);
     this.survey(dt);
+    this.listenToRoom(dt);
+    this.heartbeat(dt);
     this.raidClock(dt);
     const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25, menuOpen);
     p.searching = this.interactions.handsBusy ? Math.max(0, p.searching) + dt : -1;
@@ -402,6 +416,28 @@ export class Game {
       extractKind: view.countdown === null ? null : zone?.kind === 'lift' ? 'lift' : 'pad',
       flashlight: p.flashlight,
     });
+  }
+
+  private heartTimer = 0;
+
+  /** Badly hurt: your own heartbeat, faster the closer to the end. */
+  private heartbeat(dt: number): void {
+    const p = this.player;
+    const k = p.hp / p.maxHp;
+    if (!p.alive || k > 0.3) return;
+    this.heartTimer -= dt;
+    if (this.heartTimer > 0) return;
+    this.heartTimer = 0.55 + k * 1.4;
+    this.audio.sfx('heartbeat', p.x, p.y, 0.6 + (0.3 - k) * 2);
+  }
+
+  /** Machinery near the player hums in the right ear, quieter through walls. */
+  private listenToRoom(dt: number): void {
+    this.emitterTimer -= dt;
+    if (this.emitterTimer > 0) return;
+    this.emitterTimer = 0.2;
+    const p = this.player;
+    this.audio.setEmitters(emitterLevels(this.emitters, p.x, p.y, (x, y) => !hasLineOfSight(this.map, p.x, p.y - 8, x, y - 8)));
   }
 
   /** Fill in the operator's map: everything in line of sight nearby. */

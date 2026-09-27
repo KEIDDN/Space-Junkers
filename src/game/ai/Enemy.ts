@@ -93,6 +93,7 @@ export class Enemy implements Hittable {
   private pendingAlert: { x: number; y: number; t: number } | null = null;
   /** Seconds since this enemy last fired (muzzle flash reveals it in the dark). */
   lastShotAgo = 99;
+  private mutterTimer = 6 + Math.random() * 30;
 
   constructor(
     private ctx: GameContext,
@@ -278,6 +279,12 @@ export class Enemy implements Hittable {
 
     this.stateTime += dt;
     this.stagger -= dt;
+    // Bored guards talk into their radios. Quietly, but a listening player can find them by it.
+    this.mutterTimer -= dt;
+    if (this.mutterTimer <= 0) {
+      this.mutterTimer = 14 + Math.random() * 26;
+      if (this.state === 'idle' || this.state === 'patrol') this.ctx.audio.sfx('mutter', this.x, this.y);
+    }
     this.lastShotAgo += dt;
     this.shoutCooldown -= dt;
     this.grenadeCooldown -= dt;
@@ -549,7 +556,7 @@ export class Enemy implements Hittable {
     };
     this.view.update(dt, this.x, this.y, this.facing, moved, backwards, pose);
     playAnimEvents(this.ctx, this.view, this.x, this.y, this.facing, this.weapon.def);
-    if (this.view.stepped) this.ctx.audio.sfx('step', this.x, this.y, running ? 1.7 : 1);
+    if (this.view.stepped) this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), running ? 1.7 : 1);
   }
 
   private engage(fromHit = false): void {

@@ -14,7 +14,12 @@ import { Lighting } from '../render/lighting';
 import { buildMapView, FLOOR_DECK } from '../render/mapView';
 import { hasLineOfSight, moveCircle } from '../world/collision';
 import { Doors } from '../world/doors';
+import { emitterLevels, emittersFrom, type Emitter } from '../world/emitters';
 import { CrewActor } from './CrewActor';
+import type { Sfx } from '../../engine/audio';
+
+/** What each crew member sounds like at work. */
+const CREW_SOUND: Record<CrewId, Sfx> = { hacker: 'typing', medic: 'beeps', trader: 'radio', merc: 'sharpen', smuggler: 'cards' };
 
 const SPEED = 92;
 const ACCEL = 1200;
@@ -124,6 +129,7 @@ export class ShipScene {
     const L = buildShip(useProfile.getState().upgrades);
     this.layout = L;
     const map = L.map;
+    this.emitters = emittersFrom(L.props);
     this.camera = new Camera(map.pixelWidth, map.pixelHeight);
     this.camera.lookAhead = 0.08;
 
@@ -235,11 +241,15 @@ export class ShipScene {
     const facing = Math.abs(this.vx) > 4 ? (this.vx > 0 ? 0 : Math.PI) : this.lastFacing;
     this.lastFacing = facing;
     this.player.update(dt, this.px, this.py, facing, moved, false, 0);
-    if (this.player.stepped) audio.sfx('step', this.px, this.py);
+    if (this.player.stepped) audio.step(this.px, this.py, 'plate', 1, true);
 
     // --- Crew, props, doors
     const talking = ship.panel?.kind === 'crew' ? ship.panel.crew : null;
-    for (const c of this.crew) c.update(dt, this.px, this.py, talking === c.station.crew);
+    for (const c of this.crew) {
+      c.update(dt, this.px, this.py, talking === c.station.crew);
+      // Everyone aboard makes their own small noises: you can find them with your ears.
+      if (c.busied) audio.sfx(CREW_SOUND[c.station.crew], c.station.x, c.station.y);
+    }
     for (const b of this.bobbers) {
       b.t += dt;
       b.s.y = Math.round(b.y + Math.sin(b.t * 2.2) * 2);
@@ -280,12 +290,20 @@ export class ShipScene {
     audio.setListener(this.px, this.py);
     const dr = Math.hypot(this.px - this.layout.reactor.x, this.py - this.layout.reactor.y);
     audio.setAmbienceIntensity(Math.max(0, 1 - dr / 260));
+    this.emitterTimer -= dt;
+    if (this.emitterTimer <= 0) {
+      this.emitterTimer = 0.2;
+      const map = this.layout.map;
+      audio.setEmitters(emitterLevels(this.emitters, this.px, this.py, (x, y) => !hasLineOfSight(map, this.px, this.py - 8, x, y - 8)));
+    }
     this.lighting.update(dt, this.camera.left, this.camera.top, this.px, this.py, 0);
     this.drawStars();
     this.input.endFrame();
   };
 
   private lastFacing = 0;
+  private emitters: Emitter[] = [];
+  private emitterTimer = 0;
 
   /** "!" over crew with new contracts, "?" when you can hand one in. Emissive, above the dark. */
   private updateMarkers(dt: number): void {

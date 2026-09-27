@@ -152,6 +152,12 @@ function lighten(c: number): number {
   return (r << 16) | (g << 8) | b;
 }
 
+/** Which floor plate covers a tile (the same pick the renderer makes). */
+export function floorAt(look: MapLook, tx: number, ty: number): string {
+  const total = look.floor.reduce((n, [, w]) => n + w, 0);
+  return pickFloor(look.floor, total, hash(tx >> 1, ty >> 1));
+}
+
 function pickFloor(style: FloorStyle, total: number, h: number): string {
   let r = h % total;
   for (const [name, w] of style) {

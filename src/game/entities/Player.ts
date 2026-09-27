@@ -317,7 +317,7 @@ export class Player implements Hittable {
     playAnimEvents(this.ctx, this.view, this.x, this.y, this.aim, this.weapon?.def ?? null);
     if (this.view.stepped) {
       const gait = this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk';
-      this.ctx.audio.sfx('step', this.x, this.y, gait === 'sprint' ? 1.8 : gait === 'sneak' ? 0.35 : 1);
+      this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), gait === 'sprint' ? 1.8 : gait === 'sneak' ? 0.3 : 1, true);
       // Your own footsteps are information for them, too. Heavy loads clatter.
       const noise = STEP_NOISE[gait] * (this.speedMul < 0.9 ? 1.3 : 1);
       if (noise > 0) this.ctx.emitNoise(this.x, this.y, noise);

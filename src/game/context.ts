@@ -1,4 +1,4 @@
-import type { AudioService } from '../engine/audio';
+import type { AudioService, Surface } from '../engine/audio';
 import type { Camera } from '../engine/camera';
 import type { Projectiles } from './combat/projectiles';
 import type { Effects } from './fx/effects';
@@ -20,4 +20,6 @@ export interface GameContext {
   /** Is there smoke between two points (blocks sight)? */
   smokeBetween(x0: number, y0: number, x1: number, y1: number): boolean;
   throwGrenade(fromX: number, fromY: number, toX: number, toY: number, kind: 'frag' | 'smoke', faction: 'player' | 'enemy'): void;
+  /** What the floor is made of here (for footsteps). */
+  surfaceAt(x: number, y: number): Surface;
 }

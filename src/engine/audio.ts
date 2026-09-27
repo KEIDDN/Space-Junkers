@@ -25,9 +25,18 @@ export type Sfx =
   | 'shell' | 'cycle' | 'jam' | 'unjam' | 'inject' | 'bandage' | 'heal' | 'armor' | 'headshot' | 'drop'
   | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
   | 'breaker' | 'keycard' | 'lift'
-  | 'magout' | 'magin' | 'rack' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet';
+  | 'magout' | 'magin' | 'rack' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet'
+  | 'heartbeat' | 'mutter' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio';
+
+/** What a foot lands on. */
+export type Surface = 'deck' | 'plate' | 'grate';
+
+/** Kinds of machinery that hum where they stand. */
+export type EmitterKind = 'machine' | 'electronic' | 'vent';
 
 const HEARING_RANGE = 900;
+/** The bed of room tone sits well under anything that happens. */
+const AMBIENCE_LEVEL = 0.55;
 const GUNSHOT_RANGE = 1700;
 
 export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab';
@@ -66,7 +75,7 @@ export class AudioService {
     const curve = new Float32Array(1024);
     for (let i = 0; i < curve.length; i++) {
       const x = (i / (curve.length - 1)) * 2 - 1;
-      curve[i] = Math.tanh(x * 2.2);
+      curve[i] = Math.tanh(x * 1.5) / Math.tanh(1.5);
     }
     this.shaper.curve = curve;
     this.shaper.connect(comp);
@@ -119,21 +128,59 @@ export class AudioService {
   // ---------------------------------------------------------------------------
   // Ambience: long loops that make a place feel like a place.
 
-  private amb: { stop(): void; hum: GainNode; events: number } | null = null;
+  private amb: { stop(): void; hum: GainNode; bus: GainNode; emitters: Record<EmitterKind, { gain: GainNode; pan: StereoPannerNode }> } | null = null;
+  /** Seconds until the next lull, and whether one is running. */
+  private lullAt = 0;
 
   /**
    * Start a looping bed of sound. 'ship': engine hum, air handlers, hull creaks.
-   * 'facility': a colder drone, electrical buzz and distant metal groans.
+   * 'facility': a colder drone plus the character of the world it's on (`place`).
+   * The bed breathes: now and then it drops into near-silence for a while.
    */
-  startAmbience(kind: 'ship' | 'facility'): void {
+  startAmbience(kind: 'ship' | 'facility', place = 'tikhaya'): void {
     this.stopAmbience();
     const ctx = this.ctx;
     if (!ctx) return;
     const bus = ctx.createGain();
     bus.gain.setValueAtTime(0, ctx.currentTime);
-    bus.gain.linearRampToValueAtTime(1, ctx.currentTime + 1.5);
+    bus.gain.linearRampToValueAtTime(AMBIENCE_LEVEL, ctx.currentTime + 1.5);
     bus.connect(this.master);
     const stops: (() => void)[] = [];
+    const osc = (type: OscillatorType, f: number, g: number, to: AudioNode) => {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = f;
+      const og = ctx.createGain();
+      og.gain.value = g;
+      o.connect(og).connect(to);
+      o.start();
+      stops.push(() => o.stop());
+      return { o, og };
+    };
+    const loopNoise = (type: BiquadFilterType, f: number, q: number, g: number, to: AudioNode) => {
+      const n = ctx.createBufferSource();
+      n.buffer = this.noise;
+      n.loop = true;
+      const bf = ctx.createBiquadFilter();
+      bf.type = type;
+      bf.frequency.value = f;
+      bf.Q.value = q;
+      const ng = ctx.createGain();
+      ng.gain.value = g;
+      n.connect(bf).connect(ng).connect(to);
+      n.start();
+      stops.push(() => n.stop());
+      return { bf, ng };
+    };
+    const lfo = (rate: number, depth: number, param: AudioParam) => {
+      const o = ctx.createOscillator();
+      o.frequency.value = rate;
+      const g = ctx.createGain();
+      g.gain.value = depth;
+      o.connect(g).connect(param);
+      o.start();
+      stops.push(() => o.stop());
+    };
 
     // Hum: detuned low oscillators through a lowpass.
     const hum = ctx.createGain();
@@ -143,63 +190,150 @@ export class AudioService {
     lp.frequency.value = kind === 'ship' ? 220 : 160;
     hum.connect(lp).connect(bus);
     for (const [f, g] of (kind === 'ship' ? [[47, 0.7], [94.5, 0.35], [141, 0.12]] : [[38, 0.6], [57.3, 0.3], [113, 0.08]]) as [number, number][]) {
-      const o = ctx.createOscillator();
-      o.type = 'triangle';
-      o.frequency.value = f;
-      const og = ctx.createGain();
-      og.gain.value = g;
-      o.connect(og).connect(hum);
-      o.start();
-      stops.push(() => o.stop());
+      osc('triangle', f, g, hum);
     }
 
-    // Air: looped noise, band-limited, slowly breathing.
-    const air = ctx.createBufferSource();
-    air.buffer = this.noise;
-    air.loop = true;
-    const bp = ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    bp.frequency.value = kind === 'ship' ? 520 : 300;
-    bp.Q.value = 0.6;
-    const ag = ctx.createGain();
-    ag.gain.value = kind === 'ship' ? 0.045 : 0.03;
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 0.07;
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 0.015;
-    lfo.connect(lfoGain).connect(ag.gain);
-    air.connect(bp).connect(ag).connect(bus);
-    air.start();
-    lfo.start();
-    stops.push(() => air.stop(), () => lfo.stop());
+    // Air: band-limited noise, slowly breathing.
+    const air = loopNoise('bandpass', kind === 'ship' ? 520 : 300, 0.6, kind === 'ship' ? 0.045 : 0.03, bus);
+    lfo(0.07, 0.015, air.ng.gain);
 
-    // Occasional events: creaks, clanks, buzzes.
+    // The world's own character.
+    if (kind === 'facility') {
+      if (place === 'merzlota') {
+        // Wind through the shafts, rising and falling.
+        const wind = loopNoise('bandpass', 520, 1.4, 0.035, bus);
+        lfo(0.05, 320, wind.bf.frequency);
+        lfo(0.11, 0.02, wind.ng.gain);
+      } else if (place === 'krasnaya') {
+        const wind = loopNoise('bandpass', 1300, 0.8, 0.018, bus);
+        lfo(0.08, 500, wind.bf.frequency);
+      } else if (place === 'kombinat') {
+        // Clean air handling and the whine of hardware that never sleeps.
+        loopNoise('highpass', 3200, 0.5, 0.012, bus);
+        osc('sine', 7800, 0.0025, bus);
+      } else if (place === 'sirin') {
+        // A slow pulse and two tones beating against each other. Something is alive here.
+        const pulse = ctx.createGain();
+        pulse.gain.value = 0.03;
+        pulse.connect(bus);
+        osc('sine', 41, 1, pulse);
+        lfo(0.45, 0.028, pulse.gain);
+        osc('sine', 110, 0.012, bus);
+        osc('sine', 111.6, 0.012, bus);
+      }
+    }
+
+    // Positional loops, steered by what the listener is standing near.
+    const emitters = {} as Record<EmitterKind, { gain: GainNode; pan: StereoPannerNode }>;
+    for (const k of ['machine', 'electronic', 'vent'] as EmitterKind[]) {
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const pan = ctx.createStereoPanner();
+      gain.connect(pan).connect(bus);
+      if (this.reverbIn) {
+        const send = ctx.createGain();
+        send.gain.value = 0.25;
+        gain.connect(send).connect(this.reverbIn);
+      }
+      emitters[k] = { gain, pan };
+    }
+    // Machine: a heavy rotating thrum.
+    const m = ctx.createGain();
+    m.gain.value = 0.18;
+    m.connect(emitters.machine.gain);
+    osc('sawtooth', 55, 0.5, m);
+    osc('sine', 110, 0.4, m);
+    const mf = ctx.createBiquadFilter();
+    mf.type = 'lowpass';
+    mf.frequency.value = 240;
+    m.disconnect();
+    m.connect(mf).connect(emitters.machine.gain);
+    lfo(1.3, 0.08, m.gain);
+    // Electronics: a thin whine and the hiss of fans.
+    osc('sine', 3150, 0.008, emitters.electronic.gain);
+    loopNoise('bandpass', 4200, 2, 0.02, emitters.electronic.gain);
+    // Vents: a breathy rush.
+    loopNoise('bandpass', 750, 0.7, 0.07, emitters.vent.gain);
+
+    // Occasional events: creaks, clanks, buzzes, and further off, other people's fights.
+    this.lullAt = 45 + Math.random() * 50;
+    let lullLeft = 0;
+    let t0 = ctx.currentTime;
     const events = window.setInterval(() => {
-      if (!this.ctx || Math.random() < 0.45) return;
-      const t = this.ctx.currentTime;
+      const c = this.ctx;
+      if (!c) return;
+      const t = c.currentTime;
+      const dt = t - t0;
+      t0 = t;
+      // Lulls: the whole place holds its breath for a while.
+      if (kind === 'facility') {
+        if (lullLeft > 0) {
+          lullLeft -= dt;
+          if (lullLeft <= 0) bus.gain.setTargetAtTime(AMBIENCE_LEVEL, t, 2);
+          return;
+        }
+        this.lullAt -= dt;
+        if (this.lullAt <= 0) {
+          this.lullAt = 50 + Math.random() * 60;
+          lullLeft = 10 + Math.random() * 8;
+          bus.gain.setTargetAtTime(AMBIENCE_LEVEL * 0.3, t, 1.5);
+          return;
+        }
+      }
+      if (Math.random() < 0.45) return;
       const r = Math.random();
-      if (r < 0.4) {
-        // Hull creak: a slow filtered-noise groan.
+      if (kind === 'facility' && r < 0.06) {
+        this.distantFight(bus, t);
+      } else if (r < 0.4) {
+        // Structure creak: a slow filtered-noise groan (ice cracks on Merzlota).
         const n = this.noiseSource(t, 1.4);
-        const f = this.ctx.createBiquadFilter();
+        const f = c.createBiquadFilter();
         f.type = 'bandpass';
         f.Q.value = 8;
-        f.frequency.setValueAtTime(180 + Math.random() * 120, t);
-        f.frequency.linearRampToValueAtTime(90 + Math.random() * 60, t + 1.2);
-        n.connect(f).connect(env(this.ctx, t, 0.5, 0.3, 1)).connect(bus);
-      } else if (r < 0.75) {
-        // Distant clank somewhere in the structure.
+        const hi = place === 'merzlota' && kind === 'facility';
+        f.frequency.setValueAtTime(hi ? 900 + Math.random() * 600 : 180 + Math.random() * 120, t);
+        f.frequency.linearRampToValueAtTime(hi ? 400 : 90 + Math.random() * 60, t + 1.2);
+        n.connect(f).connect(env(c, t, 0.5, 0.3, 1)).connect(bus);
+      } else if (r < 0.7) {
+        // Distant clank somewhere in the structure (a press, loose sheet metal, a hatch).
         this.thump(bus, t, 70 + Math.random() * 50, 0.25, 0.35);
         this.click(bus, t + 0.01, 900 + Math.random() * 600, 0.25);
+        if (place === 'tikhaya' && kind === 'facility') {
+          // A stamping press, still working a shift nobody's on.
+          for (let i = 1; i < 4; i++) this.thump(bus, t + i * 1.7, 60, 0.2, 0.25);
+        }
+      } else if (kind === 'facility' && place === 'kombinat') {
+        // A polite chime from a system nobody answers.
+        this.tone(bus, t, 880, 0.25, 0.06);
+        this.tone(bus, t + 0.28, 660, 0.35, 0.06);
+      } else if (kind === 'facility' && place === 'sirin') {
+        // A swell that sounds almost like breath.
+        const n = this.noiseSource(t, 2.4);
+        const f = c.createBiquadFilter();
+        f.type = 'bandpass';
+        f.frequency.value = 600 + Math.random() * 400;
+        f.Q.value = 3;
+        const g = c.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.08, t + 1.6);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 2.3);
+        n.connect(f).connect(g).connect(bus);
+      } else if (kind === 'facility' && place === 'merzlota') {
+        // Meltwater dripping somewhere.
+        for (let i = 0; i < 3; i++) this.tone(bus, t + i * (0.4 + Math.random() * 0.5), 1800 + Math.random() * 900, 0.03, 0.05);
+      } else if (kind === 'facility' && place === 'krasnaya') {
+        // A radio left on, static and a scrap of voice.
+        this.noiseBurst(bus, t, 0.5, 2600, 0.05);
+        for (let i = 0; i < 4; i++) this.tone(bus, t + 0.1 + i * 0.1, 500 + Math.random() * 300, 0.06, 0.04);
       } else if (kind === 'facility') {
         // Electrical buzz from a dying fixture.
-        const o = this.ctx.createOscillator();
+        const o = c.createOscillator();
         o.type = 'sawtooth';
         o.frequency.value = 100;
-        const f = this.ctx.createBiquadFilter();
+        const f = c.createBiquadFilter();
         f.type = 'bandpass';
         f.frequency.value = 1800;
-        o.connect(f).connect(env(this.ctx, t, 0.06, 0.02, 0.5 + Math.random())).connect(bus);
+        o.connect(f).connect(env(c, t, 0.06, 0.02, 0.5 + Math.random())).connect(bus);
         o.start(t);
         o.stop(t + 1.6);
       } else {
@@ -210,7 +344,8 @@ export class AudioService {
 
     this.amb = {
       hum,
-      events,
+      bus,
+      emitters,
       stop: () => {
         window.clearInterval(events);
         const c = this.ctx;
@@ -227,6 +362,40 @@ export class AudioService {
         }, 900);
       },
     };
+  }
+
+  /** Somebody else's firefight, far away through a lot of concrete. */
+  private distantFight(out: AudioNode, t: number): void {
+    const ctx = this.ctx!;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    const g = ctx.createGain();
+    g.gain.value = 0.25;
+    g.connect(pan).connect(out);
+    if (this.reverbIn) {
+      const send = ctx.createGain();
+      send.gain.value = 0.8;
+      g.connect(send).connect(this.reverbIn);
+    }
+    const shots = 3 + Math.floor(Math.random() * 6);
+    const auto = Math.random() < 0.5;
+    let at = t;
+    for (let i = 0; i < shots; i++) {
+      at += auto ? 0.09 + Math.random() * 0.03 : 0.25 + Math.random() * 0.6;
+      this.thump(g, at, 70, 0.2, 0.6);
+      this.noiseBurst(g, at, 0.12, 380, 0.5);
+    }
+  }
+
+  /** How loud each kind of machinery near the listener is (0..1), and where (-1..1 pan). */
+  setEmitters(levels: Partial<Record<EmitterKind, { level: number; pan: number }>>): void {
+    const c = this.ctx;
+    if (!c || !this.amb) return;
+    for (const [k, e] of Object.entries(this.amb.emitters) as [EmitterKind, { gain: GainNode; pan: StereoPannerNode }][]) {
+      const v = levels[k];
+      e.gain.gain.setTargetAtTime(v ? v.level : 0, c.currentTime, 0.25);
+      if (v) e.pan.pan.setTargetAtTime(Math.max(-0.8, Math.min(0.8, v.pan)), c.currentTime, 0.25);
+    }
   }
 
   /** 0..1 extra engine loudness (standing next to the reactor). */
@@ -423,6 +592,49 @@ export class AudioService {
     tail.connect(tlp).connect(env(ctx, t + 0.015, 0.22, 0.01, s.tail * 0.6)).connect(out);
   }
 
+  /**
+   * A footstep on a surface. `weight` 0.3 (sneaking) .. 1 (walking) .. 1.8 (sprinting):
+   * heavier steps are louder, lower and ring the floor more.
+   */
+  step(x: number, y: number, surface: Surface, weight = 1, own = false): void {
+    // You hear other people's boots far better than your own.
+    const bus = this.spatialBus(x, y, (own ? 0.12 : 0.5) * weight);
+    if (!bus) return;
+    const { ctx, out, muffle } = bus;
+    const t = ctx.currentTime;
+    // Heel: a soft thud, lower when heavy.
+    const n = this.noiseSource(t, 0.08);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = (weight > 1.3 ? 520 : 650) * (0.85 + Math.random() * 0.3) * muffle;
+    n.connect(f).connect(env(ctx, t, 1, 0.003, 0.06)).connect(out);
+    if (weight < 0.5) return; // sneaking: just the roll of the sole
+    // Boot clack: the mid-range knock that carries through a building.
+    const k = this.noiseSource(t, 0.04);
+    const kb = ctx.createBiquadFilter();
+    kb.type = 'bandpass';
+    kb.frequency.value = (1100 + Math.random() * 300) * Math.max(0.5, muffle);
+    kb.Q.value = 1.6;
+    k.connect(kb).connect(env(ctx, t, 1.4, 0.001, 0.025)).connect(out);
+    // Toe scuff
+    const s = this.noiseSource(t + 0.02, 0.03);
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 2400 * muffle;
+    bp.Q.value = 1.2;
+    s.connect(bp).connect(env(ctx, t + 0.02, 0.35, 0.002, 0.03)).connect(out);
+    if (surface === 'plate') {
+      // A steel plate rings under the boot.
+      this.tone(out, t + 0.004, 780 + Math.random() * 180, 0.07, 0.12 * weight);
+    } else if (surface === 'grate') {
+      // A loose grate rattles in its frame.
+      this.click(out, t + 0.012, 1700 + Math.random() * 500, 0.35 * weight);
+      this.click(out, t + 0.05 + Math.random() * 0.02, 2300 + Math.random() * 500, 0.2 * weight);
+    }
+    // Kit jingling at a run.
+    if (weight > 1.3 && Math.random() < 0.5) this.click(out, t + 0.03, 3800 + Math.random() * 1200, 0.12);
+  }
+
   sfx(kind: Sfx, x = this.listenerX, y = this.listenerY, gainMul = 1): void {
     const gains: Record<Sfx, number> = {
       dryfire: 0.45, switch: 0.4, step: 0.14, casing: 0.12,
@@ -432,7 +644,8 @@ export class AudioService {
       armor: 0.6, headshot: 0.8, drop: 0.35,
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
       breaker: 0.7, keycard: 0.45, lift: 0.5,
-      magout: 0.45, magin: 0.55, rack: 0.6, breakopen: 0.55, breakclose: 0.65, magdrop: 0.35, draw: 0.3, ricochet: 0.35,
+      magout: 0.2, magin: 0.24, rack: 0.28, breakopen: 0.26, breakclose: 0.3, magdrop: 0.2, draw: 0.14, ricochet: 0.35,
+      heartbeat: 0.35, mutter: 0.75, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
@@ -647,6 +860,63 @@ export class AudioService {
         break;
       case 'breath':
         this.noiseBurst(out, t, 0.35, 600, 0.35);
+        break;
+      case 'heartbeat':
+        // Lub-dub, felt in the chest.
+        this.thump(out, t, 52, 0.12, 1);
+        this.thump(out, t + 0.16, 46, 0.14, 0.75);
+        break;
+      case 'mutter': {
+        // Someone murmuring into a radio: low syllables through a tinny band.
+        const syll = 3 + Math.floor(Math.random() * 4);
+        for (let i = 0; i < syll; i++) {
+          const at = t + i * (0.11 + Math.random() * 0.06);
+          const o = ctx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.setValueAtTime(115 + Math.random() * 40, at);
+          o.frequency.linearRampToValueAtTime(95 + Math.random() * 30, at + 0.09);
+          const f = ctx.createBiquadFilter();
+          f.type = 'bandpass';
+          f.frequency.value = 800 * muffle;
+          f.Q.value = 1.8;
+          o.connect(f).connect(env(ctx, at, 0.5, 0.015, 0.08)).connect(out);
+          o.start(at);
+          o.stop(at + 0.12);
+        }
+        this.noiseBurst(out, t + syll * 0.14, 0.04, 3000 * muffle, 0.25);
+        break;
+      }
+      case 'typing':
+        for (let i = 0; i < 6 + Math.floor(Math.random() * 8); i++) this.click(out, t + i * (0.06 + Math.random() * 0.07), 2600 + Math.random() * 1400, 0.5);
+        break;
+      case 'beeps':
+        // A patient monitor ticking along.
+        for (let i = 0; i < 3; i++) this.tone(out, t + i * 0.9, 1320, 0.05, 0.5);
+        break;
+      case 'sharpen': {
+        // A blade drawn along a stone, twice.
+        for (let i = 0; i < 2; i++) {
+          const at = t + i * 0.55;
+          const n = this.noiseSource(at, 0.35);
+          const f = ctx.createBiquadFilter();
+          f.type = 'bandpass';
+          f.frequency.setValueAtTime(3200, at);
+          f.frequency.linearRampToValueAtTime(5200, at + 0.3);
+          f.Q.value = 4;
+          n.connect(f).connect(env(ctx, at, 0.8, 0.05, 0.28)).connect(out);
+        }
+        break;
+      }
+      case 'cards':
+        // Cards riffled, then a bottle set down.
+        for (let i = 0; i < 9; i++) this.click(out, t + i * 0.025, 4200, 0.35);
+        this.tone(out, t + 0.5, 1900, 0.08, 0.3);
+        this.click(out, t + 0.5, 900, 0.4);
+        break;
+      case 'radio':
+        // An old radio drifting between stations.
+        this.noiseBurst(out, t, 0.4, 2400 * muffle, 0.35);
+        for (let i = 0; i < 6; i++) this.tone(out, t + 0.3 + i * 0.16, 392 * [1, 1.25, 1.5, 1.33, 1.125, 1][i], 0.14, 0.35);
         break;
       case 'ricochet': {
         // The classic whine: a falling, slightly wobbling pitch.
@@ -874,7 +1144,8 @@ function impulse(ctx: AudioContext, r: RoomAcoustics): AudioBuffer {
     for (let i = 0; i < len; i++) {
       const t = i / rate;
       const k = t / r.seconds;
-      const decay = Math.exp(-6.9 * k) * (1 - k);
+      // Roughly -50 dB by the end: long enough to hear a big room ring.
+      const decay = Math.exp(-5.2 * k) * Math.sqrt(1 - k);
       // One-pole lowpass whose cutoff falls as the tail ages: highs die first.
       const a = Math.min(0.97, 0.15 + r.damp * 0.75 * Math.sqrt(k) + r.damp * 0.1);
       y += (1 - a) * ((Math.random() * 2 - 1) - y);

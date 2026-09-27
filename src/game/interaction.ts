@@ -223,8 +223,10 @@ export class Interactions {
         this.ev.onLight(zx, zy, 140, 0x7dff9a, 0.7);
       }
       if (this.alarmTimer <= 0) {
-        this.alarmTimer = ALARM_INTERVAL;
-        this.audio.sfx('alarm', zx, zy);
+        // The klaxon quickens and swells as the shuttle closes in.
+        const urgency = 1 - Math.max(0, this.extractRemaining) / EXTRACT_TIME;
+        this.alarmTimer = ALARM_INTERVAL * (1 - urgency * 0.55);
+        this.audio.sfx('alarm', zx, zy, 1 + urgency * 0.6);
         this.ev.onNoise(zx, zy, ALARM_RADIUS);
       }
       if (onPad && !busy) this.extractRemaining -= dt;
