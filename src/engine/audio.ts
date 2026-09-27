@@ -39,13 +39,15 @@ const HEARING_RANGE = 900;
 const AMBIENCE_LEVEL = 0.55;
 const GUNSHOT_RANGE = 1700;
 
-export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab';
+export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab' | 'tick' | 'relief' | 'loss';
 
 export class AudioService {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
   private noise!: AudioBuffer;
   private shaper!: WaveShaperNode;
+  /** Between the mix and the output: closes down when the operator is dying. */
+  private hearing!: BiquadFilterNode;
   private listenerX = 0;
   private listenerY = 0;
   /** Reverb send: every positional sound feeds it, more so when far or behind walls. */
@@ -79,7 +81,11 @@ export class AudioService {
     }
     this.shaper.curve = curve;
     this.shaper.connect(comp);
-    this.master.connect(this.shaper);
+    this.hearing = ctx.createBiquadFilter();
+    this.hearing.type = 'lowpass';
+    this.hearing.frequency.value = 20000;
+    this.hearing.connect(this.shaper);
+    this.master.connect(this.hearing);
     comp.connect(ctx.destination);
 
     this.noise = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
@@ -106,6 +112,15 @@ export class AudioService {
     this.reverbOut = ctx.createGain();
     this.reverbOut.gain.value = this.room.level;
     this.reverbIn.connect(this.convolver).connect(this.reverbOut).connect(this.master);
+  }
+
+  /** Everything goes dull and distant (dying, or watching the ship leave). */
+  setMuffled(on: boolean): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const f = this.hearing.frequency;
+    f.cancelScheduledValues(ctx.currentTime);
+    f.setTargetAtTime(on ? 380 : 20000, ctx.currentTime, on ? 0.45 : 0.05);
   }
 
   setMasterVolume(v: number): void {
@@ -436,6 +451,39 @@ export class AudioService {
     n.connect(nf).connect(env(ctx, t + 1.6, 0.8, 0.05, 2.2)).connect(out);
   }
 
+  /** Leaving the airlock: the hatch hisses, clamps release, and the drop begins. */
+  descent(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const out = ctx.createGain();
+    out.gain.value = 0.5;
+    out.connect(this.master);
+    const t = ctx.currentTime;
+    // Hatch seal venting
+    const n = this.noiseSource(t, 1.2);
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = 2200;
+    n.connect(hp).connect(env(ctx, t, 0.4, 0.05, 1.1)).connect(out);
+    // Clamps
+    this.thump(out, t + 0.9, 90, 0.2, 0.8);
+    this.click(out, t + 0.9, 1200, 0.8);
+    this.thump(out, t + 1.1, 80, 0.2, 0.7);
+    // The drop: a low roar that swells and fades as the facility comes up.
+    const r = this.noiseSource(t + 1.2, 2.2);
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.setValueAtTime(120, t + 1.2);
+    lp.frequency.linearRampToValueAtTime(420, t + 2.2);
+    lp.frequency.linearRampToValueAtTime(90, t + 3.3);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t + 1.2);
+    g.gain.exponentialRampToValueAtTime(0.9, t + 2.0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 3.4);
+    r.connect(lp).connect(g).connect(out);
+    this.thump(out, t + 3.0, 50, 0.5, 0.8);
+  }
+
   /** One syllable of a character's "voice" while dialogue types out. */
   blip(freq: number): void {
     const ctx = this.ctx;
@@ -505,6 +553,21 @@ export class AudioService {
         this.tone(out, t + 0.04, 1180, 0.07, 0.5);
         this.tone(out, t + 0.1, 1570, 0.1, 0.5);
         break;
+      case 'tick':
+        this.click(out, t, 3000, 0.25);
+        break;
+      case 'relief':
+        // A warm, rising chord: you made it.
+        this.tone(out, t, 262, 0.9, 0.35);
+        this.tone(out, t + 0.12, 330, 0.85, 0.3);
+        this.tone(out, t + 0.24, 392, 1.2, 0.3);
+        this.tone(out, t + 0.36, 523, 1.4, 0.22);
+        break;
+      case 'loss':
+        this.tone(out, t, 196, 1.2, 0.35);
+        this.tone(out, t + 0.2, 185, 1.4, 0.3);
+        this.thump(out, t, 50, 0.6, 0.6);
+        break;
       case 'sell':
         this.tone(out, t, 1570, 0.06, 0.5);
         this.tone(out, t + 0.07, 1180, 0.1, 0.5);
@@ -520,7 +583,8 @@ export class AudioService {
     const oldReverb = this.reverbOut;
     this.master = this.ctx.createGain();
     this.master.gain.value = this.volume;
-    this.master.connect(this.shaper);
+    this.master.connect(this.hearing);
+    this.setMuffled(false);
     old.gain.setTargetAtTime(0, this.ctx.currentTime, 0.02);
     this.buildReverb();
     setTimeout(() => {

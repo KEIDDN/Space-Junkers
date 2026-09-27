@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, type Ticker } from 'pixi.js';
+import { Application, ColorMatrixFilter, Container, Graphics, type Ticker } from 'pixi.js';
 import { loadAssets } from '../engine/assets';
 import { audio, type ROOMS } from '../engine/audio';
 import { Camera } from '../engine/camera';
@@ -96,6 +96,10 @@ export class Game {
   private targets: Hittable[] = [];
   private hitstopTime = 0;
   private deadTime = 0;
+  /** 0..1 how far the death fade has gone (colour drains out). */
+  private dying = 0;
+  private dyingFilter: ColorMatrixFilter | null = null;
+  private ending: { kind: 'extracted' | 'mia'; t: number } | null = null;
   private ended = false;
   private theme: Theme = themeFor(undefined);
   private look: MapLook = DEFAULT_LOOK;
@@ -233,6 +237,9 @@ export class Game {
     this.grenades?.clear();
     this.hitstopTime = 0;
     this.deadTime = 0;
+    this.dying = 0;
+    this.dyingFilter = null;
+    this.ending = null;
     this.ended = false;
 
     const dest = DESTINATION[useRaid.getState().destination];
@@ -270,6 +277,7 @@ export class Game {
       camera: this.camera,
       emitNoise: (x, y, r) => {
         for (const e of this.enemies) e.hear(x, y, r);
+        this.cueSound(x, y, r);
       },
       hitstop: (s) => {
         this.hitstopTime = Math.max(this.hitstopTime, s);
@@ -294,7 +302,7 @@ export class Game {
     this.interactions = new Interactions(this.map, this.audio, {
       onNoise: this.ctx.emitNoise,
       onLight: this.ctx.lightFlash,
-      onExtracted: () => this.endRun('extracted'),
+      onExtracted: () => this.beginEnding('extracted'),
       onSignal: (x, y) => this.onSignal(x, y),
       onUnlock: (door) => this.doors?.unlock(door),
       onTerminal: (n) => this.openTerminal(n),
@@ -345,8 +353,22 @@ export class Game {
     this.opts.onEnd?.(status);
   }
 
+  /**
+   * A beat before the report: getting out is a flash of relief, running out of time is a
+   * ship's lights leaving without you. The world keeps moving, but you're out of it.
+   */
+  private beginEnding(kind: 'extracted' | 'mia'): void {
+    if (this.ending || this.ended) return;
+    this.ending = { kind, t: 0 };
+    this.player.untouchable = true;
+    raid.patch({ ending: kind, prompt: null, extractCountdown: null });
+    raid.closeOverlay();
+    if (kind === 'extracted') this.lighting?.flash(this.player.x, this.player.y, 320, 0xd8ffe0, 1.4, 0.4);
+    else this.audio.setMuffled(true);
+  }
+
   private tick = (ticker: Ticker): void => {
-    const dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
+    let dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
 
     if (this.paused) {
       this.input.endFrame();
@@ -354,15 +376,31 @@ export class Game {
     }
 
     if (!this.player.alive) {
+      if (this.deadTime === 0) {
+        // Hearing goes first; the world slows and loses its colour.
+        this.audio.setMuffled(true);
+        if (this.opts.mode === 'facility') raid.patch({ ending: 'dead' });
+      }
       this.deadTime += dt;
+      this.dying = Math.min(1, this.deadTime / 1.2);
+      dt *= 0.35 + 0.65 * Math.min(1, this.deadTime / 2);
       if (this.opts.mode === 'range' && this.input.wasPressed('KeyR')) {
         raid.start('range', 0, 'range', useRaid.getState().loadout);
+        this.audio.setMuffled(false);
+        this.dying = 0;
         this.startRun();
         this.input.endFrame();
         return;
       }
       if (this.opts.mode === 'facility' && this.deadTime > DEATH_LINGER) this.endRun('dead');
     }
+    if (this.ending) {
+      this.ending.t += dt;
+      // The shuttle (or the lift) has you: you're gone from the room.
+      if (this.ending.kind === 'extracted' && this.ending.t > 0.3) this.player.view.container.visible = false;
+      if (this.ending.t > (this.ending.kind === 'extracted' ? 1.6 : 2.4)) this.endRun(this.ending.kind === 'extracted' ? 'extracted' : 'dead', this.ending.kind === 'mia');
+    }
+    this.applyDying();
 
     if (this.input.wasPressed('Tab') && this.player.alive) raid.toggleInventory();
     if (this.input.wasPressed('KeyM') && this.player.alive && this.opts.mode === 'facility') {
@@ -422,7 +460,7 @@ export class Game {
     p.searching = this.interactions.handsBusy ? Math.max(0, p.searching) + dt : -1;
     if (menuOpen && this.input.wasPressed('KeyE')) raid.closeOverlay();
     const zone = this.map.exitAt(p.x, p.y);
-    raid.patch({
+    if (!this.ending) raid.patch({
       prompt: view.prompt,
       extractCountdown: view.countdown === null ? null : Math.ceil(view.countdown * 10) / 10,
       extractInZone: view.inZone,
@@ -442,6 +480,45 @@ export class Game {
     if (this.heartTimer > 0) return;
     this.heartTimer = 0.55 + k * 1.4;
     this.audio.sfx('heartbeat', p.x, p.y, 0.6 + (0.3 - k) * 2);
+  }
+
+  /** Accessibility: point toward loud noises the player can't see the source of. */
+  private cueSound(x: number, y: number, radius: number): void {
+    if (radius < 250 || !useSettings.getState().soundCues || !this.player) return;
+    const p = this.player;
+    const d = Math.hypot(x - p.x, y - p.y);
+    if (d < 40 || d > radius) return;
+    const onScreen = x > this.camera.left && x < this.camera.left + VIEW_W && y > this.camera.top && y < this.camera.top + VIEW_H;
+    if (onScreen && hasLineOfSight(this.map, p.x, p.y - 8, x, y - 8)) return;
+    this.overlay.soundCue(Math.atan2(y - p.y, x - p.x), radius > 500);
+  }
+
+  /** Drain the colour out of the world as the operator dies. */
+  private applyDying(): void {
+    if (this.dying <= 0) {
+      if (this.dyingFilter) {
+        this.worldLit.filters = [];
+        this.dyingFilter = null;
+      }
+      return;
+    }
+    if (!this.dyingFilter) {
+      this.dyingFilter = new ColorMatrixFilter();
+      this.worldLit.filters = [this.dyingFilter];
+    }
+    const k = this.dying;
+    // Blend identity toward a dim, slightly red greyscale.
+    const g = (r: number, gg: number, b: number) => [r, gg, b];
+    const lum = g(0.3, 0.59, 0.11);
+    const m: number[] = [];
+    const rows: [number, number[]][] = [[1.05, [1, 0, 0]], [0.8, [0, 1, 0]], [0.8, [0, 0, 1]]];
+    for (let i = 0; i < 3; i++) {
+      const [tint, id] = rows[i];
+      for (let j = 0; j < 3; j++) m.push(id[j] * (1 - k) + lum[j] * tint * k * (1 - k * 0.35));
+      m.push(0, 0);
+    }
+    m.push(0, 0, 0, 1, 0);
+    this.dyingFilter.matrix = m as unknown as ColorMatrixFilter['matrix'];
   }
 
   /** Machinery near the player hums in the right ear, quieter through walls. */
@@ -479,7 +556,7 @@ export class Game {
    * Raid pressure: the Lastochka can only hold orbit so long, and other crews keep landing.
    */
   private raidClock(dt: number): void {
-    if (this.opts.mode !== 'facility' || !this.player.alive) return;
+    if (this.opts.mode !== 'facility' || !this.player.alive || this.ending) return;
     this.elapsed += dt;
     const left = this.window - this.elapsed;
     while (this.warned < WARNINGS.length && left <= WARNINGS[this.warned]) {
@@ -490,7 +567,7 @@ export class Game {
     }
     if (left <= 0) {
       raid.notice('The Lastochka broke orbit without you.', 'bad');
-      this.endRun('dead', true);
+      this.beginEnding('mia');
       return;
     }
     if (this.squads < SQUAD_TIMES.length && this.elapsed >= SQUAD_TIMES[this.squads]) {

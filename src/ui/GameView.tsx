@@ -62,6 +62,26 @@ function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onRes
   );
 }
 
+/** The last beat of a raid, over the game: relief, loss, or being left behind. */
+function RaidEnding() {
+  const ending = useRaid((s) => s.ending);
+  const extractKind = useRaid((s) => s.extractKind);
+  if (!ending) return null;
+  const text = ending === 'extracted'
+    ? { big: 'SIGNAL ACQUIRED', small: extractKind === 'lift' ? 'THE LIFT CLEARS THE SHAFT. YOU\'RE OUT.' : 'THE SHUTTLE LIFTS. YOU\'RE OUT.' }
+    : ending === 'mia'
+      ? { big: 'M.I.A.', small: 'THE LASTOCHKA BROKE ORBIT WITHOUT YOU' }
+      : { big: 'K.I.A.', small: 'SIGNAL LOST' };
+  return (
+    <div className={`raid-ending ${ending}`}>
+      <div className="raid-ending-text">
+        <div className="big">{text.big}</div>
+        <div className="small">{text.small}</div>
+      </div>
+    </div>
+  );
+}
+
 /** Mounts the Pixi game. React never touches the game per frame. */
 export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; seed: number; onExit: () => void }) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -141,6 +161,7 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
         <Hud />
         <RaidInventory />
         <TerminalView />
+        <RaidEnding />
         {mode === 'facility' && <TacticalMap snapshot={snapshot} name={facilityName(destination, seed)} timeLeft={timeLeft} />}
         {paused && <PauseMenu facility={mode === 'facility'} onResume={() => setPaused(false)} onAbandon={abandon} />}
       </div>

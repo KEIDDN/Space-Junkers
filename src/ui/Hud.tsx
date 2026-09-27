@@ -36,13 +36,14 @@ function Vitals() {
     <div className="hud-bl crt-text">
       <div className="hud-row">
         <span className="label">VITALS</span>
+        {hp > 0 && frac < 0.3 && <span className="status bad blink">▲ CRITICAL · HEAL</span>}
         {bleeding && <span className="status bad blink">BLEEDING</span>}
         {regen && <span className="status ok">REGEN</span>}
         {boosted && <span className="status warn">STIM</span>}
         {gait === 'sneak' && <span className="status dim">SNEAK [C]</span>}
       </div>
       <div className="hp-row">
-        <div className="hp-bar">
+        <div className={`hp-bar ${frac < 0.3 && hp > 0 ? 'critical' : ''}`}>
           <div className={`hp-fill ${tone}`} style={{ width: `${frac * 100}%` }} />
           {[0.25, 0.5, 0.75].map((m) => <span key={m} className="hp-tick" style={{ left: `${m * 100}%` }} />)}
         </div>
@@ -250,10 +251,10 @@ export function Hud() {
       <QuickHud />
       <WeaponBlock />
 
-      {dead && (
+      {dead && !facility && (
         <div className="hud-center crt-text">
           <div className="big bad">K.I.A.</div>
-          <div>{facility ? 'SIGNAL LOST…' : 'PRESS [R] TO REDEPLOY · [ESC] MENU'}</div>
+          <div>PRESS [R] TO REDEPLOY · [ESC] MENU</div>
         </div>
       )}
       {!dead && !facility && cleared && (

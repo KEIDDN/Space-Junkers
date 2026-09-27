@@ -78,6 +78,8 @@ export interface RaidState {
   mapOpen: boolean;
   /** Lost without a body: the orbit window closed, or the raid was abandoned. */
   mia: boolean;
+  /** The last beat of a raid (for the ending overlay), before the report. */
+  ending: 'extracted' | 'dead' | 'mia' | null;
 }
 
 let feedId = 0;
@@ -106,6 +108,7 @@ export const useRaid = create<RaidState>(() => ({
   terminal: null,
   mapOpen: false,
   mia: false,
+  ending: null,
 }));
 
 function workspace(s: RaidState): Workspace {
@@ -165,7 +168,7 @@ export const raid = {
       log: { kills: [], searched: 0, visited: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
       extractCountdown: null, extractInZone: false, extractKind: null, flashlight: true,
-      terminal: null, mapOpen: false, mia: false,
+      terminal: null, mapOpen: false, mia: false, ending: null,
     });
   },
 

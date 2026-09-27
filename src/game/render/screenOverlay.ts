@@ -20,6 +20,7 @@ export class ScreenOverlay {
   private hitHead = false;
   private bleedPulse = 0;
   private damageDirs: { angle: number; t: number }[] = [];
+  private soundCues: { angle: number; t: number; loud: boolean }[] = [];
 
   constructor() {
     const vignette = new Sprite(makeVignette());
@@ -51,6 +52,17 @@ export class ScreenOverlay {
   damaged(angle: number): void {
     this.damageDirs.push({ angle, t: DAMAGE_DIR_TIME });
     this.pain.alpha = 0.28;
+  }
+
+  /** Accessibility: something loud happened out of sight in this direction. */
+  soundCue(angle: number, loud: boolean): void {
+    const near = this.soundCues.find((c) => Math.abs(c.angle - angle) < 0.3);
+    if (near) {
+      near.t = 1;
+      near.loud ||= loud;
+      return;
+    }
+    if (this.soundCues.length < 6) this.soundCues.push({ angle, t: 1, loud });
   }
 
   /**
@@ -117,6 +129,26 @@ export class ScreenOverlay {
       const a0 = d.angle - 0.35;
       const a1 = d.angle + 0.35;
       ind.arc(playerSx, playerSy, r, a0, a1).stroke({ width: 3, color: 0xd11f1f, alpha: d.t / DAMAGE_DIR_TIME });
+    }
+    // Sound cues: small chevrons around the player, pointing where the noise came from.
+    for (let i = this.soundCues.length - 1; i >= 0; i--) {
+      const c = this.soundCues[i];
+      c.t -= dt * 0.9;
+      if (c.t <= 0) {
+        this.soundCues.splice(i, 1);
+        continue;
+      }
+      const r = 48;
+      const cx = playerSx + Math.cos(c.angle) * r;
+      const cy = playerSy + Math.sin(c.angle) * r;
+      const px2 = -Math.sin(c.angle);
+      const py2 = Math.cos(c.angle);
+      const tip = 4;
+      const col = c.loud ? 0xf2a33a : 0xd9d2bf;
+      ind.moveTo(cx - px2 * tip - Math.cos(c.angle) * 2, cy - py2 * tip - Math.sin(c.angle) * 2)
+        .lineTo(cx + Math.cos(c.angle) * 2, cy + Math.sin(c.angle) * 2)
+        .lineTo(cx + px2 * tip - Math.cos(c.angle) * 2, cy + py2 * tip - Math.sin(c.angle) * 2)
+        .stroke({ width: 1.5, color: col, alpha: Math.min(1, c.t * 1.5) });
     }
   }
 }

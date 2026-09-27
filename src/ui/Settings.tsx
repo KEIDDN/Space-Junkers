@@ -9,6 +9,8 @@ export function SettingsRows() {
   const setShake = useSettings((s) => s.setShake);
   const brightness = useSettings((s) => s.brightness);
   const setBrightness = useSettings((s) => s.setBrightness);
+  const soundCues = useSettings((s) => s.soundCues);
+  const setSoundCues = useSettings((s) => s.setSoundCues);
   return (
     <>
       <label className="setting">
@@ -26,6 +28,13 @@ export function SettingsRows() {
         <span>BRIGHTNESS</span>
         <input type="range" min={0.8} max={1.6} step={0.1} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} />
         <span className="dim">{Math.round(brightness * 100)}</span>
+      </label>
+      <label className="setting">
+        <span>SOUND CUES</span>
+        <button className={`toggle ${soundCues ? 'on' : ''}`} onClick={() => { audio.ui('click'); setSoundCues(!soundCues); }}>
+          {soundCues ? 'ON' : 'OFF'}
+        </button>
+        <span className="dim small">arrows toward unseen gunfire</span>
       </label>
     </>
   );

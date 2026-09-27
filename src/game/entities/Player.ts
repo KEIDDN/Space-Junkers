@@ -115,6 +115,8 @@ export class Player implements Hittable {
   private throwing: Throwing | null = null;
   /** Seconds spent searching something with E this stretch (set by the game), or -1. */
   searching = -1;
+  /** Out of the fight (on the shuttle): nothing can hurt you any more. */
+  untouchable = false;
   /** Called with a short message for the HUD feed (armor broke, bleeding...). */
   onNotice: ((text: string, tone: 'bad' | 'ok' | 'warn') => void) | null = null;
 
@@ -594,7 +596,7 @@ export class Player implements Hittable {
    * @returns true if the armor stopped most of it (for feedback).
    */
   takeHit(raw: number, pen: number, dirX: number, dirY: number, headshot: boolean): boolean {
-    if (!this.alive) return false;
+    if (!this.alive || this.untouchable) return false;
     const slot = headshot ? 'helmet' : 'armor';
     const worn = useRaid.getState().loadout[slot];
     let damage = headshot ? raw * HEADSHOT_MUL : raw;

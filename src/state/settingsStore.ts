@@ -8,6 +8,9 @@ interface SettingsState {
   shake: number;
   /** Lifts the darkness in facilities, 0.8..1.6 (1 = as designed). */
   brightness: number;
+  /** Show where loud unseen sounds came from (accessibility). */
+  soundCues: boolean;
+  setSoundCues(v: boolean): void;
   setVolume(v: number): void;
   setShake(v: number): void;
   setBrightness(v: number): void;
@@ -21,16 +24,20 @@ export const useSettings = create<SettingsState>()(
       volume: 0.7,
       shake: 1,
       brightness: 1,
+      soundCues: false,
+      setSoundCues: (soundCues) => set({ soundCues }),
       setVolume: (volume) => set({ volume: clamp01(volume) }),
       setShake: (shake) => set({ shake: clamp01(shake) }),
       setBrightness: (b) => set({ brightness: Math.max(0.8, Math.min(1.6, Number.isFinite(b) ? b : 1)) }),
     }),
     {
       name: 'space-junkers.settings',
-      version: 3,
+      version: 4,
       migrate: (s) => {
-        const old = (s ?? {}) as { volume?: number; shake?: number; brightness?: number };
-        return { volume: clamp01(old.volume ?? 0.7), shake: clamp01(old.shake ?? 1), brightness: old.brightness ?? 1 } as SettingsState;
+        const old = (s ?? {}) as { volume?: number; shake?: number; brightness?: number; soundCues?: boolean };
+        return {
+          volume: clamp01(old.volume ?? 0.7), shake: clamp01(old.shake ?? 1), brightness: old.brightness ?? 1, soundCues: !!old.soundCues,
+        } as SettingsState;
       },
     },
   ),
