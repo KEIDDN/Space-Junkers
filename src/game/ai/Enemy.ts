@@ -556,7 +556,10 @@ export class Enemy implements Hittable {
     };
     this.view.update(dt, this.x, this.y, this.facing, moved, backwards, pose);
     playAnimEvents(this.ctx, this.view, this.x, this.y, this.facing, this.weapon.def);
-    if (this.view.stepped) this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), running ? 1.7 : 1);
+    if (this.view.stepped) {
+      this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), running ? 1.7 : 1);
+      if (running) this.ctx.effects.stepDust(this.x, this.y, Math.atan2(this.y - oy, this.x - ox));
+    }
   }
 
   private engage(fromHit = false): void {

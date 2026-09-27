@@ -93,6 +93,7 @@ export class Player implements Hittable {
   /** 0..1 how easy the player is to spot. Set by the game from lighting each frame. */
   conspicuity = 1;
   bleeding = false;
+  private dripTimer = 0;
   private regenLeft = 0;
   private regenRate = 0;
   private boostLeft = 0;
@@ -319,6 +320,7 @@ export class Player implements Hittable {
     playAnimEvents(this.ctx, this.view, this.x, this.y, this.aim, this.weapon?.def ?? null);
     if (this.view.stepped) {
       const gait = this.sprinting ? 'sprint' : this.sneaking ? 'sneak' : 'walk';
+      if (gait === 'sprint') this.ctx.effects.stepDust(this.x, this.y, Math.atan2(this.vy, this.vx));
       this.ctx.audio.step(this.x, this.y, this.ctx.surfaceAt(this.x, this.y), gait === 'sprint' ? 1.8 : gait === 'sneak' ? 0.3 : 1, true);
       // Your own footsteps are information for them, too. Heavy loads clatter.
       const noise = STEP_NOISE[gait] * (this.speedMul < 0.9 ? 1.3 : 1);
@@ -579,6 +581,12 @@ export class Player implements Hittable {
     if (this.boostLeft > 0) this.boostLeft -= dt;
     if (this.bleeding) {
       this.hp -= BLEED_DPS * dt;
+      // You leave a trail.
+      this.dripTimer -= dt;
+      if (this.dripTimer <= 0) {
+        this.dripTimer = 0.35 + Math.random() * 0.5;
+        this.ctx.effects.drip(this.x, this.y);
+      }
       if (this.hp <= 0) this.die();
     }
   }

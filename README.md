@@ -55,6 +55,9 @@ kit, and the hop to Tikhaya is free when you can't pay for it.
 Inventory: drag to move, R or Space rotates while dragging, Shift-click quick-moves,
 Ctrl-click equips/uses, right-click for actions, drag outside to drop.
 
+Settings (title screen and pause menu): volume, screen shake, brightness, and optional sound
+cues that point toward unseen gunfire and alarms.
+
 ## World
 
 | Destination | Theme | Hostiles |
@@ -84,6 +87,7 @@ unlocks stock, lines and destinations.
 | `src/state/` | Zustand stores: profile (persisted, versioned), raid, HUD snapshot, ship UI, settings. |
 | `src/ui/`, `src/app/` | React interface. It never runs per frame. |
 | `docs/ROADMAP.md` | Audit of build 0.2 and the slices that took it here. |
+| `docs/SHIPPING_AUDIT.md` | The final polish pass and the shipping audit, area by area. |
 
 Rendering: the world renders at 640×360 and is scaled up by whole numbers only
 (nearest-neighbour, rounded camera), so pixels stay crisp. React draws only the interface;

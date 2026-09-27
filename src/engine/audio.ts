@@ -773,14 +773,17 @@ export class AudioService {
         this.thump(out, t, 55, 0.3, 1);
         break;
       case 'door': {
-        // Pneumatic hiss + clunk
-        const n = this.noiseSource(t, 0.4);
+        // Bolts retract, the pneumatics hiss, the leaves bang home in their tracks.
+        this.click(out, t, 1100, 0.7);
+        this.thump(out, t, 130, 0.05, 0.4);
+        const n = this.noiseSource(t + 0.04, 0.4);
         const f = ctx.createBiquadFilter();
         f.type = 'bandpass';
         f.frequency.value = 3000 * muffle;
         f.Q.value = 0.7;
-        n.connect(f).connect(env(ctx, t, 0.6, 0.02, 0.3)).connect(out);
-        this.thump(out, t + 0.18, 90, 0.12, 0.8);
+        n.connect(f).connect(env(ctx, t + 0.04, 0.6, 0.02, 0.3)).connect(out);
+        this.thump(out, t + 0.22, 90, 0.12, 0.8);
+        this.click(out, t + 0.22, 700, 0.35);
         break;
       }
       case 'rummage':

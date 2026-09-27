@@ -294,6 +294,23 @@ export class Effects {
     }
   }
 
+  /** A running boot kicks up a little grit. */
+  stepDust(x: number, y: number, dir: number): void {
+    for (let i = 0; i < 3; i++) {
+      const a = dir + Math.PI + (Math.random() - 0.5) * 1.2;
+      const sp = 12 + Math.random() * 18;
+      this.spawn({
+        kind: 'dust', x: x + (Math.random() - 0.5) * 4, y: y + 1, z: 1, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.5, vz: 8 + Math.random() * 10,
+        life: 0.3 + Math.random() * 0.2, color: 0x6b625a, size: 1, gravity: 30, drag: 4,
+      });
+    }
+  }
+
+  /** A drop of blood from someone who's bleeding. */
+  drip(x: number, y: number): void {
+    this.floorPixel(Math.round(x + (Math.random() - 0.5) * 6), Math.round(y + Math.random() * 3), Math.random() < 0.5 ? 0x7a1212 : 0x5e0d0d, 1);
+  }
+
   /** Treatment took: a few pale green motes rise off the body. */
   healPuff(x: number, y: number): void {
     for (let i = 0; i < 7; i++) {

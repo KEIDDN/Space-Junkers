@@ -48,7 +48,7 @@ function ctx(extra: Partial<GameContext> = {}): GameContext & { shots: number; g
     shots: 0,
     grenades: 0,
     projectiles: { fire: () => { c.shots++; } },
-    effects: { muzzleFlash() {}, smoke() {}, casing() {}, dropMag() {} },
+    effects: { muzzleFlash() {}, smoke() {}, casing() {}, dropMag() {}, stepDust() {} },
     audio: { sfx() {}, gunshot() {}, step() {} },
     camera: { shake() {}, kick() {} },
     emitNoise() {},
