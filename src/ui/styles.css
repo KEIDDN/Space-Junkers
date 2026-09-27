@@ -832,3 +832,33 @@ body[data-device="pad"] .btn:hover:not(.pad-focus), body[data-device="pad"] .men
 .reserve-row { display: flex; align-items: center; gap: 10px; padding: 3px 6px; background: rgba(255, 255, 255, 0.03); }
 .reserve-note { font-style: italic; margin: 10px 0 6px !important; }
 .results-reserve { margin-top: 8px; padding: 6px 8px; border: 1px dashed rgba(242, 163, 58, 0.5); }
+
+/* ---------- First boot: the premise, typed over black ---------- */
+.intro-crawl {
+  background: #030304; display: flex; align-items: center; justify-content: center; cursor: default;
+}
+.intro-crawl::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+}
+.intro-lines { max-width: 760px; padding: 0 24px; font-family: 'VT323', monospace; font-size: 26px; line-height: 1.5; color: #c9c2b2; }
+.intro-line { text-shadow: 0 0 6px rgba(201, 194, 178, 0.25); }
+.intro-line.last { color: #e8a24a; margin-top: 18px; text-shadow: 0 0 8px rgba(232, 162, 74, 0.35); }
+.intro-skip { position: absolute; right: 24px; bottom: 20px; }
+
+/* Heard on the intercom: the portrait behind a grille of scanlines. */
+.dialog-portrait.intercom { position: relative; filter: saturate(0.4) brightness(0.85); }
+.dialog-portrait.intercom::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 3px);
+}
+
+/* The ship log: where to go next, quietly. */
+.ship-log { margin-top: 4px; color: #e8a24a; font-size: 12px; letter-spacing: 0.5px; }
+.ship-log .dim { color: #8a7c66; }
+.ship-intercom {
+  position: absolute; left: 50%; top: 70px; transform: translateX(-50%); max-width: 560px;
+  color: #9fd8b8; background: rgba(6, 14, 11, 0.82); border-left: 2px solid #9fd8b8;
+  padding: 6px 12px; font-size: 13px; line-height: 1.4;
+  animation: toast-in 200ms ease-out, toast-out 900ms ease-in 9s forwards;
+}

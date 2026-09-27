@@ -18,7 +18,7 @@ export const recentRaid: { outcome: 'extracted' | 'dead' | null; greeted: Set<Cr
 const CPS = 55; // characters per second
 
 /** Types a line out with the speaker's voice. Click to finish early. */
-function useTypewriter(text: string, voice: number) {
+export function useTypewriter(text: string, voice: number) {
   const [shown, setShown] = useState(0);
   const t0 = useRef(performance.now());
   useEffect(() => {

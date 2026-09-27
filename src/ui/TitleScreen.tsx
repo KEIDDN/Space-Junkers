@@ -40,6 +40,8 @@ function Starfield() {
 
 interface Props {
   onContinue: () => void;
+  /** A fresh operator: the premise, then the first morning aboard. */
+  onNewGame: () => void;
   onRange: () => void;
 }
 
@@ -81,7 +83,7 @@ function Credits() {
   );
 }
 
-export function TitleScreen({ onContinue, onRange }: Props) {
+export function TitleScreen({ onContinue, onNewGame, onRange }: Props) {
   const started = useProfile((s) => !!s.flags.started);
   const stats = useProfile((s) => s.stats);
   const credits = useProfile((s) => s.credits);
@@ -91,9 +93,9 @@ export function TitleScreen({ onContinue, onRange }: Props) {
 
   const newGame = (op: Operator) => {
     resetProfile(op);
-    useProfile.getState().apply({ flags: { started: true } });
+    useProfile.getState().apply({ flags: { started: true, prologue: true } });
     audio.ui('equip');
-    onContinue();
+    onNewGame();
   };
 
   const hover = () => audio.ui('hover');

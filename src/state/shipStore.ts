@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { CrewId } from '../data/crew';
 import type { Issued } from '../core/reserve';
+import type { PrologueStep } from '../data/prologue';
 
 export type ShipPanel =
   | { kind: 'crew'; crew: CrewId }
@@ -8,7 +9,9 @@ export type ShipPanel =
   | { kind: 'nav' }
   | { kind: 'board' }
   | { kind: 'airlock' }
-  | { kind: 'record' };
+  | { kind: 'record' }
+  /** A scripted moment of the first morning aboard (see data/prologue.ts). */
+  | { kind: 'scene'; step: PrologueStep };
 
 /** Aboard the ship: what the operator is looking at. Written on events, not per frame. */
 export interface ShipState {

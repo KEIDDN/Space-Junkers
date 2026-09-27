@@ -13,9 +13,11 @@ import { TitleScreen } from '../ui/TitleScreen';
 import { SceneCover, type Cover } from '../ui/SceneCover';
 import { PadNav } from '../ui/nav/PadNav';
 import { AudioGate } from '../ui/AudioGate';
+import { IntroCrawl } from '../ui/IntroCrawl';
 
 type Scene =
   | { kind: 'title' }
+  | { kind: 'intro' }
   | { kind: 'ship' }
   | { kind: 'raid'; mode: 'range' | 'facility'; seed: number; destination: string; key: number };
 
@@ -36,6 +38,7 @@ export function App() {
   useEffect(() => {
     audio.unlock();
     if (scene.kind === 'title') audio.music('title', 1, 3);
+    else if (scene.kind === 'intro') audio.music('title', 0.45, 4);
     else if (scene.kind === 'ship') audio.music('ship', 1, 4);
     else audio.music(scene.mode === 'facility' ? 'raid' : null, 0, 2);
   }, [scene]);
@@ -60,7 +63,12 @@ export function App() {
   };
 
   const deploy = (destination: string, seed: number) => {
-    const p = getProfile();
+    let p = getProfile();
+    // Going down for the first time ends the first morning aboard.
+    if (p.flags.prologue && !p.flags.pro_done) {
+      useProfile.getState().apply({ flags: { ...p.flags, pro_done: true } });
+      p = getProfile();
+    }
     // Mark the raid in the save before anything else: from here on, leaving means losing the kit.
     useProfile.getState().apply({ ...deployProfile(p, destination, seed), course: null });
     raid.start('facility', seed, destination, p.loadout);
@@ -98,7 +106,13 @@ export function App() {
   };
 
   let view: ReactElement;
-  if (scene.kind === 'title') view = <TitleScreen onContinue={toShip} onRange={range} />;
+  const firstMorning = () => {
+    const p = getProfile();
+    transition({ kind: 'ship' }, ['LASTOCHKA // ЛАСТОЧКА', `DAY ${p.day} · 06:40 SHIP TIME · HOLDING OVER OTETS`], 1300);
+  };
+
+  if (scene.kind === 'title') view = <TitleScreen onContinue={toShip} onNewGame={() => transition({ kind: 'intro' }, [''], 250)} onRange={range} />;
+  else if (scene.kind === 'intro') view = <IntroCrawl onDone={firstMorning} />;
   else if (scene.kind === 'ship') view = <ShipView onDeploy={deploy} onQuit={() => transition({ kind: 'title' }, ['SIGNING OFF'], 350)} />;
   else view = <GameView key={scene.key} mode={scene.mode} seed={scene.seed} onExit={backFromRaid} />;
   return (

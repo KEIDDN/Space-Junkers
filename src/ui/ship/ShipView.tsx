@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CREW } from '../../data/crew';
 import { DESTINATION } from '../../data/destinations';
 import { audio } from '../../engine/audio';
@@ -7,6 +7,10 @@ import { useProfile } from '../../state/profileStore';
 import { shipUi, useShip } from '../../state/shipStore';
 import { ship } from '../../state/shipOps';
 import { ReserveSlip } from './ReserveSlip';
+import { ScenePanel } from './ScenePanel';
+import { PROLOGUE_DESTINATION, PROLOGUE_SEED, STEP_LINES, STEP_LOG, WAKE_LINE, prologueStep, type PrologueStep } from '../../data/prologue';
+import { shipActions } from '../../state/shipActions';
+import { getProfile } from '../../state/profileStore';
 import { ShipInventory } from '../inventory/ShipInventory';
 import { AirlockPanel } from './AirlockPanel';
 import { BoardPanel } from './BoardPanel';
@@ -14,6 +18,30 @@ import { CrewPanel } from './CrewPanel';
 import { NavPanel } from './NavPanel';
 import { RecordPanel } from './RecordPanel';
 import { ByDevice, Key, Prompt } from '../Glyph';
+
+/** The wake-up call plays once per session, not every time the ship is rebuilt. */
+const wakeHeard = { done: false };
+
+/** What each moment of the first morning leads to once it has been said. */
+function finishScene(step: PrologueStep): void {
+  const p = getProfile();
+  const flags = { ...p.flags };
+  if (step === 'kit') {
+    flags.pro_kit = true;
+    useProfile.getState().apply({ flags });
+    shipUi.open({ kind: 'stash' });
+  } else if (step === 'job') {
+    flags.pro_job = true;
+    // The first job: Fedya's contract, and the hop to Zarya-7 on his tab.
+    useProfile.getState().apply({ flags });
+    if (!p.quests.fedya_first) shipActions.acceptQuest('fedya_first');
+    useProfile.getState().apply({ course: { destination: PROLOGUE_DESTINATION, seed: PROLOGUE_SEED } });
+    shipUi.close();
+    shipUi.patch({ jumping: true });
+  } else {
+    shipUi.open({ kind: 'airlock' });
+  }
+}
 
 function ShipHud() {
   const prompt = useShip((s) => s.prompt);
@@ -24,12 +52,23 @@ function ShipHud() {
   const course = useProfile((s) => s.course);
   const notices = useProfile((s) => s.notices);
   const clear = useProfile((s) => s.clearNotices);
+  const step = useProfile((s) => prologueStep(s.flags));
+  // Fedya on the intercom the first time the operator wakes up aboard.
+  const [wake] = useState(() => step === 'kit' && !wakeHeard.done);
+  useEffect(() => {
+    if (wake) {
+      wakeHeard.done = true;
+      audio.ui('squelch');
+    }
+  }, [wake]);
   return (
     <div className={`hud ship-hud ${panel ? 'menu-open' : ''}`}>
       <div className="hud-tl crt-text">
         <div className="ship-name">LASTOCHKA <span className="dim">// ЛАСТОЧКА</span></div>
         <div className="dim small">DAY {day} · {course ? `IN ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING OVER OTETS'}</div>
+        {step && <div className="ship-log"><span className="dim">SHIP LOG ▸</span> {STEP_LOG[step]}</div>}
       </div>
+      {wake && !panel && <div className="ship-intercom crt-text">{WAKE_LINE}</div>}
       <div className="hud-tr crt-text">
         <div className="label">KOSMORUBLI <span className="dim">// КР</span></div>
         <div className="big-mid">{credits.toLocaleString()}</div>
@@ -114,6 +153,7 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
         {panel?.kind === 'board' && <BoardPanel />}
         {panel?.kind === 'airlock' && <AirlockPanel onDeploy={onDeploy} />}
         {panel?.kind === 'record' && <RecordPanel onQuit={onQuit} />}
+        {panel?.kind === 'scene' && <ScenePanel key={panel.step} lines={STEP_LINES[panel.step]} onDone={() => finishScene(panel.step)} />}
         {reserve && !panel && <ReserveSlip items={reserve} onClose={() => shipUi.patch({ reserve: null })} />}
       </div>
     </div>

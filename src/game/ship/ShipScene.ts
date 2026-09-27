@@ -19,6 +19,7 @@ import { hasLineOfSight, moveCircle } from '../world/collision';
 import { Doors } from '../world/doors';
 import { emitterLevels, emittersFrom, type Emitter } from '../world/emitters';
 import { CrewActor } from './CrewActor';
+import { STEP_AT, prologueStep } from '../../data/prologue';
 import type { Sfx } from '../../engine/audio';
 
 /** What each crew member sounds like at work. */
@@ -283,7 +284,11 @@ export class ShipScene {
     shipUi.patch({ prompt: near ? this.promptFor(near) : null });
     if (near && this.input.pressed('interact')) {
       audio.ui('open');
-      if (near.kind === 'crew') shipUi.open({ kind: 'crew', crew: near.crew! });
+      // The first morning aboard: the locker, the cockpit radio and the airlock have
+      // something to say before they do their usual job.
+      const step = prologueStep(useProfile.getState().flags);
+      if (step && near.kind === STEP_AT[step]) shipUi.open({ kind: 'scene', step });
+      else if (near.kind === 'crew') shipUi.open({ kind: 'crew', crew: near.crew! });
       else shipUi.open({ kind: near.kind } as never);
     } else if (!busy && this.input.pressed('inventory')) {
       audio.ui('open');
@@ -349,6 +354,15 @@ export class ShipScene {
     const talking = useShip.getState().panel?.kind === 'crew';
     if (talking) return;
     const bob = Math.round(Math.sin(this.time * 3) * 1.5);
+    // The first morning: a small amber chevron over where the ship log points.
+    const step = prologueStep(useProfile.getState().flags);
+    const goal = step ? this.layout.interactables.find((i) => i.kind === STEP_AT[step]) : null;
+    if (goal && !useShip.getState().panel) {
+      const x = Math.round(goal.x);
+      const y = Math.round(goal.y) - 44 + bob;
+      g.rect(x - 5, y - 1, 11, 7).fill({ color: 0x000000, alpha: 0.8 });
+      for (let k = 0; k < 4; k++) g.rect(x - 4 + k, y + k, 9 - k * 2, 1).fill({ color: 0xe8a24a });
+    }
     for (const c of this.layout.crew) {
       const m = this.markerState.get(c.crew);
       if (!m) continue;
