@@ -57,6 +57,8 @@ function ShipHud() {
   const clear = useProfile((s) => s.clearNotices);
   const step = useProfile((s) => prologueStep(s.flags));
   const overheard = useShip((s) => s.overheard);
+  // The key strip is for a new operator: gone after their first couple of raids.
+  const newcomer = useProfile((s) => s.stats.raids < 2);
   // Fedya on the intercom the first time the operator wakes up aboard.
   const [wake] = useState(() => step === 'kit' && !wakeHeard.done);
   useEffect(() => {
@@ -86,7 +88,7 @@ function ShipHud() {
       {overheard && !panel && <div className="ship-overheard crt-text"><span className="dim">{overheard.who}:</span> {overheard.text}</div>}
       {prompt && !panel && !jumping && <div className="hud-prompt crt-text"><Prompt text={prompt} /></div>}
       {jumping && <div className="hud-extract crt-text warn">JUMP DRIVE ENGAGED</div>}
-      {!panel && (
+      {!panel && newcomer && (
         <div className="ship-hints dim small crt-text">
           <ByDevice
             kbm={<>WASD MOVE · E INTERACT · TAB STASH · ESC MENU</>}

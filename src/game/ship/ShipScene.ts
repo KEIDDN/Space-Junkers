@@ -283,9 +283,13 @@ export class ShipScene {
     this.chatter(dt, busy);
 
     // --- Interaction
+    // A panel that just closed swallowed the press that closed it: mashing through a
+    // conversation mustn't open whatever the operator is standing next to.
+    if (busy || ship.jumping) this.sinceBusy = 0;
+    else this.sinceBusy += dt;
     const near = busy ? null : this.nearest();
     shipUi.patch({ prompt: near ? this.promptFor(near) : null });
-    if (near && this.input.pressed('interact')) {
+    if (near && this.sinceBusy > 0.6 && this.input.pressed('interact')) {
       audio.ui('open');
       // The first morning aboard: the locker, the cockpit radio and the airlock have
       // something to say before they do their usual job.
@@ -337,6 +341,7 @@ export class ShipScene {
     this.input.endFrame();
   };
 
+  private sinceBusy = 99;
   private chatterWait = 18 + Math.random() * 12;
   private talk: { ex: Exchange; i: number; t: number } | null = null;
 
