@@ -68,7 +68,7 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
     // Back aboard with nothing to shoot or carry with: the ship's reserve fills the gap.
     const issued = ship.stockReserve();
     if (issued.length) {
-      const what = [issued.includes(RESERVE_GUN) && 'a crew-issue SP-5 and a box of rounds', issued.includes(RESERVE_PACK) && 'a canvas sack']
+      const what = [issued.includes(RESERVE_GUN) && 'a crew-issue SP-5 with a box of rounds', issued.includes(RESERVE_PACK) && 'a canvas sack']
         .filter(Boolean).join(' and ');
       useProfile.setState((s) => ({ notices: [...s.notices, `SHIP RESERVE: Molot left ${what} in your locker. "Bring back better."`] }));
     }

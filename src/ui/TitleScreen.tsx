@@ -44,6 +44,13 @@ interface Props {
 }
 
 const CREDITS: [string, string[]][] = [
+  ['CHARACTERS', [
+    'Liberated Pixel Cup & the Universal LPC Spritesheet Generator (CC-BY-SA 3.0 / GPL 3.0)',
+    'bluecarrot16 · BenCreating · ElizaWy · JaidynReiman · wulax · Redshrike · makrohn · pvigier',
+    'Durrani · Evert · TheraHedwig · MuffinElZangano · MrBeast · MadMarcel · bigbeargames · pennomi',
+    'castelonia · Napsio · Nila122 · Skorpio · Joe White · Luke Mehl · dalonedrau · laetissima · macmanmatty',
+    'Per-file credits: Assets/LPC/CREDITS.csv',
+  ]],
   ['MUSIC', [
     'Pondering the Cosmos · Ruskerdax',
     'Sirens in Darkness · The Cynic Project (cynicmusic.com · pixelsphere.org)',
@@ -58,7 +65,7 @@ const CREDITS: [string, string[]][] = [
   ['EVERYTHING ELSE', ['Pixel art from the project sheets; synthesized sound, lighting and effects in code.']],
 ];
 
-/** Who made what: shown from the title screen. Every external source is CC0 or OFL. */
+/** Who made what: shown from the title screen. */
 function Credits() {
   return (
     <div className="credits-list">
