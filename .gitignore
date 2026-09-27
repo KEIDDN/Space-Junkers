@@ -1,0 +1,22 @@
+# Dependencies & builds
+node_modules
+dist
+build
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Godot leftovers in Assets/
+*.import
