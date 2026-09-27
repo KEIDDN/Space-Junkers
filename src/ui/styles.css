@@ -229,6 +229,11 @@ button { font-family: var(--mono); }
 .feed-line.warn { color: var(--warn); }
 .feed-line.bad { color: var(--bad); }
 .feed-line.loot { color: var(--text); }
+/* The crew on the radio: cold terminal green, and it stays up longer. */
+.feed-line.radio {
+  color: #9fd8b8; max-width: 440px; line-height: 1.35; white-space: normal;
+  background: rgba(6, 14, 11, 0.8); animation: toast-in 150ms ease-out, toast-out 700ms ease-in 7.8s forwards;
+}
 @keyframes toast-in { from { transform: translateX(-12px); opacity: 0; } }
 @keyframes toast-out { to { opacity: 0; } }
 
@@ -570,6 +575,37 @@ button { font-family: var(--mono); }
   text-shadow: 4px 4px 0 #6e2a1f, 0 0 30px rgba(242, 163, 58, 0.18);
 }
 .title-sub { color: var(--warn); letter-spacing: 0.3em; font-size: 12px; }
+/* The signal breaks up now and then: the logo slips a few pixels and snaps back. */
+.title-logo { animation: logo-breakup 9s steps(1) infinite; }
+@keyframes logo-breakup {
+  0%, 91%, 100% { transform: none; text-shadow: 4px 4px 0 #6e2a1f, 0 0 30px rgba(242, 163, 58, 0.18); }
+  92% { transform: translateX(3px); text-shadow: 4px 4px 0 #6e2a1f, -3px 0 0 rgba(120, 220, 200, 0.35); }
+  93% { transform: translateX(-2px) skewX(-4deg); }
+  94% { transform: translateX(1px); text-shadow: 4px 4px 0 #6e2a1f, 2px 0 0 rgba(255, 70, 50, 0.35); }
+}
+/* A band of interference rolling down the tube. */
+.title-interference {
+  position: absolute; left: 0; right: 0; height: 90px; pointer-events: none; z-index: 1;
+  background: linear-gradient(to bottom, transparent, rgba(200, 220, 210, 0.035) 40%, rgba(200, 220, 210, 0.06) 50%, transparent);
+  animation: roll 7.5s linear infinite;
+}
+@keyframes roll { from { top: -100px; } to { top: 100%; } }
+.title-nav {
+  position: absolute; top: 18px; right: 22px; z-index: 2; width: 300px; padding: 8px 10px;
+  border: 1px solid rgba(159, 216, 184, 0.25); background: rgba(4, 12, 9, 0.7);
+  font-family: 'VT323', monospace; font-size: 17px; line-height: 1.2; color: #9fd8b8;
+}
+.title-nav-head { display: flex; align-items: center; gap: 8px; letter-spacing: 0.1em; }
+.title-nav-row { display: flex; justify-content: space-between; }
+.title-nav-row .signal { letter-spacing: 1px; }
+.title-nav-ticker { color: #d7c9a8; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; animation: ticker-in 0.35s steps(3, end); }
+@keyframes ticker-in { from { opacity: 0; } to { opacity: 1; } }
+.title-nav .cyr { font-family: var(--display); font-size: 11px; letter-spacing: 0.2em; color: #9fd8b8; }
+.warn-lamp {
+  width: 8px; height: 8px; border-radius: 50%; background: #d23a22; box-shadow: 0 0 8px 2px rgba(210, 58, 34, 0.7);
+  animation: lamp 1.7s steps(1) infinite;
+}
+@keyframes lamp { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0.15; box-shadow: none; } }
 .title-menu { display: flex; flex-direction: column; gap: 6px; width: 440px; margin-top: 10px; }
 .menu-btn.big { font-family: var(--display); font-size: 16px; letter-spacing: 0.14em; padding: 12px 18px; }
 .menu-btn .dim { font-family: var(--mono); font-size: 11px; letter-spacing: 0.04em; }
@@ -814,3 +850,87 @@ body[data-device="pad"] .btn:hover:not(.pad-focus), body[data-device="pad"] .men
 .title-credits { width: min(640px, 92vw); padding: 16px 18px 12px; display: flex; flex-direction: column; gap: 12px; }
 .credits-list { display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 1.45; }
 .credits-block { display: flex; flex-direction: column; gap: 1px; }
+
+/* The ship's reserve: a stamped requisition slip. */
+.reserve-slip { position: relative; width: min(520px, 92vw); padding: 18px 20px; border-color: var(--warn); }
+.reserve-stamp {
+  position: absolute; top: 14px; right: 16px; transform: rotate(-9deg);
+  border: 2px solid rgba(190, 58, 38, 0.8); color: rgba(210, 70, 48, 0.85); padding: 3px 8px;
+  font-family: 'Russo One', sans-serif; font-size: 15px; letter-spacing: 2px; text-align: center; line-height: 1.05;
+}
+.reserve-stamp span { font-size: 10px; letter-spacing: 3px; }
+.reserve-rows { margin: 10px 0 8px; display: flex; flex-direction: column; gap: 4px; }
+.reserve-row { display: flex; align-items: center; gap: 10px; padding: 3px 6px; background: rgba(255, 255, 255, 0.03); }
+.reserve-note { font-style: italic; margin: 10px 0 6px !important; }
+.results-reserve { margin-top: 8px; padding: 6px 8px; border: 1px dashed rgba(242, 163, 58, 0.5); }
+
+/* ---------- First boot: the premise, typed over black ---------- */
+.intro-crawl {
+  background: #030304; display: flex; align-items: center; justify-content: center; cursor: default;
+}
+.intro-crawl::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+}
+.intro-lines { max-width: 760px; padding: 0 24px; font-family: 'VT323', monospace; font-size: 26px; line-height: 1.5; color: #c9c2b2; }
+.intro-line { text-shadow: 0 0 6px rgba(201, 194, 178, 0.25); }
+.intro-line.last { color: #e8a24a; margin-top: 18px; text-shadow: 0 0 8px rgba(232, 162, 74, 0.35); }
+.intro-skip { position: absolute; right: 24px; bottom: 20px; }
+
+/* Heard on the intercom: the portrait behind a grille of scanlines. */
+.dialog-portrait.intercom { position: relative; filter: saturate(0.4) brightness(0.85); }
+.dialog-portrait.intercom::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 3px);
+}
+
+/* The ship log: where to go next, quietly. */
+.ship-log { margin-top: 4px; color: #e8a24a; font-size: 12px; letter-spacing: 0.5px; }
+.ship-log .dim { color: #8a7c66; }
+.ship-intercom {
+  position: absolute; left: 50%; top: 70px; transform: translateX(-50%); max-width: 560px;
+  color: #9fd8b8; background: rgba(6, 14, 11, 0.82); border-left: 2px solid #9fd8b8;
+  padding: 6px 12px; font-size: 13px; line-height: 1.4;
+  animation: toast-in 200ms ease-out, toast-out 900ms ease-in 9s forwards;
+}
+
+/* A note in someone's hand: yellowed paper, pencil, a little crooked. */
+.note-paper {
+  width: min(420px, 90vw); padding: 18px 22px 14px; transform: rotate(-1.2deg);
+  background: linear-gradient(180deg, #cfc5aa 0%, #bdb294 100%); color: #2b2620;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), inset 0 0 30px rgba(90, 70, 40, 0.25);
+  font-family: 'Share Tech Mono', monospace; font-size: 15px; line-height: 1.5;
+}
+.note-from { font-size: 10px; letter-spacing: 1px; color: #6b604c; }
+.note-title { font-family: 'Russo One', sans-serif; font-size: 13px; letter-spacing: 1px; margin: 2px 0 10px; color: #4a3a2a; }
+.note-line { font-style: italic; }
+.note-foot { margin-top: 12px; font-size: 11px; color: #6b604c; }
+
+/* Recovered records: what was read down there, by thread. */
+.records-body { display: flex; gap: 14px; min-height: 280px; max-height: 58vh; }
+.records-list { flex: 0 0 46%; overflow-y: auto; padding-right: 6px; }
+.records-thread { margin-bottom: 12px; }
+.records-head { color: var(--warn); font-size: 13px; letter-spacing: 0.5px; }
+.records-thread .opt { display: block; width: 100%; text-align: left; font-size: 12px; }
+.records-thread .opt.on { color: var(--warn); }
+.records-read { flex: 1; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.08); background: rgba(5, 12, 8, 0.6); color: #9fd8b8; font-size: 13px; line-height: 1.5; overflow-y: auto; }
+.records-read.paper { background: #c9bfa4; color: #2b2620; font-style: italic; }
+.records-title { font-family: 'Russo One', sans-serif; margin: 2px 0 8px; font-style: normal; }
+.records-empty { padding: 30px 10px; max-width: 460px; }
+/* Crew overheard talking among themselves: a subtitle, never a dialogue. */
+.ship-overheard {
+  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); max-width: 620px; text-align: center;
+  font-size: 13px; color: #d8cfbc; text-shadow: 0 1px 2px #000, 0 0 6px #000; pointer-events: none;
+}
+
+/* ---------- Film finish (settings: FILM FINISH) ---------- */
+.post-fx { position: absolute; inset: 0; pointer-events: none; }
+.post-grain {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  image-rendering: pixelated; opacity: 0.045; mix-blend-mode: overlay;
+}
+.post-vignette {
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse 78% 72% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
+}
+body.filmic .game-canvas { filter: contrast(1.05) saturate(0.9) brightness(1.02) hue-rotate(-4deg); }

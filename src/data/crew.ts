@@ -29,8 +29,12 @@ export interface CrewDef {
   /** After the player comes back from a raid alive / dead. */
   welcomeBack: string[];
   afterDeath: string[];
-  /** Things to ask about: world, past, the Collapse. */
-  topics: { q: string; a: string[]; minTrust?: number }[];
+  /** Back alive but badly hurt / with something rare / after a hard fight: whoever cares says so. */
+  wounded?: string[];
+  bigFind?: string[];
+  hardFight?: string[];
+  /** Things to ask about: world, past, the Collapse. `lore`: only once you've read that record. */
+  topics: { q: string; a: string[]; minTrust?: number; lore?: string }[];
 }
 
 export const TRUST_LEVELS = [
@@ -70,11 +74,16 @@ export const CREW: Record<CrewId, CrewDef> = {
       'Alive and carrying. The two best qualities in a person.',
       'Let me see, let me see. Don\'t be shy.',
     ],
+    bigFind: [
+      'Wait. Wait. Put that on the table. Slowly. Do you know what that is? I do. Sit down, we should talk.',
+      'Now that is a reason to go down there. Don\'t tell Lis you have it.',
+    ],
     afterDeath: [
       'Eh. The facility keeps what it takes. Take a tea, start again.',
       'You lost the kit. You didn\'t lose yourself. One of those is replaceable.',
     ],
     topics: [
+      { q: 'Why do the stations still run?', lore: 'tk_grid', a: ['Reserve power. The Commonwealth built for a hundred years and got forty.', 'What I don\'t understand is what gets the power first when there\'s almost none. It\'s never the heating.'] },
       { q: 'What is this ship?', a: ['The Lastochka. Swallow. A Commonwealth ore tender, decommissioned twice.', 'I bought her at an auction nobody else showed up to. The reactor was still warm.'] },
       { q: 'What happened to the Commonwealth?', a: ['The Collapse. One day the orders stopped coming. The next, the pay.', 'The garrisons waited. Then they stopped waiting. The factories just... kept the lights on.'] },
       { q: 'Why do people still guard those places?', a: ['Some are soldiers who never got told to go home. Some are scavengers who think it\'s theirs now.', 'Everybody guards something. I guard this ship.'], minTrust: 1 },
@@ -99,6 +108,10 @@ export const CREW: Record<CrewId, CrewDef> = {
     welcomeBack: [
       'Back in one piece. Good work.',
       'You smell like cordite. That\'s the right smell.',
+    ],
+    hardFight: [
+      'I heard it on the radio. Count the rounds you have left, then tell me how many you think you have. The difference is how close it was.',
+      'That was a fight, not a salvage run. Good that you won it. Better if you hadn\'t needed to.',
     ],
     afterDeath: [
       'You got dropped. It happens to everybody once. Don\'t let it happen twice in the same doorway.',
@@ -129,6 +142,10 @@ export const CREW: Record<CrewId, CrewDef> = {
     welcomeBack: [
       'Scrapes and bruises. You got lucky.',
       'Let me see that arm. ... Fine. Go away. Come back later.',
+    ],
+    wounded: [
+      'Sit. No, don\'t talk. You\'re bleeding through that dressing and you walked here. Heroic. Stupid.',
+      'You came back with more holes than you left with. Let me count them.',
     ],
     afterDeath: [
       'We pulled your tracker out of the feed. I\'m glad it was only the tracker.',
@@ -164,6 +181,7 @@ export const CREW: Record<CrewId, CrewDef> = {
       'I saved the last thirty seconds of your helmet cam. you don\'t want to watch it.',
     ],
     topics: [
+      { q: 'What is channel nine?', lore: 'tk_radio9', a: ['Every Commonwealth node had a receiver on nine. Military, civilian, a tractor plant: all of them. Nobody could tell you why.', 'Since the Blackout it carries something. Not a voice. A pattern that repeats every eleven minutes. I\'ve been recording it.'] },
       { q: 'What are you looking for?', a: ['the Blackout logs. the moment the Commonwealth network went dark, every node recorded something.', 'nobody\'s put them together. I\'m going to.'] },
       { q: 'What\'s a vault keycard for?', a: ['deep facilities have a vault. security-sealed. red door, you can\'t miss it.', 'cards wear out after a few swipes. I can sell you one. at cost. ish.'] },
       { q: 'What do you think happened?', a: ['I think something on Sirin talked back.', 'every node that went dark was listening to the same channel. the same one. that\'s not a coincidence, that\'s a message.'], minTrust: 2 },

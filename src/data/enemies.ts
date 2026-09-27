@@ -72,3 +72,34 @@ export const ENEMIES: Record<string, EnemyDef> = {
     preferredRange: 220, burst: [3, 5], retreatBelow: 0.2,
   },
 };
+
+/**
+ * How a destination's hostiles fight, on top of their faction (1 = as written above).
+ * Tikhaya is where operators learn: its scavengers are as dangerous as ever up close, but
+ * slower to notice, slower to shoot, wild in the first moments of a fight, and loosely
+ * organised, so being seen is a mistake you can survive, not an instant death.
+ */
+export interface AiTuning {
+  /** × seconds between seeing the target and opening fire. */
+  reaction: number;
+  /** × aim error. */
+  aim: number;
+  /** × how fast awareness builds from a sighting. */
+  notice: number;
+  /** × damage their rounds do to the operator. */
+  damage: number;
+  /** Extra aim error (× on top) in the first moments of a fight, fading over STARTLE_TIME. */
+  startle: number;
+  /** × shout range and flanking. */
+  coordination: number;
+  /** × pause between bursts. */
+  pause: number;
+}
+
+/** Seconds over which a fresh contact's startle wears off. */
+export const STARTLE_TIME = 1.8;
+
+export const DEFAULT_AI: AiTuning = { reaction: 1, aim: 1, notice: 1, damage: 1, startle: 0.6, coordination: 1, pause: 1 };
+
+/** An operator's first raid: the facility is still dangerous, but it lets them learn. */
+export const FIRST_RAID_AI: AiTuning = { reaction: 1.7, aim: 1.5, notice: 0.6, damage: 0.7, startle: 2.2, coordination: 0.45, pause: 1.45 };

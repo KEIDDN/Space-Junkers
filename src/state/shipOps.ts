@@ -3,7 +3,7 @@ import {
   getGrid, loadWeapon, locate, moveItem, quickMove, splitStack, unloadWeapon,
   type GridKey, type Target, type Workspace,
 } from '../core/transfer';
-import { hasUsableGun, issueReserve } from '../core/reserve';
+import { issueReserve, type Issued } from '../core/reserve';
 import { useProfile } from './profileStore';
 
 /**
@@ -88,21 +88,21 @@ export const ship = {
     return true;
   },
 
-  /** Can the operator go out armed: a gun with rounds for it, anywhere aboard? */
-  hasAnyWeapon(): boolean {
+  /** Would the reserve hand anything out (no gun that can fire, or no pack, on the operator)? */
+  needsReserve(): boolean {
     const p = useProfile.getState();
-    return hasUsableGun(p.loadout, p.stash);
+    return issueReserve(p.loadout, p.stash).issued.length > 0;
   },
 
   /**
    * The ship's reserve (see core/reserve.ts): fills in a crew-issue sidearm with rounds and
-   * a sack when the operator has lost theirs. Returns what was handed out.
+   * a sack when the operator has lost theirs. Returns everything handed out and where it went.
    */
-  stockReserve(): string[] {
+  stockReserve(): Issued[] {
     const p = useProfile.getState();
     const r = issueReserve(p.loadout, p.stash);
     if (r.issued.length) p.apply({ loadout: r.loadout, stash: r.stash });
-    return r.issued;
+    return r.issued.length ? r.items : [];
   },
 
   /** The stash button for the same thing (kept for saves that arrive short). */

@@ -14,6 +14,8 @@ const LIGHT_SCALE = 0.5;
 interface StaticLight {
   def: LightDef;
   sprite: Sprite;
+  /** Seconds left of a power sag (the lamp browns out, stutters, comes back). */
+  sag: number;
   /** Flicker state machine: steady stretches, then a stutter of quick toggles. */
   on: boolean;
   timer: number;
@@ -117,7 +119,7 @@ export class Lighting {
     return Math.abs(diff) < FLASHLIGHT_HALF_ANGLE;
   }
 
-  /** Short light burst (muzzle flashes, explosions). Not occluded, as it's too brief to notice. */
+  /** Short light burst (muzzle flashes, explosions, sparks), stopped by walls. */
   flash(x: number, y: number, radius: number, color: number, intensity: number, life = 0.06): void {
     let f = this.flashes.find((q) => q.life <= 0);
     if (!f) {
@@ -139,6 +141,16 @@ export class Lighting {
     f.sprite.tint = color;
     f.life = f.maxLife = life;
     f.intensity = intensity;
+  }
+
+  /**
+   * Somewhere a load comes on and the lamps near it brown out for a moment. Only the look
+   * changes: gameplay light levels stay as they were.
+   */
+  sag(x: number, y: number, radius: number, seconds = 0.9): void {
+    for (const s of this.statics) {
+      if (Math.hypot(s.def.x - x, s.def.y - y) < radius) s.sag = Math.max(s.sag, seconds * (0.8 + Math.random() * 0.4));
+    }
   }
 
   update(dt: number, camLeft: number, camTop: number, px: number, py: number, aim: number): void {
@@ -170,6 +182,12 @@ export class Lighting {
         }
         // The tube never goes fully dark: the filaments glow on through a stutter.
         level = s.on ? 1 : 0.32;
+      }
+      if (s.sag > 0) {
+        // Browning out: the lamp drops, stutters once or twice, and climbs back.
+        s.sag -= dt;
+        const k = Math.max(0, s.sag);
+        level *= k > 0.5 ? 0.25 + (Math.random() < 0.15 ? 0.5 : 0) : 1 - k * 1.2;
       }
       s.sprite.alpha = d.intensity * level;
       // Cull offscreen lights.
@@ -242,7 +260,7 @@ export class Lighting {
     sprite.position.set(def.x, def.y);
     sprite.blendMode = 'add';
     this.world.addChild(sprite);
-    this.statics.push({ def, sprite, on: true, timer: Math.random() * 4, burst: 0, phase: Math.random() * 6 });
+    this.statics.push({ def, sprite, on: true, timer: Math.random() * 4, burst: 0, phase: Math.random() * 6, sag: 0 });
 
     // Light levels per tile, for gameplay (who can be seen).
     const r = Math.ceil(def.radius / TILE);
@@ -270,7 +288,7 @@ export class Lighting {
     sprite.tint = def.color;
     sprite.blendMode = 'add';
     this.world.addChild(sprite);
-    this.statics.push({ def, sprite, on: true, timer: 0, burst: 0, phase: 0 });
+    this.statics.push({ def, sprite, on: true, timer: 0, burst: 0, phase: 0, sag: 0 });
     // Gameplay light levels: the fill is dimmer toward the edges, like the texture.
     const tx0 = Math.floor(a.x / TILE);
     const ty0 = Math.floor(a.y / TILE);
@@ -300,7 +318,8 @@ function rgb(r: number, g: number, b: number): number {
 // --- Light textures (banded falloff keeps the pixel-art look) ------------------
 
 const RADIAL_SIZE = 128;
-const BANDS = 7;
+/** Falloff steps: few enough to stay pixel-chunky, enough that big lamps don't ring. */
+const BANDS = 9;
 let radialTex: Texture | null = null;
 
 function radialTexture(): Texture {

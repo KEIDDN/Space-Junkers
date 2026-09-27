@@ -50,7 +50,7 @@ export function discharge(
     const speed = def.bulletSpeed * (pellets > 1 ? 0.88 + Math.random() * 0.24 : 1);
     ctx.projectiles.fire(sx, sy, a, {
       speed, range: slug ? def.range * 1.7 : def.range, damage, pen,
-      knockback: def.knockback * (slug ? 2 : 1), faction, color: def.tracerColor,
+      knockback: def.knockback * (slug ? 2 : 1), faction, color: def.tracerColor, pellet: pellets > 1,
     });
   }
 

@@ -7,9 +7,10 @@ import { Input } from '../engine/input';
 import { haptics } from '../engine/haptics';
 import { Rng } from '../engine/rng';
 import { DESTINATION } from '../data/destinations';
-import { loreEntry } from '../data/lore';
+import { NOTES, ZARYA_LOG, loreEntry } from '../data/lore';
+import { PROLOGUE_DESTINATION, PROLOGUE_SEED } from '../data/prologue';
 import { themeFor, type Theme } from '../data/themes';
-import { ENEMIES } from '../data/enemies';
+import { DEFAULT_AI, ENEMIES, FIRST_RAID_AI, type AiTuning } from '../data/enemies';
 import { ITEMS, RARITY_ORDER, type ArmorDef, type WeaponItemDef } from '../data/items';
 import { BODY_GRID, BODY_POCKETS, CONTAINERS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
 import { WEAPONS } from '../data/weapons';
@@ -26,6 +27,8 @@ import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
 import type { GameContext } from './context';
 import { Player, STEADY_SPREAD } from './entities/Player';
 import { PadAim, type AimTarget } from './padAim';
+import { RadioCoach } from './coach';
+import { haulValue } from '../core/raidResult';
 import { AmbientFx } from './fx/ambient';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
@@ -54,6 +57,8 @@ const DEATH_LINGER = 2.4;
 const SQUAD_TIMES = [330, 640, 930];
 /** Orbit window warnings, in seconds left. */
 const WARNINGS = [300, 120, 60, 30];
+/** Chance a pellet on the head line counts as a headshot. */
+const PELLET_HEADSHOT = 0.35;
 /** How far the operator's map fills in around them (tiles). */
 const SURVEY_RADIUS = 9;
 
@@ -118,6 +123,13 @@ export class Game {
   private padAim = new PadAim();
   private aimPoint = { x: 0, y: 0 };
   private aimTargets: AimTarget[] = [];
+  /** What the operator had read before this raid (keeps terminal entries stable within it). */
+  private loreRead: string[] = [];
+  /** How this destination's hostiles fight (a learning operator gets the first-raid tuning). */
+  private ai: AiTuning = DEFAULT_AI;
+  /** The crew on the radio, for an operator still learning (null otherwise). */
+  private coach: RadioCoach | null = null;
+  private coachTimer = 0;
   paused = false;
 
   constructor(private opts: GameOptions) {}
@@ -247,8 +259,17 @@ export class Game {
     const dest = DESTINATION[useRaid.getState().destination];
     const facility = this.opts.mode === 'facility';
     this.theme = themeFor(dest?.id);
+    // Until their first extraction (and for three raids at most), an operator on Tikhaya is
+    // still learning: a quieter entry, and scavengers who give them a chance.
+    const stats = useProfile.getState().stats;
+    this.loreRead = useProfile.getState().lore;
+    const learning = facility && dest?.id === 'tikhaya' && stats.extractions === 0 && stats.raids <= 3;
+    this.ai = learning ? FIRST_RAID_AI : { ...DEFAULT_AI, ...dest?.ai };
+    this.coach = learning ? new RadioCoach() : null;
     this.map = facility
-      ? generateFacility(this.opts.seed, { danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme, lootBonus: dest?.lootBonus ?? 0 })
+      ? generateFacility(this.opts.seed, {
+        danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme, lootBonus: dest?.lootBonus ?? 0, gentle: learning,
+      })
       : mapFromAscii(TEST_RANGE);
     this.elapsed = 0;
     this.window = facility ? (dest?.minutes ?? 18) * 60 : Infinity;
@@ -308,7 +329,7 @@ export class Game {
       onExtracted: () => this.beginEnding('extracted'),
       onSignal: (x, y) => this.onSignal(x, y),
       onUnlock: (door) => this.doors?.unlock(door),
-      onTerminal: (n) => this.openTerminal(n),
+      onTerminal: (n, note) => this.openTerminal(n, note),
     }, this.actorLayer, facility ? t.loot : {});
 
     this.worldLit.addChild(ground);
@@ -319,8 +340,10 @@ export class Game {
     this.ambientFx = new AmbientFx(
       [...this.map.props, ...this.map.containers.map((c) => ({ sprite: CONTAINERS[c.type]?.sprite ?? '', x: c.tx * 32 + 16, y: c.ty * 32 + 29 }))],
       this.effects, this.audio, this.ctx.lightFlash, this.opts.seed,
+      (x, y, r) => this.lighting?.sag(x, y, r),
     );
     this.worldGlow.addChildAt(this.ambientFx.glow, 0);
+    this.worldLit.addChildAt(this.ambientFx.parts, 1); // over the wall props, under everyone
     if (this.lighting) this.worldLit.addChild(this.ambientFx.dust);
     for (const p of props) this.actorLayer.addChild(p);
 
@@ -331,7 +354,7 @@ export class Game {
 
     this.enemies = this.map.spawns
       .filter((s) => s.kind in ENEMIES)
-      .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null));
+      .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null, this.ai, s.weapon));
     for (const e of this.enemies) {
       this.actorLayer.addChild(e.view.container);
       e.allies = this.enemies;
@@ -469,6 +492,7 @@ export class Game {
     this.effects.update(dt);
 
     this.trackRooms(dt);
+    this.radio(dt);
     this.survey(dt);
     this.listenToRoom(dt);
     this.heartbeat(dt);
@@ -503,9 +527,9 @@ export class Game {
     const ox = p.x;
     const oy = p.y - GUN_HEIGHT;
     this.aimTargets.length = 0;
-    for (const e of this.enemies) {
-      if (e.alive && e.view.container.alpha > 0.5) this.aimTargets.push({ x: e.x, y: e.y - GUN_HEIGHT, r: e.hitRadius + 3 });
-    }
+    this.enemies.forEach((e, id) => {
+      if (e.alive && e.view.container.alpha > 0.5) this.aimTargets.push({ x: e.x, y: e.y - GUN_HEIGHT, r: e.hitRadius + 3, id });
+    });
     const s = useSettings.getState();
     const pt = this.padAim.update(dt, {
       stick: handsFree ? this.input.aimStick : { x: 0, y: 0, mag: 0 },
@@ -514,6 +538,8 @@ export class Game {
       firing: handsFree && this.input.down('fire'),
       sensitivity: s.aimSpeed,
       assist: s.aimAssist,
+      // An operator still learning on Tikhaya gets a slightly longer reach.
+      assistScale: this.ai === FIRST_RAID_AI ? 1.25 : 1,
       targets: this.aimTargets,
       ox, oy,
     });
@@ -554,6 +580,38 @@ export class Game {
     if (Math.abs(this.tension - this.musicLevel) > 0.04 || (target === 0 && this.tension < 0.02 && this.musicLevel > 0)) {
       this.musicLevel = this.tension < 0.02 ? 0 : this.tension;
       this.audio.music('raid', this.musicLevel, 1);
+    }
+  }
+
+  /** The crew talk a learning operator through their first raids (see coach.ts). */
+  private radio(dt: number): void {
+    if (!this.coach || !this.player.alive || this.ending) return;
+    this.coachTimer -= dt;
+    if (this.coachTimer > 0) return;
+    const step = 0.25 - this.coachTimer;
+    this.coachTimer = 0.25;
+    const p = this.player;
+    const r = useRaid.getState();
+    let unseenNear = Infinity;
+    for (const e of this.enemies) {
+      if (e.alive && e.view.container.alpha < 0.5) unseenNear = Math.min(unseenNear, Math.hypot(e.x - p.x, e.y - p.y));
+    }
+    const line = this.coach.step(step, {
+      elapsed: this.elapsed,
+      unseenNear,
+      suspected: this.enemies.some((e) => e.alive && (e.state === 'investigate' || e.state === 'alert')),
+      fighting: this.enemies.some((e) => e.alive && e.aware),
+      kills: r.kills,
+      searched: r.log.searched,
+      hp: p.hp / p.maxHp,
+      bleeding: p.status.bleeding,
+      haul: haulValue(r.loadout, r.brought),
+      left: this.window - this.elapsed,
+      onExit: !!this.map.exitAt(p.x, p.y),
+    });
+    if (line) {
+      this.audio.ui('squelch');
+      raid.notice(`${line.who}: ${line.text}`, 'radio');
     }
   }
 
@@ -704,7 +762,7 @@ export class Game {
       }
       const x = tx * 32 + 16;
       const y = ty * 32 + 16;
-      const e = new Enemy(this.ctx, ENEMIES[kind], x, y, rush ? null : [{ x, y }, goal, { x, y }]);
+      const e = new Enemy(this.ctx, ENEMIES[kind], x, y, rush ? null : [{ x, y }, goal, { x, y }], this.ai);
       e.allies = this.enemies;
       this.enemies.push(e);
       this.targets.push(e);
@@ -715,10 +773,15 @@ export class Game {
     return true;
   }
 
-  private openTerminal(n: number): void {
+  private openTerminal(n: number, note?: string): void {
     const s = useRaid.getState();
     this.terminalAt = { x: this.player.x, y: this.player.y };
-    useRaid.setState({ terminal: loreEntry(s.destination, this.opts.seed, n), inventoryOpen: false, open: null, mapOpen: false });
+    // Zarya-7's first terminal is the station's own log; notes are what they are; anything
+    // else is the next thing the operator hasn't read.
+    const zarya = s.destination === PROLOGUE_DESTINATION && this.opts.seed === PROLOGUE_SEED && n === 0;
+    const entry = note ? NOTES[note] : zarya ? ZARYA_LOG : loreEntry(s.destination, this.opts.seed, n, this.loreRead);
+    raid.readLore(entry.id);
+    useRaid.setState({ terminal: entry, inventoryOpen: false, open: null, mapOpen: false });
   }
 
   /** The tactical map's view of the facility (for the [M] overlay). */
@@ -887,8 +950,11 @@ export class Game {
   };
 
   private onBulletActor = (b: Bullet, target: Hittable, x: number, y: number, headshot: boolean): void => {
+    // Buckshot: nine pellets each rolling a headshot made a sawn-off a certain kill at any
+    // close range. A pellet only counts as one now and then.
+    if (headshot && b.pellet && Math.random() > PELLET_HEADSHOT) headshot = false;
     if (target === this.player) {
-      const blocked = this.player.takeHit(b.damage, b.pen, b.dx, b.dy, headshot);
+      const blocked = this.player.takeHit(b.damage * this.ai.damage, b.pen, b.dx, b.dy, headshot);
       if (blocked) this.effects.wallImpact(x, y, -b.dx, -b.dy);
       else this.effects.bloodHit(x, y, b.dx, b.dy, headshot ? 12 : 6);
       this.audio.sfx('impactFlesh', x, y);

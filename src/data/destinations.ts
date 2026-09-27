@@ -1,3 +1,5 @@
+import type { AiTuning } from './enemies';
+
 /**
  * Places the Lastochka can fly to. Each is a context for raids: how dangerous, how far,
  * what's down there. Facilities are generated per visit; the planet decides their flavour.
@@ -27,6 +29,8 @@ export interface DestinationDef {
   minutes: number;
   /** Pushes every container toward rarer finds: the reason to fly further. */
   lootBonus: number;
+  /** How the hostiles here fight (see AiTuning); missing fields are 1. */
+  ai?: Partial<AiTuning>;
 }
 
 export const DESTINATIONS: DestinationDef[] = [
@@ -35,12 +39,15 @@ export const DESTINATIONS: DestinationDef[] = [
     description: 'A green moon of tractor plants and ore mills. The Commonwealth\'s workshop, left running with nobody at the controls.',
     loot: 'Scrap, electronics, tools, provisions', hostiles: 'Scavenger gangs',
     unlockHint: '', enemies: { scavenger: 8, raider: 2 }, dangerMul: 0.85, minutes: 20, lootBonus: 0,
+    // The first world: hard, but learnable. See AiTuning.
+    ai: { reaction: 1.4, aim: 1.3, notice: 0.75, damage: 0.8, startle: 1.8, coordination: 0.6, pause: 1.3 },
   },
   {
     id: 'merzlota', name: 'MERZLOTA', subtitle: 'FROZEN MINING WORLD', planet: 'merzlota', danger: 2, cost: 900,
     description: 'Deep-bore mines under a hundred metres of ice. The miners sealed themselves in when the heating failed.',
     loot: 'Minerals, crystals, fuel, mining tech', hostiles: 'Scavengers, raider crews',
     unlockHint: 'Fedya knows a mine foreman\'s coordinates. Earn his trust.', enemies: { scavenger: 4, raider: 6 }, dangerMul: 1, minutes: 20, lootBonus: 0.2,
+    ai: { reaction: 1.1, aim: 1.1, notice: 0.9, damage: 0.95, startle: 1.1, coordination: 0.85, pause: 1.1 },
   },
   {
     id: 'krasnaya', name: 'KRASNAYA PUSTOSH', subtitle: 'RED WASTE · MILITARY', planet: 'krasnaya', danger: 3, cost: 2200,

@@ -264,6 +264,9 @@ export function buildShip(upgrades: readonly string[] = [], story: readonly stri
   if (done('shura_channel')) props.push({ sprite: 'ship_tv', x: cx(7), y: px(10) - 2, solid: [[7, 9]] });
   if (done('lis_shiny')) props.push({ sprite: 'deco_chalice', x: cx(27), y: px(13) - 2, lift: 18 });
   if (done('lis_crown')) props.push({ sprite: 'deco_crown', x: cx(33), y: px(10), lift: 24 });
+  // Things brought home that somebody wanted kept.
+  if (done('memento_drawing')) props.push({ sprite: 'deco_drawing', x: cx(10) + 6, y: px(15) - 14, wall: true });
+  if (done('memento_clock')) props.push({ sprite: 'deco_clock', x: cx(6), y: px(9) - 14, wall: true });
 
   // --- Ship work shows.
   const has = (u: string) => upgrades.includes(u);
@@ -351,4 +354,16 @@ export function buildShip(upgrades: readonly string[] = [], story: readonly stri
       [[px(28) + 14, px(24) + 6], [px(29) + 10, px(25) + 12], [px(30) + 2, px(26) - 2]],
     ],
   };
+}
+
+/**
+ * What the ship's corners show: contracts handed in, and a few things from down there
+ * that somebody asked to keep (the child's drawing in the medbay, a stopped clock over
+ * Shura's desk).
+ */
+export function shipStory(p: { quests: Record<string, { status: string }>; flags: Record<string, boolean> }): string[] {
+  const out = Object.entries(p.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id);
+  if (p.flags.react_note_child) out.push('memento_drawing');
+  if (p.flags.react_clocks) out.push('memento_clock');
+  return out;
 }

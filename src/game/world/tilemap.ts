@@ -17,6 +17,8 @@ export interface Spawn {
   y: number;
   /** Optional patrol route (world positions). */
   patrol?: { x: number; y: number }[];
+  /** A weapon item this one carries instead of a random pick from their kit. */
+  weapon?: string;
 }
 
 export interface PropPlacement {
@@ -33,12 +35,17 @@ export interface PropPlacement {
   lift?: number;
 }
 
-/** Something to read on a terminal screen. */
+/** Something to read: a terminal screen, or a note someone left. */
 export interface TerminalPlacement {
   tx: number;
   ty: number;
   /** Index into the lore pool for this theme. */
   entry: number;
+  /** A handwritten note (key into NOTES) instead of a terminal. */
+  note?: string;
+  /** Where it's read from (world px), when not the tile in front of a wall terminal. */
+  x?: number;
+  y?: number;
 }
 
 /** A double door spanning two tiles. `vertical` = sits in a vertical wall (you pass left/right). */

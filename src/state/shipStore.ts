@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import type { CrewId } from '../data/crew';
+import type { Issued } from '../core/reserve';
+import type { PrologueStep } from '../data/prologue';
 
 export type ShipPanel =
   | { kind: 'crew'; crew: CrewId }
@@ -7,7 +9,9 @@ export type ShipPanel =
   | { kind: 'nav' }
   | { kind: 'board' }
   | { kind: 'airlock' }
-  | { kind: 'record' };
+  | { kind: 'record' }
+  /** A scripted moment of the first morning aboard (see data/prologue.ts). */
+  | { kind: 'scene'; step: PrologueStep };
 
 /** Aboard the ship: what the operator is looking at. Written on events, not per frame. */
 export interface ShipState {
@@ -15,9 +19,13 @@ export interface ShipState {
   panel: ShipPanel | null;
   /** Set when a jump is made; the scene plays the effect and clears it. */
   jumping: boolean;
+  /** The emergency kit the ship's reserve just issued (shown until acknowledged). */
+  reserve: Issued[] | null;
+  /** Crew talking among themselves within earshot (a subtitle). */
+  overheard: { who: string; text: string } | null;
 }
 
-export const useShip = create<ShipState>(() => ({ prompt: null, panel: null, jumping: false }));
+export const useShip = create<ShipState>(() => ({ prompt: null, panel: null, jumping: false, reserve: null, overheard: null }));
 
 export const shipUi = {
   open(panel: ShipPanel): void {

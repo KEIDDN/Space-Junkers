@@ -151,7 +151,8 @@ function Feed() {
     const h = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(h);
   }, [feed.length]);
-  const live = feed.filter((f: FeedEntry) => now - (born.get(f.id) ?? now) < 3500);
+  // Crew on the radio stay up long enough to read.
+  const live = feed.filter((f: FeedEntry) => now - (born.get(f.id) ?? now) < (f.tone === 'radio' ? 8500 : 3500));
   return (
     <div className="hud-feed">
       {live.map((f) => (

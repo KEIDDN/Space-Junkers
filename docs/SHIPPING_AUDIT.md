@@ -1,11 +1,161 @@
 # Space Junkers: polish passes and shipping audit
 
-This document covers three passes. The **character pass** (newest, first) replaced the
-AI-painted characters with hand-animated layered sprites and polished controller UX, the
-raid HUD, death recovery, lighting and set dressing. The **final master pass** below it added
-controller support, recorded sound and music, new enemy art, room signage and a lighting
-pass. The **final polish pass** did animation, weapon feel, synthesized audio, lighting,
-transitions and set dressing.
+This document covers four passes. The **immersion pass** (newest, first) gave the characters
+back the Space Junkers look, added a playable first morning aboard, made Tikhaya hard but
+learnable, made the emergency kit impossible to miss, and filled the world with life,
+storytelling and threads. The **character pass** replaced the AI-painted characters with
+hand-animated layered sprites and polished controller UX, the raid HUD, death recovery,
+lighting and set dressing. The **final master pass** added controller support, recorded sound
+and music, new enemy art, room signage and a lighting pass. The **final polish pass** did
+animation, weapon feel, synthesized audio, lighting, transitions and set dressing.
+
+## Immersion pass
+
+Not a feature expansion. Audited only what this pass touched: character art and its
+pipeline, equipment visuals, onboarding, lore presentation, Tikhaya's balance, AI tuning, aim
+assist, lighting, props, ambient life, the reserve, and the title.
+
+### Characters: the Space Junkers look, recovered
+
+The character pass made the characters move properly but drifted from the game's look: LPC
+heads are 22 px on a 30 px body (chibi proportions, big eyes), and the operator wore blue.
+A new search for external character art (OpenGameArt, itch.io) found generic modern
+soldiers, 16 px units and Doom-style renders; nothing close to the original sheets. So:
+
+- **The motion stays LPC** (walk, run, gun carry, idle, kneel, the fall, crew gestures).
+- **The identity is drawn for this game** (`tools/sj_heads.py`), placed on the neck of every
+  LPC frame so it moves with it:
+  - Heads at adult proportions (about 10 px; a figure is now ~3.5 heads tall). Volk cropped
+    and stubbled; Zorya with her hair knotted back and the red scarf from the original sheet.
+  - Helmets: the **K-6 in worn pale steel with the red centre stripe** (the helmet from the
+    original operator art), the Zaslon as an Altyn-style dome with a lit visor slit, the
+    quilted cap with a filter mask. Helmet off: the face shows; helmet on: its silhouette.
+  - Packs, each a size up: the slung sack, the RD-54 with side pouches, the Turist with a
+    bedroll, the Beta-7 on a steel frame that shows over the shoulders even from the front.
+    Straps show from the front; the head is always in front of the pack.
+  - Crew heads from their portraits: Lis's red hood, wrap and amber visor; Doc's knot and
+    high collar; Molot bald in shades and his red scarf; Fedya's hood, grey beard and red
+    goggles; Shura's dyed streak and headphones.
+  - Enemies: gas masks and hoods (scavengers), bandanas (raiders), the pilotka and ushanka
+    with the star (garrison), balaclavas with lit goggles (security). A helmet replaces them.
+- Operator coveralls in charcoal drab. Armour stays LPC (its pauldrons and plates change the
+  torso silhouette) but never covers the face.
+- The ID photos on the operator select are the painted heads from the original sheet again.
+- Unused LPC sheets removed; credits filtered to what remains.
+
+### The first morning aboard (prologue)
+
+- The premise typed over black (skippable; a line per press on a controller).
+- Wake at the bunk; Fedya on the intercom. A quiet **ship log** line under the ship's name and
+  a small chevron point at the next stop. Walk freely; meet the crew on the way.
+- **Locker:** Molot signs the kit over piece by piece (the PM-9 and its counted rounds, the
+  sack, the bandages, what you can lose and what you keep), then the stash opens on it.
+- **Cockpit radio:** Fedya on the Commonwealth, the facilities, the ship, and the first job:
+  service station Zarya-7 on Tikhaya stopped answering; the reactor pump needs batteries and
+  parts; the coming back is the job. His First Salvage contract is accepted, the hop is free.
+- **Airlock:** Shura will be on the radio; Molot's last advice. Deploying ends the prologue.
+- Zarya-7 is a fixed, gentle layout; its first terminal is the station master's shift log.
+
+### Tikhaya: hard, but learnable
+
+Being seen meant dying within two seconds: close-range awareness built at once, the first
+round came ~0.7 s later, and nine buckshot pellets each rolling a 2.1× headshot made a
+sawn-off a certain kill at any close range.
+
+- **Per-world AI tuning** (`AiTuning`): reaction, aim, how fast they notice, damage to the
+  operator, coordination (shout range, flanking), burst pauses, and a **startle**: the first
+  rounds of a fresh fight go wide, then settle. Tikhaya is the forgiving end, Merzlota a
+  little; the other worlds are unchanged.
+- **Learning operators** (Tikhaya, until their first extraction, three raids at most): softer
+  tuning, and a gentler facility: empty rooms next to the entry, one lone scavenger with a
+  pistol in the next ring, harder from there. Patrols never walk into the entry room (all
+  worlds).
+- A suspicious guard says it out loud ("who's there?") before committing.
+- Pellets count as headshots about a third of the time (both ways).
+- The crew on the radio talk a learning operator through the raid: someone close, a guard who
+  heard you, the first fight, the first body, the first search, a wound, enough haul, half the
+  window gone, the pad. Once each, never over each other.
+
+### Controller aim assist
+
+Moderately stronger, never a lock: a wider capture (~6° past the body, capped at 17°), a
+little more pull and friction, and it stays with the same hostile as they move. Still off
+with the stick at rest, visible hostiles only, never through walls. A little more reach for a
+learning operator.
+
+### Emergency kit
+
+A real bug: dying in the starter kit brought back a sack and **no gun**, because the reserve
+counted the Obrez in the starting stash as "armed". It now looks at what the operator carries:
+no gun that can fire on you, or no pack, and the gap is filled **on you** (SP-5 loaded in the
+holster, 28 rounds, the sack on your back, a dressing if you carry no meds, bound to a quick
+slot). Crew issue already in the locker is handed back first, so it can't pile up, and it still
+sells for nothing. Back aboard, an **EMERGENCY KIT ISSUED** slip (stamped ВЫДАНО) lists each
+item and where it is; the death report says what the reserve will issue before you go back.
+
+### The world: storytelling, threads, life
+
+- **Vignettes**, three or four per facility, each with a note in someone's hand (on paper, not
+  phosphor): a meal left on a desk, a child's drawing by a locker, a guard who held the stores
+  until the rounds ran out, squatters' bedding with a candle still burning, a clock stopped at
+  the Blackout, a warning from the last crew through. New pixel props (`tools/sj_props.py`).
+- **Five threads** (the Blackout, Channel Nine, those who stayed, why the lights are on, what
+  happened) tag the records; an operator is shown what they haven't read, earliest chapter
+  first. New entries seed each thread early. Read records are kept (even on death) and listed
+  by thread in the service record's **RECOVERED RECORDS**.
+- **Coming home:** the crew react to how it went (Doc when you're badly hurt, Fedya to a rare
+  find, Molot after a hard fight) and to what you read (once). Some topics open only after the
+  right record. The child's drawing ends up on the medbay wall. The crew talk among themselves
+  and you overhear it.
+- **Life:** a machine spins up somewhere, a hatch slams, boots walk and stop; rarely, channel
+  nine through a speaker (the same five tones on every world). CRT screens roll their refresh
+  line; wall fans turn; lamps brown out now and then when a load comes on.
+- **Rooms:** security posts and research labs, furnished and signed; a test keeps every sign
+  inside the stencil font's letters.
+- **Crew at their stations:** a second loop each (Lis over her crates, Molot on one knee with a
+  plate, Doc reading), and Fedya's cigarette.
+
+### Light, finish, title
+
+- Lighting audited, not replaced: nine falloff steps instead of seven (big lamps stopped
+  ringing), power sags (the look only; gameplay light is untouched), a stale comment fixed.
+  Characters already have contact shadows and the operator's personal light.
+- **Film finish** (on by default, FILM FINISH in settings): vignette, fine low-rate grain and a
+  slightly colder, denser grade, done in the page so the pixels stay crisp.
+- **Title:** the Lastochka's nav set: a blinking red lamp, a carrier meter that never settles,
+  a relay ticker, a band of interference, and the logo's signal breaking up now and then.
+
+### What was tested, honestly
+
+| Check | Result |
+|---|---|
+| Unit tests | 146 passing (25 files). New: the reserve (arms you even with a gun in the locker, hands back crew issue, dressing only without meds), the gentle facility and patrols, AI startle and reaction, aim assist reach and tracking, the radio coach, the prologue, lore threads (unique, never repeated in a raid, early chapters first), sign letters. |
+| Type check and production build | Pass. Production build smoke-tested in headless Chromium (title → new game → intro → ship → menu): no console errors, no dev hooks exposed. |
+| Keyboard and mouse | Automated in headless Chromium on the dev build: first boot → premise → wake → locker scene → stash → meet Lis, Doc, Shura → cockpit (contract accepted, course to Zarya-7) → airlock → Zarya-7: the station log, the lone scavenger killed with the pistol (5 shots, no damage taken), body searched, map → extraction → results → Fedya's intro then his reaction to the log → First Salvage handed in → second raid → death → reserve slip (SP-5 loaded, sack) → immediate redeploy. No console errors. The harness teleported between rooms. |
+| Controller only | Virtual DualSense (`054c` id, 18 buttons, mocked rumble): title → new game → premise (A advances, B skips) → locker, cockpit and airlock scenes with A → deploy → stick move and aim, R2 fire, □ reload → **touchpad opens and closes the map** → Create bag → Options pause. No key list left on screen after the first-raid hint. Found and fixed: mashing A through Fedya's lines reopened the nav console. |
+| First contact on Tikhaya | Browser, operator standing in view and not fighting back, flashlight on: learning operators get ~0.5–2 s from being noticed to the first hit and 2.5–3.5 s under fire before death. Before the pass, an Obrez at 2–3 tiles killed 0.4 s after contact. |
+| Aim assist | In the browser at 180 px (learning reach): stick 3.4° off → on the body; 5.7° and 8° off → pulled onto it; 11.5° → pulled part-way; 20° → no pull. |
+| Death and recovery | Starter kit lost with the Obrez in the stash → SP-5 (loaded), 28 rounds, sack and a dressing issued onto the operator, slip shown. |
+| Performance | Headless Chromium, software GL, Tikhaya with 9 enemies: simulation 0.46 ms/frame (p95 1.0), scene update 0.89 ms, draw submission 1.05 ms, heap 69 MB (the character pass measured 0.4–0.5, 0.8–1.0, 1.4 ms and 77–81 MB). |
+
+**Not tested:**
+- A physical controller; rumble on hardware.
+- Browsers other than Chromium; frame rate on a real GPU.
+- The new sounds by ear (channel nine, spin-ups, hatches, far steps, the "who's there?" and
+  the radio squelch were balanced against the existing ambience, not listened to).
+- How the new heads read to someone seeing them for the first time; judged from screenshots.
+
+### Known issues and limits
+
+- **Heads are placed, not animated.** They follow the LPC head's position every frame (bob,
+  turn, the fall), but have one drawing per facing: no blinking or talking mouth.
+- **Side views of some headgear are simple** (the ushanka and gas mask in profile).
+- **Fedya's ember** is one pixel placed for the mouth of his seated pose; when he turns in his
+  seat it sits at the side of his jaw.
+- **Armour is still LPC art** (recoloured). It changes the torso and shoulder silhouette, but
+  isn't redrawn in the game's own hand like the heads and packs.
+- **The first raid's teaching is soft.** The coach and the gentle layout end after the first
+  extraction or three raids; after that Tikhaya is Tikhaya.
 
 ## Character pass
 
@@ -112,7 +262,8 @@ the code keeps `credits`.
 
 - **LPC style.** The characters are LPC proportions (a larger head than the old painted art)
   at about 48 px tall, a little taller than before. The recolour grounds them in the world,
-  but they are cleaner than the painted tileset.
+  but they are cleaner than the painted tileset. (Addressed by the immersion pass: the heads,
+  headgear and packs are now drawn for the game at adult proportions.)
 - **The gun and the arms.** The hands hold a fixed two-handed carry per facing; the gun rotates
   freely around them. At diagonals the gun turns further than the shoulders do. Reloads move
   the gun and the free hand's cargo, not the arms.

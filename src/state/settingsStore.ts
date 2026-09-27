@@ -18,6 +18,9 @@ interface SettingsState {
   aimAssist: boolean;
   /** Controller rumble strength, 0 (off)..1. */
   vibration: number;
+  /** A restrained finish over the picture: vignette, fine grain, a cold grade. */
+  filmic: boolean;
+  setFilmic(v: boolean): void;
   setSoundCues(v: boolean): void;
   setAimSpeed(v: number): void;
   setAimAssist(v: boolean): void;
@@ -42,6 +45,8 @@ export const useSettings = create<SettingsState>()(
       aimSpeed: 1,
       aimAssist: true,
       vibration: 0.8,
+      filmic: true,
+      setFilmic: (filmic) => set({ filmic }),
       setSoundCues: (soundCues) => set({ soundCues }),
       setAimSpeed: (v) => set({ aimSpeed: clampAim(v) }),
       setAimAssist: (aimAssist) => set({ aimAssist }),
@@ -53,9 +58,9 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: 'space-junkers.settings',
-      version: 6,
+      version: 7,
       migrate: (s) => {
-        const old = (s ?? {}) as Partial<Pick<SettingsState, 'volume' | 'music' | 'shake' | 'brightness' | 'soundCues' | 'aimSpeed' | 'aimAssist' | 'vibration'>>;
+        const old = (s ?? {}) as Partial<Pick<SettingsState, 'volume' | 'music' | 'shake' | 'brightness' | 'soundCues' | 'aimSpeed' | 'aimAssist' | 'vibration' | 'filmic'>>;
         return {
           volume: clamp01(old.volume ?? 0.7),
           music: clamp01(old.music ?? 0.6),
@@ -65,6 +70,7 @@ export const useSettings = create<SettingsState>()(
           aimSpeed: clampAim(old.aimSpeed ?? 1),
           aimAssist: old.aimAssist ?? true,
           vibration: clamp01(old.vibration ?? 0.8),
+          filmic: old.filmic ?? true,
         } as SettingsState;
       },
     },

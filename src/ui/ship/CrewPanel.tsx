@@ -8,17 +8,42 @@ import { useProfile } from '../../state/profileStore';
 import { shipActions } from '../../state/shipActions';
 import { shipUi } from '../../state/shipStore';
 import { AtlasSprite } from '../AtlasSprite';
+import { LORE_BY_ID } from '../../data/lore';
 import { ContractCard, rewardText } from './Contracts';
 import { TradeScreen } from './TradeScreen';
 import { Key } from '../Glyph';
 
-/** How the last raid ended, so the crew can react to it once. Not saved. */
-export const recentRaid: { outcome: 'extracted' | 'dead' | null; greeted: Set<CrewId> } = { outcome: null, greeted: new Set() };
+/** How the last raid went, so the crew can react to it once. Not saved. */
+export const recentRaid: {
+  outcome: 'extracted' | 'dead' | null;
+  greeted: Set<CrewId>;
+  /** Records read down there. */
+  lore: string[];
+  /** Came back under half health. */
+  wounded: boolean;
+  /** Brought back something rare or better. */
+  bigFind: boolean;
+  kills: number;
+} = { outcome: null, greeted: new Set(), lore: [], wounded: false, bigFind: false, kills: 0 };
+
+/** What this crew member says first after a raid, if anything in particular. */
+function reaction(crew: CrewId, flags: Record<string, boolean>): { line: string; flag?: string } | null {
+  const def = CREW[crew];
+  const pick = (a: string[] | undefined) => (a?.length ? a[Math.floor(Math.random() * a.length)] : null);
+  // Something they read down there that this one has an opinion about (once ever).
+  for (const id of recentRaid.lore) {
+    const e = LORE_BY_ID[id];
+    if (e?.react?.crew === crew && !flags[`react_${id}`]) return { line: e.react.line, flag: `react_${id}` };
+  }
+  if (recentRaid.outcome === 'dead') return { line: pick(def.afterDeath)! };
+  const special = (recentRaid.wounded && pick(def.wounded)) || (recentRaid.bigFind && pick(def.bigFind)) || (recentRaid.kills >= 3 && pick(def.hardFight));
+  return { line: special || pick(def.welcomeBack)! };
+}
 
 const CPS = 55; // characters per second
 
 /** Types a line out with the speaker's voice. Click to finish early. */
-function useTypewriter(text: string, voice: number) {
+export function useTypewriter(text: string, voice: number) {
   const [shown, setShown] = useState(0);
   const t0 = useRef(performance.now());
   useEffect(() => {
@@ -57,13 +82,18 @@ export function CrewPanel({ crew }: { crew: CrewId }) {
 
   const opening = useMemo<string[]>(() => {
     const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)].replaceAll('{name}', name);
-    if (!state?.met) return def.intro.map((l) => l.replaceAll('{name}', name));
-    const lines = [pick(def.greetings)];
+    // Back from a raid: whatever they have to say about it comes first (after introductions).
+    let after: string | null = null;
     if (recentRaid.outcome && !recentRaid.greeted.has(crew)) {
       recentRaid.greeted.add(crew);
-      lines.unshift(pick(recentRaid.outcome === 'extracted' ? def.welcomeBack : def.afterDeath));
-      return lines.slice(0, 1);
+      const r = reaction(crew, profile.flags);
+      if (r?.flag) useProfile.getState().apply({ flags: { ...profile.flags, [r.flag]: true } });
+      // A first meeting only carries a reaction to something specific, not a stock welcome.
+      if (r && (state?.met || r.flag)) after = r.line.replaceAll('{name}', name);
     }
+    if (!state?.met) return [...def.intro.map((l) => l.replaceAll('{name}', name)), ...(after ? [after] : [])];
+    if (after) return [after];
+    const lines = [pick(def.greetings)];
     return lines;
     // Only on open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -184,7 +214,7 @@ export function CrewPanel({ crew }: { crew: CrewId }) {
           )}
           {mode.kind === 'topics' && (
             <div className="dialog-options" onClick={(e) => e.stopPropagation()}>
-              {def.topics.map((t) => {
+              {def.topics.filter((t) => !t.lore || profile.lore.includes(t.lore)).map((t) => {
                 const locked = (t.minTrust ?? 0) > level;
                 return (
                   <button key={t.q} className={`opt ${locked ? 'locked' : ''}`} disabled={locked} onClick={() => say(t.a)}>

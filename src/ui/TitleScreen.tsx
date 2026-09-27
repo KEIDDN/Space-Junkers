@@ -38,17 +38,55 @@ function Starfield() {
   return <canvas ref={ref} className="title-stars" />;
 }
 
+const TICKER = [
+  'RELAY OTETS-2 · NO CARRIER',
+  'CENTRAL · LAST HANDSHAKE 00:00:00.000',
+  'TIKHAYA · 14 STATIONS ON RESERVE POWER',
+  'CH.9 · PATTERN · 11 MIN INTERVAL · DO NOT ANSWER',
+  'LASTOCHKA · REACTOR PUMP 2 · SERVICE OVERDUE',
+  'MERZLOTA · HEAT RESERVED FOR SHAFT 9',
+  'KRASNAYA DEPOT 4 · ORDERS NOT COUNTERMANDED',
+  'ORBIT HOLD · OTETS · CREW ABOARD: 5',
+];
+
+/**
+ * The nav set's readout in the corner: what the relays are saying (nothing), a signal meter
+ * that never settles, and a red lamp that has been blinking for forty years.
+ */
+function NavReadout() {
+  const [i, setI] = useState(0);
+  const [bars, setBars] = useState(3);
+  useEffect(() => {
+    const t1 = window.setInterval(() => setI((n) => (n + 1) % TICKER.length), 3800);
+    const t2 = window.setInterval(() => setBars(Math.random() < 0.8 ? 1 + Math.floor(Math.random() * 3) : 5), 260);
+    return () => {
+      window.clearInterval(t1);
+      window.clearInterval(t2);
+    };
+  }, []);
+  return (
+    <div className="title-nav">
+      <div className="title-nav-head"><span className="warn-lamp" /> NAV-7 <span className="cyr">ЛАСТОЧКА</span></div>
+      <div className="title-nav-row"><span className="dim">CARRIER</span><span className="signal">{'▮'.repeat(bars)}<span className="dim">{'▯'.repeat(6 - bars)}</span></span></div>
+      <div key={i} className="title-nav-ticker">{TICKER[i]}</div>
+    </div>
+  );
+}
+
 interface Props {
   onContinue: () => void;
+  /** A fresh operator: the premise, then the first morning aboard. */
+  onNewGame: () => void;
   onRange: () => void;
 }
 
 const CREDITS: [string, string[]][] = [
   ['CHARACTERS', [
-    'Liberated Pixel Cup & the Universal LPC Spritesheet Generator (CC-BY-SA 3.0 / GPL 3.0)',
+    'Heads, headgear and packs drawn for Space Junkers; bodies animated with',
+    'the Liberated Pixel Cup & the Universal LPC Spritesheet Generator (CC-BY-SA 3.0 / GPL 3.0)',
     'bluecarrot16 · BenCreating · ElizaWy · JaidynReiman · wulax · Redshrike · makrohn · pvigier',
-    'Durrani · Evert · TheraHedwig · MuffinElZangano · MrBeast · MadMarcel · bigbeargames · pennomi',
-    'castelonia · Napsio · Nila122 · Skorpio · Joe White · Luke Mehl · dalonedrau · laetissima · macmanmatty',
+    'Durrani · Evert · TheraHedwig · MuffinElZangano · bigbeargames · pennomi',
+    'castelonia · Napsio · Nila122 · Joe White · Luke Mehl · dalonedrau · laetissima · macmanmatty',
     'Per-file credits: Assets/LPC/CREDITS.csv',
   ]],
   ['MUSIC', [
@@ -81,7 +119,7 @@ function Credits() {
   );
 }
 
-export function TitleScreen({ onContinue, onRange }: Props) {
+export function TitleScreen({ onContinue, onNewGame, onRange }: Props) {
   const started = useProfile((s) => !!s.flags.started);
   const stats = useProfile((s) => s.stats);
   const credits = useProfile((s) => s.credits);
@@ -91,9 +129,9 @@ export function TitleScreen({ onContinue, onRange }: Props) {
 
   const newGame = (op: Operator) => {
     resetProfile(op);
-    useProfile.getState().apply({ flags: { started: true } });
+    useProfile.getState().apply({ flags: { started: true, prologue: true } });
     audio.ui('equip');
-    onContinue();
+    onNewGame();
   };
 
   const hover = () => audio.ui('hover');
@@ -118,8 +156,10 @@ export function TitleScreen({ onContinue, onRange }: Props) {
       <Starfield />
       <div className="title-planet"><AtlasSprite name="planet_otets_big" scale={3} /></div>
       <div className="title-scan" />
+      <div className="title-interference" />
+      <NavReadout />
       <div className="title-content">
-        <div className="title-logo">SPACE<br />JUNKERS</div>
+        <div className="title-logo" data-text="SPACE JUNKERS">SPACE<br />JUNKERS</div>
         <div className="title-sub">СКРАПЕРЫ · SALVAGE CREW OF THE LASTOCHKA</div>
 
         {view === 'menu' && (

@@ -7,7 +7,7 @@ import { Input } from '../../engine/input';
 import { CREW, type CrewId } from '../../data/crew';
 import { questsFor } from '../../core/quests';
 import { useProfile } from '../../state/profileStore';
-import { buildShip, type ShipInteractable, type ShipLayout } from '../../data/shipLayout';
+import { buildShip, shipStory, type ShipInteractable, type ShipLayout } from '../../data/shipLayout';
 import { shipUi, useShip } from '../../state/shipStore';
 import { ActorView } from '../entities/ActorView';
 import { operatorLook } from '../entities/look';
@@ -19,6 +19,8 @@ import { hasLineOfSight, moveCircle } from '../world/collision';
 import { Doors } from '../world/doors';
 import { emitterLevels, emittersFrom, type Emitter } from '../world/emitters';
 import { CrewActor } from './CrewActor';
+import { STEP_AT, prologueStep } from '../../data/prologue';
+import { CHATTER, type Exchange } from '../../data/chatter';
 import type { Sfx } from '../../engine/audio';
 
 /** What each crew member sounds like at work. */
@@ -133,7 +135,7 @@ export class ShipScene {
 
   private build(): void {
     const prof = useProfile.getState();
-    const L = buildShip(prof.upgrades, Object.entries(prof.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id));
+    const L = buildShip(prof.upgrades, shipStory(prof));
     this.layout = L;
     const map = L.map;
     this.emitters = emittersFrom(L.props);
@@ -215,7 +217,7 @@ export class ShipScene {
     // The ship's own small life: status lights, a machine that sparks, steam, dust.
     this.effects = new Effects(map, audio);
     this.ambientFx = new AmbientFx(L.props, this.effects, audio, (x, y, r, c, i) => this.lighting.flash(x, y, r, c, i));
-    this.world.addChild(ground, floorProps, this.effects.decals, this.doors.container, wallProps, this.actors, this.effects.lit, this.ambientFx.dust);
+    this.world.addChild(ground, floorProps, this.effects.decals, this.doors.container, wallProps, this.ambientFx.parts, this.actors, this.effects.lit, this.ambientFx.dust);
     this.glowWorld.addChild(this.ambientFx.glow, this.effects.overlay, this.markers);
     this.app.stage.addChild(this.stars, this.world, this.lighting.overlay, this.glowWorld, this.glow);
     this.camera.snapTo(this.px, this.py);
@@ -225,7 +227,7 @@ export class ShipScene {
     const dt = Math.min(ticker.deltaMS / 1000, MAX_DT);
     this.time += dt;
     const ship = useShip.getState();
-    const busy = !!ship.panel;
+    const busy = !!ship.panel || !!ship.reserve;
 
     // --- Movement (frozen while a panel is open)
     this.input.poll(dt);
@@ -278,12 +280,22 @@ export class ShipScene {
     }
     this.doors.update(dt, { x: this.px, y: this.py, alive: true }, []);
 
+    this.chatter(dt, busy);
+
     // --- Interaction
+    // A panel that just closed swallowed the press that closed it: mashing through a
+    // conversation mustn't open whatever the operator is standing next to.
+    if (busy || ship.jumping) this.sinceBusy = 0;
+    else this.sinceBusy += dt;
     const near = busy ? null : this.nearest();
     shipUi.patch({ prompt: near ? this.promptFor(near) : null });
-    if (near && this.input.pressed('interact')) {
+    if (near && this.sinceBusy > 0.6 && this.input.pressed('interact')) {
       audio.ui('open');
-      if (near.kind === 'crew') shipUi.open({ kind: 'crew', crew: near.crew! });
+      // The first morning aboard: the locker, the cockpit radio and the airlock have
+      // something to say before they do their usual job.
+      const step = prologueStep(useProfile.getState().flags);
+      if (step && near.kind === STEP_AT[step]) shipUi.open({ kind: 'scene', step });
+      else if (near.kind === 'crew') shipUi.open({ kind: 'crew', crew: near.crew! });
       else shipUi.open({ kind: near.kind } as never);
     } else if (!busy && this.input.pressed('inventory')) {
       audio.ui('open');
@@ -329,6 +341,53 @@ export class ShipScene {
     this.input.endFrame();
   };
 
+  private sinceBusy = 99;
+  private chatterWait = 18 + Math.random() * 12;
+  private talk: { ex: Exchange; i: number; t: number } | null = null;
+
+  /**
+   * Now and then two of the crew talk, and the operator overhears it if they're close.
+   * One exchange at a time, never the same twice in a session, never during a panel.
+   */
+  private chatter(dt: number, busy: boolean): void {
+    if (this.talk) {
+      this.talk.t -= dt;
+      if (this.talk.t > 0) return;
+      const { ex } = this.talk;
+      if (busy || this.talk.i >= ex.lines.length) {
+        this.talk = null;
+        shipUi.patch({ overheard: null });
+        return;
+      }
+      const l = ex.lines[this.talk.i++];
+      const c = CREW[l.who];
+      const st = this.layout.crew.find((s) => s.crew === l.who);
+      if (st) for (let k = 0; k < 4; k++) window.setTimeout(() => audio.blip(c.voice * (0.95 + Math.random() * 0.1), 0.35), k * 70);
+      shipUi.patch({ overheard: { who: c.callsign, text: l.text } });
+      this.talk.t = 1.6 + l.text.length * 0.045;
+      return;
+    }
+    this.chatterWait -= dt;
+    if (this.chatterWait > 0 || busy) return;
+    this.chatterWait = 35 + Math.random() * 30;
+    const p = useProfile.getState();
+    const heard = (id: CrewId) => {
+      const st = this.layout.crew.find((s) => s.crew === id);
+      return !!st && Math.hypot(st.x - this.px, st.y - this.py) < 230;
+    };
+    const options = CHATTER.filter((ex) => !ShipScene.said.has(ex.id)
+      && (!ex.afterExtraction || p.stats.extractions > 0)
+      && (!ex.lore || p.lore.includes(ex.lore))
+      && ex.lines.some((l) => heard(l.who)));
+    if (!options.length) return;
+    const ex = options[Math.floor(Math.random() * options.length)];
+    ShipScene.said.add(ex.id);
+    this.talk = { ex, i: 0, t: 0 };
+  }
+
+  /** Exchanges already overheard this session. */
+  private static said = new Set<string>();
+
   private lastFacing = 0;
   private emitters: Emitter[] = [];
   private emitterTimer = 0;
@@ -349,6 +408,15 @@ export class ShipScene {
     const talking = useShip.getState().panel?.kind === 'crew';
     if (talking) return;
     const bob = Math.round(Math.sin(this.time * 3) * 1.5);
+    // The first morning: a small amber chevron over where the ship log points.
+    const step = prologueStep(useProfile.getState().flags);
+    const goal = step ? this.layout.interactables.find((i) => i.kind === STEP_AT[step]) : null;
+    if (goal && !useShip.getState().panel) {
+      const x = Math.round(goal.x);
+      const y = Math.round(goal.y) - 44 + bob;
+      g.rect(x - 5, y - 1, 11, 7).fill({ color: 0x000000, alpha: 0.8 });
+      for (let k = 0; k < 4; k++) g.rect(x - 4 + k, y + k, 9 - k * 2, 1).fill({ color: 0xe8a24a });
+    }
     for (const c of this.layout.crew) {
       const m = this.markerState.get(c.crew);
       if (!m) continue;

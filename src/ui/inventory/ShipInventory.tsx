@@ -46,7 +46,7 @@ export function ShipInventory({ onClose, sell, sellPrice, repair, repairPrice, s
     openBag: (uid) => setBag(uid),
   }), [loadout, stash, sell, sellPrice, repair, repairPrice]);
 
-  const needsKit = !ship.hasAnyWeapon();
+  const needsKit = ship.needsReserve();
   useRegisterInventory(ops);
 
   useEffect(() => {

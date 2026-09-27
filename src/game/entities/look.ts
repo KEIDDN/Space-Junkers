@@ -14,7 +14,11 @@ export interface Wearing {
   backpack?: string | null;
 }
 
-/** Headgear that covers the hair (nothing pokes out from under a steel helmet). */
+/**
+ * Headgear that replaces what a character wears on their head (an enemy's hood or cap).
+ * Faces and hair are drawn with the body (tools/sj_heads.py); every helmet is drawn to fit
+ * over any of them.
+ */
 const HIDES_HAIR = new Set(['respcap', 'k6helmet', 'zaslon']);
 
 function gear(id: string | null | undefined, body: 'm' | 'f'): string | null {
@@ -23,7 +27,7 @@ function gear(id: string | null | undefined, body: 'm' | 'f'): string | null {
   return hasAnim(`c:${set}:hold:2`) ? set : null;
 }
 
-/** Layer order: body, armour, pack, hair, headgear. */
+/** Layer order: body (with face), armour, pack, head covering, helmet. */
 export function dress(base: string, body: 'm' | 'f', wearing: Wearing, hair?: string): string[] {
   const out = [base];
   const armor = gear(wearing.armor, body);
@@ -41,7 +45,7 @@ export function operatorLook(op: Operator, loadout: Pick<Loadout, 'helmet' | 'ar
     helmet: loadout.helmet?.id,
     armor: loadout.armor?.id,
     backpack: loadout.backpack?.id,
-  }, `hair_op_${op}`);
+  });
 }
 
 /** Enemy faction clothing looks (two per faction) and the body each is drawn on. */

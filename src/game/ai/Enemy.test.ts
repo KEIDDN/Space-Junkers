@@ -25,7 +25,7 @@ vi.mock('../entities/ActorView', () => ({
 }));
 vi.mock('../../engine/assets', () => ({ anim: () => [], hasAnim: () => false, tex: () => ({}) }));
 
-import { ENEMIES } from '../../data/enemies';
+import { DEFAULT_AI, ENEMIES, FIRST_RAID_AI } from '../../data/enemies';
 import type { GameContext } from '../context';
 import { mapFromAscii } from '../world/tilemap';
 import { Enemy, type Target } from './Enemy';
@@ -150,5 +150,58 @@ describe('enemy AI', () => {
     run(e, t, 0.1);
     expect(['cover', 'combat']).toContain(e.state);
     expect(e.suppression).toBeGreaterThan(0.5);
+  });
+
+  it('a learning operator gets longer to react before the first shot', () => {
+    const firstShot = (tuning: typeof DEFAULT_AI) => {
+      let total = 0;
+      for (let k = 0; k < 20; k++) {
+        const c = ctx();
+        const e = new Enemy(c, ENEMIES.scavenger, tile(2), tile(2), null, tuning);
+        const t = T(tile(8), tile(2));
+        faceTarget(e, t);
+        let i = 0;
+        while (c.shots === 0 && i < 600) {
+          e.update(1 / 60, t, [e]);
+          i++;
+        }
+        total += i / 60;
+      }
+      return total / 20;
+    };
+    expect(firstShot(FIRST_RAID_AI)).toBeGreaterThan(firstShot(DEFAULT_AI) + 0.25);
+  });
+
+  it('fires wild in the first moments of a fight, then settles', () => {
+    // Single aimed shots (no bloom): the first one after contact against later ones.
+    let first = 0;
+    let later = 0;
+    let n = 0;
+    for (let k = 0; k < 60; k++) {
+      const shots: { t: number; a: number }[] = [];
+      let now = 0;
+      const t = T(tile(9), tile(2));
+      const box: { e?: Enemy } = {};
+      const c = ctx({
+        projectiles: {
+          fire: (_x: number, _y: number, a: number) => {
+            const bearing = Math.atan2(t.y - box.e!.y, t.x - box.e!.x);
+            shots.push({ t: now, a: Math.atan2(Math.sin(a - bearing), Math.cos(a - bearing)) });
+          },
+        } as never,
+      });
+      const def = { ...ENEMIES.scavenger, weapons: ['pm9'], burst: [1, 1] as [number, number] };
+      const e = new Enemy(c, def, tile(2), tile(2), null, FIRST_RAID_AI);
+      box.e = e;
+      faceTarget(e, t);
+      for (let i = 0; i < 60 * 8; i++, now += 1 / 60) e.update(1 / 60, t, [e]);
+      const late = shots.filter((q) => q.t > shots[0].t + 3);
+      if (!shots.length || !late.length) continue;
+      first += Math.abs(shots[0].a);
+      later += late.reduce((m, q) => m + Math.abs(q.a), 0) / late.length;
+      n++;
+    }
+    expect(n).toBeGreaterThan(15);
+    expect(first / n).toBeGreaterThan((later / n) * 1.3);
   });
 });

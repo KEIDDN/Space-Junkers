@@ -26,6 +26,7 @@ import numpy as np
 from PIL import Image
 
 import build_characters as characters
+import sj_props
 
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "Assets"
@@ -165,6 +166,9 @@ DOOR_LEAVES = (158, 37, 231, 92)
 
 # --- Crew (NPCs.png) --------------------------------------------------------
 NPCS = "NPCs.png"
+PORTRAIT_MALE = (114, 713, 173, 790)
+PORTRAIT_FEMALE = (823, 718, 875, 799)
+
 CREW_PORTRAITS = {
     "smuggler": (64, 45, 310, 236), "medic": (399, 45, 601, 236), "merc": (670, 45, 925, 236),
     "trader": (976, 45, 1233, 236), "hacker": (1287, 45, 1490, 236),
@@ -407,11 +411,14 @@ def build() -> None:
             keys.append(key)
         anims[name] = keys
 
-    # Characters are layered LPC sheets (tools/build_characters.py, their own atlas). The
-    # operator's ID photo and a corpse for searchable remains come from the same sheets.
-    for op in ("m", "f"):
-        frames[f"portrait_{op}"] = Image.fromarray(characters.portrait(op), "RGBA")
+    # Characters are their own atlas (tools/build_characters.py). The operators' ID photos
+    # are the painted heads from the original character sheet (Volk in his K-6, Zorya in her
+    # scarf); searchable remains come from the character sheets.
+    frames["portrait_m"] = to_pixels(crop(CHAR, PORTRAIT_MALE))
+    frames["portrait_f"] = to_pixels(crop(CHAR, PORTRAIT_FEMALE))
     frames["remains"] = Image.fromarray(characters.corpse(), "RGBA")
+    # What people left behind: notes, a drawing, a stopped clock, a bedroll... (sj_props.py)
+    frames.update(sj_props.props())
 
     # Crew portraits (dialogue)
     for crew, rect in CREW_PORTRAITS.items():

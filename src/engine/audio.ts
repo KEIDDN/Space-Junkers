@@ -28,7 +28,7 @@ export type Sfx =
   | 'bodyfall' | 'whiz' | 'shout' | 'clink' | 'explosion' | 'smokepop' | 'breath'
   | 'breaker' | 'keycard' | 'lift'
   | 'magout' | 'magin' | 'rack' | 'bolt' | 'breakopen' | 'breakclose' | 'magdrop' | 'draw' | 'ricochet'
-  | 'heartbeat' | 'mutter' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio' | 'zap' | 'hiss';
+  | 'heartbeat' | 'mutter' | 'query' | 'typing' | 'beeps' | 'sharpen' | 'cards' | 'radio' | 'zap' | 'hiss';
 
 import { SAMPLE_GROUPS } from './sampleManifest';
 
@@ -43,7 +43,7 @@ const HEARING_RANGE = 900;
 const AMBIENCE_LEVEL = 0.55;
 const GUNSHOT_RANGE = 1700;
 
-export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab' | 'tick' | 'relief' | 'loss' | 'valuable';
+export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab' | 'tick' | 'relief' | 'loss' | 'valuable' | 'squelch';
 
 export class AudioService {
   private ctx: AudioContext | null = null;
@@ -413,6 +413,16 @@ export class AudioService {
         }
       }
       if (Math.random() < 0.45) return;
+      // The place is abandoned, not dead: somewhere a machine spins up, a hatch slams,
+      // someone walks, and very rarely the ninth channel comes through a speaker.
+      if (kind === 'facility' && Math.random() < 0.25) {
+        const e = Math.random();
+        if (e < 0.1) this.channelNine(bus, t);
+        else if (e < 0.45) this.spinUp(bus, t);
+        else if (e < 0.75) this.hatch(bus, t);
+        else this.farSteps(bus, t);
+        return;
+      }
       const r = Math.random();
       if (kind === 'facility' && r < 0.06) {
         this.distantFight(bus, t);
@@ -494,6 +504,78 @@ export class AudioService {
         }, 900);
       },
     };
+  }
+
+  /** A far bus for distant events: panned somewhere, with plenty of room on it. */
+  private farBus(out: AudioNode, level: number, wet = 0.7): GainNode {
+    const ctx = this.ctx!;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = Math.random() * 1.6 - 0.8;
+    const g = ctx.createGain();
+    g.gain.value = level;
+    g.connect(pan).connect(out);
+    if (this.reverbIn) {
+      const send = ctx.createGain();
+      send.gain.value = wet;
+      g.connect(send).connect(this.reverbIn);
+    }
+    return g;
+  }
+
+  /** A machine somewhere starts up, runs a while, winds down. Nobody switched it on. */
+  private spinUp(out: AudioNode, t: number): void {
+    const ctx = this.ctx!;
+    const g = this.farBus(out, 0.22);
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(18, t);
+    o.frequency.linearRampToValueAtTime(52 + Math.random() * 20, t + 2.2);
+    o.frequency.setValueAtTime(52, t + 5);
+    o.frequency.linearRampToValueAtTime(14, t + 7.5);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 260;
+    const e = ctx.createGain();
+    e.gain.setValueAtTime(0.0001, t);
+    e.gain.exponentialRampToValueAtTime(0.5, t + 1.8);
+    e.gain.setValueAtTime(0.5, t + 5);
+    e.gain.exponentialRampToValueAtTime(0.0001, t + 7.6);
+    o.connect(f).connect(e).connect(g);
+    o.start(t);
+    o.stop(t + 7.8);
+    this.thump(g, t + 0.05, 60, 0.2, 0.5);
+    this.click(g, t + 0.06, 700, 0.3);
+  }
+
+  /** A heavy hatch slammed somewhere, and the hiss of its seal. */
+  private hatch(out: AudioNode, t: number): void {
+    const g = this.farBus(out, 0.3, 0.9);
+    this.noiseBurst(g, t, 0.35, 2200, 0.12);
+    this.thump(g, t + 0.32, 48, 0.4, 0.9);
+    this.click(g, t + 0.33, 520, 0.4);
+  }
+
+  /** Boots, far off, walking, then stopping. Maybe a patrol. Maybe not. */
+  private farSteps(out: AudioNode, t: number): void {
+    const g = this.farBus(out, 0.16, 0.8);
+    const n = 4 + Math.floor(Math.random() * 5);
+    for (let i = 0; i < n; i++) {
+      const at = t + i * (0.42 + Math.random() * 0.06);
+      this.thump(g, at, 90 + Math.random() * 20, 0.06, 0.6);
+      this.noiseBurst(g, at, 0.03, 900, 0.3);
+    }
+  }
+
+  /**
+   * Channel nine through a speaker nobody turned off: static, then five slow tones, the same
+   * five on every world. Nobody aboard can say what they mean.
+   */
+  channelNine(out: AudioNode, t: number): void {
+    const g = this.farBus(out, 0.14, 0.6);
+    this.noiseBurst(g, t, 0.9, 2600, 0.25);
+    const motif = [392, 466.2, 440, 349.2, 392];
+    motif.forEach((f, i) => this.tone(g, t + 0.8 + i * 0.55, f, 0.42, 0.5));
+    this.noiseBurst(g, t + 3.6, 0.6, 2600, 0.2);
   }
 
   /** Somebody else's firefight, far away through a lot of concrete. */
@@ -602,11 +684,11 @@ export class AudioService {
   }
 
   /** One syllable of a character's "voice" while dialogue types out. */
-  blip(freq: number): void {
+  blip(freq: number, level = 1): void {
     const ctx = this.ctx;
     if (!ctx) return;
     const out = ctx.createGain();
-    out.gain.value = 0.12;
+    out.gain.value = 0.12 * level;
     out.connect(this.master);
     const t = ctx.currentTime;
     const o = ctx.createOscillator();
@@ -630,6 +712,12 @@ export class AudioService {
     const t = ctx.currentTime;
     const r = (a: number, b: number) => a + Math.random() * (b - a);
     switch (kind) {
+      case 'squelch':
+        // A handset keyed: a burst of static, the click of the key, a tail of hiss.
+        this.click(out, t, 1800, 0.4);
+        this.noiseBurst(out, t + 0.01, 0.16, 2600, 0.22);
+        this.noiseBurst(out, t + 0.18, 0.06, 4200, 0.1);
+        break;
       case 'hover':
         if (!this.take(out, 'ui_tick', t, 0.3, r(1.05, 1.15))) this.click(out, t, 4200, 0.12);
         break;
@@ -894,7 +982,7 @@ export class AudioService {
       bodyfall: 0.55, whiz: 0.6, shout: 0.45, clink: 0.5, explosion: 1.4, smokepop: 0.6, breath: 0.25,
       breaker: 0.7, keycard: 0.45, lift: 0.5,
       magout: 0.2, magin: 0.24, rack: 0.28, bolt: 0.5, breakopen: 0.26, breakclose: 0.3, magdrop: 0.2, draw: 0.14, ricochet: 0.35,
-      heartbeat: 0.35, mutter: 0.75, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12, zap: 0.3, hiss: 0.18,
+      heartbeat: 0.35, mutter: 0.75, query: 0.85, typing: 0.22, beeps: 0.12, sharpen: 0.25, cards: 0.2, radio: 0.12, zap: 0.3, hiss: 0.18,
     };
     const bus = this.spatialBus(x, y, gains[kind] * gainMul);
     if (!bus) return;
@@ -1159,6 +1247,26 @@ export class AudioService {
           o.stop(at + 0.12);
         }
         this.noiseBurst(out, t + syll * 0.14, 0.04, 3000 * muffle, 0.25);
+        break;
+      }
+      case 'query': {
+        // "Kto tam?" Two clipped syllables and a rising third: someone isn't sure what they saw.
+        const pitches: [number, number][] = [[150, 140], [138, 132], [140, 205]];
+        pitches.forEach(([a, b], i) => {
+          const at = t + i * 0.13;
+          const len = i === 2 ? 0.2 : 0.1;
+          const o = ctx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.setValueAtTime(a, at);
+          o.frequency.linearRampToValueAtTime(b, at + len);
+          const f = ctx.createBiquadFilter();
+          f.type = 'bandpass';
+          f.frequency.value = 1100 * muffle;
+          f.Q.value = 1.4;
+          o.connect(f).connect(env(ctx, at, 0.85, 0.012, len)).connect(out);
+          o.start(at);
+          o.stop(at + len + 0.03);
+        });
         break;
       }
       case 'typing':

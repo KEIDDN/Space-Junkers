@@ -28,6 +28,11 @@ export interface FacilityOptions {
   theme?: Theme;
   /** Added to every container's risk (richer worlds). */
   lootBonus?: number;
+  /**
+   * An operator still learning (their first raids on Tikhaya): the rooms next to the entry
+   * are quiet, the next ring holds one lone scavenger at most, and it gets harder from there.
+   */
+  gentle?: boolean;
 }
 
 const CELL_W = 16;
@@ -215,13 +220,172 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
 
   // --- Furnish
   const mix = opts.enemies ?? { scavenger: 1 };
-  cells.forEach((c, i) => furnishRoom(map, rng, c, i, maxDepth, danger, cells, mix, theme, plan));
+  cells.forEach((c, i) => furnishRoom(map, rng, c, i, maxDepth, danger, cells, mix, theme, plan, !!opts.gentle));
   wearCorridors(map, new Rng(seed ^ 0x5eed), cells.map((c) => c.room));
+  placeVignettes(map, new Rng(seed ^ 0x51c17e), cells.map((c) => c.room));
   const liftExit = map.exits.find((e) => e.kind === 'lift');
   if (liftExit && plan.breakerAt) liftExit.breaker = plan.breakerAt;
 
   for (const c of cells) map.rooms.push(c.room);
   return map;
+}
+
+/**
+ * Who lived here, what happened, who came before you. A few small scenes per facility,
+ * made of what people leave behind, each with a note in someone's handwriting (NOTES in
+ * data/lore.ts): a meal left mid-shift, a child's drawing taped in a locker, a guard who
+ * held the stores until the rounds ran out, squatters' bedding, a clock stopped at the
+ * Blackout, a warning scratched by the last crew through. Floor-level, never in the way.
+ * (Its own random stream, so everything else about a seed stays as it was.)
+ */
+const SURFACES: Record<string, number> = { ship_table: 24, ship_desk: 30, ship_desk_small: 22, ship_workbench: 34 };
+
+function placeVignettes(map: TileMap, rng: Rng, rooms: Room[]): void {
+  const px = (t: number) => t * TILE;
+  const inside = (r: Room, x: number, y: number) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h;
+  const used = new Set<number>();
+  const k = (x: number, y: number) => y * map.width + x;
+  const onExit = (x: number, y: number) => map.exits.some((e) => x >= e.x - 1 && x < e.x + e.w + 1 && y >= e.y - 1 && y < e.y + e.h + 1);
+  const nearDoor = (x: number, y: number) => [[1, 0], [-1, 0], [0, 1], [0, -1], [0, 2], [2, 0], [-2, 0], [0, -2]]
+    .some(([dx, dy]) => map.get(x + dx, y + dy) === Tile.Door);
+  const free = (r: Room, interior = false) => floorTiles(map, r).filter(([x, y]) => !used.has(k(x, y)) && !onExit(x, y) && !nearDoor(x, y)
+    && !map.containers.some((c) => c.tx === x && c.ty === y)
+    && (!interior || (x > r.x && x < r.x + r.w - 1 && y > r.y && y < r.y + r.h - 1)));
+  const byProp = (tiles: [number, number][]) => tiles.filter(([x, y]) => [[1, 0], [-1, 0], [0, -1]].some(([dx, dy]) => map.get(x + dx, y + dy) === Tile.Prop));
+  const take = (x: number, y: number) => used.add(k(x, y));
+  const note = (key: string, x: number, y: number) => map.terminals.push({ tx: Math.floor(x / TILE), ty: Math.floor(y / TILE), entry: -1, note: key, x, y });
+
+  type Scene = { key: string; fits: (r: Room) => boolean; place: (r: Room) => boolean };
+  const layMeal = (desk: { x: number; y: number; sprite: string }, [sx, sy]: [number, number]): boolean => {
+    const lift = SURFACES[desk.sprite];
+    map.props.push({ sprite: 'deco_plate', x: Math.round(desk.x - 6), y: desk.y + 1, lift: lift - 1 });
+    map.props.push({ sprite: 'deco_mug', x: Math.round(desk.x + 8), y: desk.y + 1, lift: lift - 1 });
+    map.props.push({ sprite: 'deco_note', x: Math.round(desk.x + 1), y: desk.y + 2, lift: lift - 2 });
+    take(sx, sy);
+    note('meal', px(sx) + TILE / 2, px(sy) + TILE / 2);
+    return true;
+  };
+  const scenes: Scene[] = [
+    {
+      // Somebody's lunch, on the desk where they left it.
+      key: 'meal', fits: (r) => ['mess', 'office', 'workshop', 'barracks', 'security'].includes(r.kind ?? '') && r.role !== 'vault',
+      place: (r) => {
+        for (const desk of rng.shuffle(map.props.filter((p) => SURFACES[p.sprite] && inside(r, Math.floor(p.x / TILE), Math.floor((p.y - 4) / TILE))))) {
+          // Read from open floor beside the desk.
+          const dy = Math.floor((desk.y - 4) / TILE);
+          const dx = Math.floor(desk.x / TILE);
+          const stand = [[dx, dy + 1], [dx - 1, dy + 1], [dx + 1, dy + 1], [dx - 2, dy], [dx + 2, dy]]
+            .find(([x, y]) => map.get(x, y) === Tile.Floor && inside(r, x, y));
+          if (!stand) continue;
+          return layMeal(desk, stand as [number, number]);
+        }
+        return false;
+      },
+    },
+    {
+      // A drawing taped inside a locker door, fallen to the floor.
+      key: 'child', fits: (r) => ['barracks', 'entry', 'storage', 'mess'].includes(r.kind ?? ''),
+      place: (r) => {
+        const spot = rng.shuffle(byProp(free(r)))[0];
+        if (!spot) return false;
+        const [x, y] = spot;
+        take(x, y);
+        map.props.push({ sprite: 'deco_drawing', x: px(x) + 14, y: px(y) + 22, layer: 'floor' });
+        map.props.push({ sprite: 'deco_photo', x: px(x) + 24, y: px(y) + 26, layer: 'floor' });
+        note('child', px(x) + 16, px(y) + 20);
+        return true;
+      },
+    },
+    {
+      // Held the stores until the rounds ran out.
+      key: 'stand', fits: (r) => r.role === 'standard' && r.depth >= 2,
+      place: (r) => {
+        const tiles = rng.shuffle(free(r, true));
+        for (const [x, y] of tiles) {
+          const beside = tiles.find(([ax, ay]) => Math.abs(ax - x) + Math.abs(ay - y) === 1);
+          if (!beside) continue;
+          take(x, y);
+          take(beside[0], beside[1]);
+          map.containers.push({ type: 'remains', tx: x, ty: y, risk: 0.3, flat: true });
+          map.props.push({ sprite: 'fx_blood_2', x: px(x) + 16, y: px(y) + 26, layer: 'floor', tint: 0x6a2e26 });
+          for (let i = 0; i < 3; i++) map.props.push({ sprite: 'deco_casings', x: px(x) + rng.int(0, 32), y: px(y) + rng.int(4, 34), layer: 'floor', flip: rng.chance(0.5) });
+          map.props.push({ sprite: 'deco_mag', x: px(beside[0]) + rng.int(8, 24), y: px(beside[1]) + rng.int(14, 26), layer: 'floor' });
+          map.props.push({ sprite: 'deco_note', x: px(beside[0]) + 16, y: px(beside[1]) + 22, layer: 'floor' });
+          note('stand', px(beside[0]) + 16, px(beside[1]) + 18);
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      // Squatters: bedding in a corner, a candle, a tin, rules chalked on a crate.
+      key: 'camp', fits: (r) => ['storage', 'workshop', 'mess', 'reactor'].includes(r.kind ?? '') && r.depth >= 1 && r.role !== 'vault',
+      place: (r) => {
+        const tiles = free(r).filter(([x, y]) => map.get(x - 1, y) === Tile.Wall || map.get(x + 1, y) === Tile.Wall || map.get(x, y + 1) === Tile.Wall);
+        for (const [x, y] of rng.shuffle(tiles)) {
+          const next = free(r).find(([ax, ay]) => ay === y && Math.abs(ax - x) === 1);
+          if (!next) continue;
+          take(x, y);
+          take(next[0], next[1]);
+          const lx = Math.min(x, next[0]);
+          map.props.push({ sprite: 'deco_bedroll', x: px(lx) + 32, y: px(y) + 26, layer: 'floor' });
+          map.props.push({ sprite: 'deco_candle', x: px(lx) + 6, y: px(y) + 30 });
+          map.props.push({ sprite: 'deco_stew', x: px(lx) + 54, y: px(y) + 30 });
+          map.props.push({ sprite: rng.pick(['deco_cigs', 'deco_vodka']), x: px(lx) + 12, y: px(y) + 30 });
+          map.props.push({ sprite: 'deco_note', x: px(lx) + 46, y: px(y) + 16, layer: 'floor' });
+          note('camp', px(lx) + 46, px(y) + 14);
+          // The candle still burns. Someone was here very recently.
+          map.lights.push({ x: px(lx) + 6, y: px(y) + 24, color: 0xffb060, radius: 46, intensity: 0.35, flicker: true });
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      // A clock stopped at the Blackout, and a note saying leave it.
+      key: 'clock', fits: (r) => ['office', 'mess', 'workshop', 'barracks', 'entry', 'servers', 'security'].includes(r.kind ?? ''),
+      place: (r) => {
+        const xs = rng.shuffle(Array.from({ length: r.w }, (_, i) => r.x + i))
+          .filter((x) => map.get(x, r.y - 1) === Tile.Wall && map.get(x, r.y) === Tile.Floor && !used.has(k(x, r.y)) && !onExit(x, r.y));
+        if (!xs.length) return false;
+        const x = xs[0];
+        take(x, r.y);
+        map.props.push({ sprite: 'deco_clock', x: px(x) + 16, y: px(r.y) - 10, layer: 'wall' });
+        note('clock', px(x) + 16, px(r.y) + 14);
+        return true;
+      },
+    },
+    {
+      // The last crew through, and what they learned.
+      key: 'vesna', fits: (r) => r.depth >= 3 && (r.role === 'standard' || r.role === 'loot'),
+      place: (r) => {
+        const spot = rng.shuffle(byProp(free(r)))[0];
+        if (!spot) return false;
+        const [x, y] = spot;
+        take(x, y);
+        map.props.push({ sprite: 'deco_casings', x: px(x) + 10, y: px(y) + 20, layer: 'floor' });
+        map.props.push({ sprite: 'deco_mag', x: px(x) + 22, y: px(y) + 26, layer: 'floor' });
+        map.props.push({ sprite: 'deco_note', x: px(x) + 16, y: px(y) + 24, layer: 'floor' });
+        note('vesna', px(x) + 16, px(y) + 20);
+        return true;
+      },
+    },
+  ];
+
+  // Three or four scenes a facility, each in a different room, never two of a kind.
+  const want = rng.int(3, 4);
+  const taken = new Set<Room>();
+  let placed = 0;
+  for (const scene of rng.shuffle(scenes)) {
+    if (placed >= want) break;
+    for (const r of rng.shuffle(rooms.filter((q) => !taken.has(q) && q.role !== 'extraction' && scene.fits(q)))) {
+      if (scene.place(r)) {
+        taken.add(r);
+        placed++;
+        break;
+      }
+    }
+  }
 }
 
 /**
@@ -414,6 +578,22 @@ const KITS: Record<string, Kit> = {
     containers: { ammocase: 4, box_red: 2, case_green: 1, locker: 1 }, containerCount: [1, 3], decor: ['ship_poster', 'ship_poster3'], tops: ['deco_geiger', 'deco_cigs'],
     floor: ['deco_ammo', 'deco_ammo', 'deco_cigs', 'deco_bandage'],
   },
+  // The guard post: lockers, a rack, a screen watching cameras that no longer work.
+  security: {
+    wall: [P('ship_locker'), P('ship_gunrack', 2), P('ship_tv'), P('hack_terminal', 1, { terminal: true }), P('ship_cabinet')],
+    wallCount: [2, 4], center: [P('ship_desk', 3, { surface: 30 }), P('ship_desk_small', 1, { surface: 22 })], centerCount: [1, 1], cover: 0.8,
+    containers: { locker: 3, ammocase: 1, filing: 1 }, containerCount: [1, 2], decor: ['ship_poster', 'ship_poster3'],
+    tops: ['deco_radio', 'deco_orders', 'deco_cigs', 'deco_camera'],
+    floor: ['deco_orders', 'deco_ammo', 'deco_cigs', 'deco_radio'],
+  },
+  // Somebody's research: sealed cabinets, capsules, specimens under glass.
+  lab: {
+    wall: [P('med_crate'), P('ship_capsule', 2), P('hack_terminal', 1, { terminal: true }), P('med_monitor'), P('ship_server')],
+    wallCount: [2, 4], center: [P('ship_table', 2, { surface: 24 }), P('med_gurney', 1, { surface: 10 })], centerCount: [1, 2], cover: 0.3,
+    containers: { medcab: 2, case_green: 1, server: 1 }, containerCount: [1, 2], decor: ['ship_poster4', 'ship_vent2'],
+    tops: ['deco_specimen', 'deco_reagent', 'deco_egg', 'deco_crystal', 'deco_tablet'],
+    floor: ['deco_reagent', 'deco_specimen', 'deco_datachip', 'deco_pills'],
+  },
   entry: {
     wall: [P('ship_locker_s'), P('ship_crate_g'), P('ship_suit')],
     wallCount: [1, 2], center: [], centerCount: [0, 0], cover: 0.6,
@@ -454,7 +634,7 @@ interface RoomPlan {
 
 function furnishRoom(
   map: TileMap, rng: Rng, cell: Cell, index: number, maxDepth: number, danger: number, cells: Cell[],
-  mix: Record<string, number>, theme: Theme, plan: RoomPlan,
+  mix: Record<string, number>, theme: Theme, plan: RoomPlan, gentle = false,
 ): void {
   const r = cell.room;
   const kit = KITS[r.kind ?? 'storage'] ?? KITS.storage;
@@ -727,17 +907,25 @@ function furnishRoom(
       default: return (rng.chance(0.42) ? 1 : 0) + (r.depth >= 3 && rng.chance(0.25) ? 1 : 0);
     }
   })() + (plan.guards.get(index) ?? 0);
-  const count = r.depth === 1 ? Math.min(1, base) : Math.round(base * danger);
+  let count = r.depth === 1 ? Math.min(1, base) : Math.round(base * danger);
+  // Learning: quiet around the entry, one lone scavenger in the next ring at most.
+  if (gentle && r.depth <= 1) count = 0;
+  else if (gentle && r.depth === 2) count = Math.min(1, count);
   const free = floorTiles(map, r).filter(([x, y]) => !reserved.has(key(x, y)));
   rng.shuffle(free);
   for (let i = 0; i < count && i < free.length; i++) {
     const [x, y] = free[i];
+    const kind = rng.weighted(mix);
     const spawn: Spawn = {
-      kind: rng.weighted(mix), x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
+      kind: gentle && r.depth <= 2 ? 'scavenger' : kind, x: x * TILE + TILE / 2, y: y * TILE + TILE / 2,
     };
-    // Some guards walk a route between this room and its neighbours.
-    if (i === 0 && r.role === 'standard' && rng.chance(0.4)) {
-      const other = cells[rng.pick(cell.links)].room;
+    // The first one a learning operator meets carries a pistol, not a sawn-off.
+    if (gentle && r.depth <= 2) spawn.weapon = rng.pick(['sp5', 'pm9']);
+    // Some guards walk a route between this room and its neighbours, never into the entry:
+    // an operator's first seconds down there are theirs.
+    const routes = cell.links.filter((l) => cells[l].room.role !== 'start');
+    if (i === 0 && r.role === 'standard' && routes.length && rng.chance(0.4)) {
+      const other = cells[rng.pick(routes)].room;
       spawn.patrol = [
         { x: spawn.x, y: spawn.y },
         { x: (other.x + other.w / 2) * TILE, y: (other.y + other.h / 2) * TILE },
