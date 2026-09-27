@@ -9,11 +9,11 @@ import { DESTINATION } from '../data/destinations';
 import { loreEntry } from '../data/lore';
 import { themeFor, type Theme } from '../data/themes';
 import { ENEMIES } from '../data/enemies';
-import { ITEMS, type ArmorDef, type WeaponItemDef } from '../data/items';
+import { ITEMS, RARITY_ORDER, type ArmorDef, type WeaponItemDef } from '../data/items';
 import { BODY_GRID, BODY_POCKETS, CONTAINERS, GROUND_GRID, foundInstance, rollItemId } from '../data/loot';
 import { WEAPONS } from '../data/weapons';
 import { TEST_RANGE } from '../data/testRange';
-import { addToGrid, createItem, emptyGrid, loadoutCount, loadoutWeight, type Grid } from '../core/inventory';
+import { addToGrid, createItem, emptyGrid, itemValueDeep, loadoutCount, loadoutItems, loadoutWeight, type Grid, type Loadout } from '../core/inventory';
 import type { Operator } from '../core/profile';
 import { useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
@@ -337,7 +337,10 @@ export class Game {
 
     // The inventory UI can change what's equipped at any moment.
     this.unsubscribe = useRaid.subscribe((s, prev) => {
-      if (s.loadout !== prev.loadout) this.player.syncLoadout(s.loadout);
+      if (s.loadout !== prev.loadout) {
+        this.player.syncLoadout(s.loadout);
+        this.announceFinds(prev.loadout, s.loadout, s.brought);
+      }
     });
 
     this.app.stage.addChild(this.worldLit);
@@ -480,6 +483,20 @@ export class Game {
     if (this.heartTimer > 0) return;
     this.heartTimer = 0.55 + k * 1.4;
     this.audio.sfx('heartbeat', p.x, p.y, 0.6 + (0.3 - k) * 2);
+  }
+
+  /** A good find going into the bag deserves a moment: a chime and a line in the feed. */
+  private announceFinds(before: Loadout, after: Loadout, brought: readonly string[]): void {
+    const had = new Set(loadoutItems(before).map((i) => i.uid));
+    const mine = new Set(brought);
+    for (const it of loadoutItems(after)) {
+      if (had.has(it.uid) || mine.has(it.uid)) continue;
+      const d = ITEMS[it.id];
+      if (!d || RARITY_ORDER[d.rarity] < RARITY_ORDER.rare) continue;
+      this.audio.ui('valuable');
+      raid.notice(`${d.name.toUpperCase()} · ${itemValueDeep(it).toLocaleString()} CR`, 'loot', it.id);
+      break;
+    }
   }
 
   /** Accessibility: point toward loud noises the player can't see the source of. */

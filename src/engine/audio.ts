@@ -39,7 +39,7 @@ const HEARING_RANGE = 900;
 const AMBIENCE_LEVEL = 0.55;
 const GUNSHOT_RANGE = 1700;
 
-export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab' | 'tick' | 'relief' | 'loss';
+export type UiSfx = 'click' | 'hover' | 'pickup' | 'drop' | 'error' | 'open' | 'close' | 'buy' | 'sell' | 'equip' | 'tab' | 'tick' | 'relief' | 'loss' | 'valuable';
 
 export class AudioService {
   private ctx: AudioContext | null = null;
@@ -552,6 +552,12 @@ export class AudioService {
         this.click(out, t, 2000, 0.5);
         this.tone(out, t + 0.04, 1180, 0.07, 0.5);
         this.tone(out, t + 0.1, 1570, 0.1, 0.5);
+        break;
+      case 'valuable':
+        // Something worth the risk: a bright two-note glint.
+        this.tone(out, t, 1568, 0.18, 0.45);
+        this.tone(out, t + 0.07, 2093, 0.3, 0.4);
+        this.click(out, t, 4000, 0.3);
         break;
       case 'tick':
         this.click(out, t, 3000, 0.25);

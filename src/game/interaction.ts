@@ -33,6 +33,9 @@ interface Lootable {
   sprite: Sprite | null;
   /** Rolls the contents the first time it's opened. */
   roll(): Grid;
+  /** Rest position of the sprite, and a short bump when it's opened. */
+  home?: { x: number; y: number };
+  bump?: number;
 }
 
 export interface InteractionEvents {
@@ -113,7 +116,7 @@ export class Interactions {
       const seed = (map.seed * 7919 + i * 104729) >>> 0;
       this.lootables.push({
         id: `c${i}`, kind: 'container', label: def.label, pos: () => ({ x, y: place.flat ? y - 4 : y - 10 }),
-        searchTime: def.searchTime, searched: false, sprite,
+        searchTime: def.searchTime, searched: false, sprite, home: { x: sprite.x, y: sprite.y },
         roll: () => rollContainer(new Rng(seed), def, place.risk, lootMul, place.rich ?? 0),
       });
     });
@@ -195,7 +198,7 @@ export class Interactions {
    */
   update(dt: number, input: Input, px: number, py: number, busy: boolean, moving: boolean, menuOpen: boolean): InteractionView {
     this.bar.clear();
-    this.refreshPiles();
+    this.refreshPiles(dt);
     if (this.done) return { prompt: null, countdown: null, inZone: false };
 
     const zone = this.map.exitAt(px, py);
@@ -329,6 +332,8 @@ export class Interactions {
         this.audio.sfx('rummage', p.x, p.y);
         this.ev.onNoise(p.x, p.y, 70);
       }
+      // The thing being rummaged through jostles.
+      if (nearest.sprite && nearest.home) nearest.sprite.x = nearest.home.x + (Math.floor(this.progress * 18) % 2 === 0 ? 0 : 1);
       this.drawBar(p.x, p.y, Math.min(1, this.progress));
       if (this.progress >= 1) this.finishSearch(nearest);
     } else {
@@ -445,6 +450,8 @@ export class Interactions {
 
   private finishSearch(l: Lootable): void {
     l.searched = true;
+    l.bump = 0.22;
+    if (l.sprite && l.home) l.sprite.x = l.home.x;
     this.searching = null;
     if (!raid.hasContainer(l.id)) raid.setContainer(l.id, l.roll());
     if (l.kind === 'container') raid.searched();
@@ -465,9 +472,13 @@ export class Interactions {
   }
 
   /** Searched containers go dark when empty; empty piles disappear. */
-  private refreshPiles(): void {
+  private refreshPiles(dt: number): void {
     const containers = useRaid.getState().containers;
     for (const l of this.lootables) {
+      if (l.bump !== undefined && l.bump > 0 && l.sprite && l.home) {
+        l.bump -= dt;
+        l.sprite.y = l.home.y - Math.round(Math.sin((1 - l.bump / 0.22) * Math.PI) * 2);
+      }
       if (!l.sprite || !l.searched) continue;
       const empty = (containers[l.id]?.items.length ?? 0) === 0;
       if (l.kind === 'pile') l.sprite.visible = !empty;
