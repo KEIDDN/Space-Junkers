@@ -26,6 +26,8 @@ export interface Theme {
   loot: Partial<Record<ItemCategory, number>>;
   /** Scattered small props. */
   clutter: string[];
+  /** Small leftovers on floors and surfaces that say which world this is. */
+  smalls: string[];
 }
 
 const DECK: FloorStyle = [['floor_a', 44], ['floor_b', 38], ['floor_c', 10], ['floor_plate', 4], ['floor_grate', 4]];
@@ -40,6 +42,7 @@ export const THEMES: Record<string, Theme> = {
     rooms: { storage: 3, workshop: 3, mess: 1, barracks: 1, office: 1, reactor: 1, medbay: 1 },
     loot: { scrap: 1.4, tools: 1.5, electronics: 1.2, food: 1.2 },
     clutter: ['barrel_gray', 'barrel_red', 'crate_gray', 'crate_pale', 'ship_bucket', 'ship_bin'],
+    smalls: ['deco_tape', 'deco_wrench', 'deco_stew', 'deco_cigs', 'deco_oxygen'],
   },
   merzlota: {
     id: 'merzlota', names: ['SHAFT 9 PUMPING STATION', 'DEEP BORE "HOLOD"', 'CRYO REFINERY 2', 'MINER\'S HALL 6'],
@@ -48,6 +51,7 @@ export const THEMES: Record<string, Theme> = {
     rooms: { storage: 3, workshop: 2, reactor: 2, barracks: 2, medbay: 1, mess: 1 },
     loot: { minerals: 2, fuel: 1.6, scrap: 1.1, tools: 1.2 },
     clutter: ['barrel_blue', 'barrel_gray', 'crate_gray', 'ship_crate_g', 'ship_bucket'],
+    smalls: ['deco_ore', 'deco_crystal', 'deco_quartz', 'deco_geiger', 'deco_oxygen'],
   },
   krasnaya: {
     id: 'krasnaya', names: ['GARRISON DEPOT 4', 'FORWARD BASE "ZARYA"', 'ARSENAL 17', 'SIGNAL POST 2'],
@@ -56,6 +60,7 @@ export const THEMES: Record<string, Theme> = {
     rooms: { armory: 3, barracks: 3, storage: 2, office: 1, medbay: 1, mess: 1 },
     loot: { weapons: 2, ammo: 2, gear: 1.8, documents: 1.5, medical: 1.2 },
     clutter: ['crate_green', 'crate_orange', 'barrel_red', 'merc_ammo', 'ship_crate_y'],
+    smalls: ['deco_cigs', 'deco_stew', 'deco_rations', 'deco_vodka', 'deco_geiger'],
   },
   kombinat: {
     id: 'kombinat', names: ['RESEARCH WING C', 'DATA VAULT "ORBITA"', 'EXECUTIVE LEVEL', 'LAB SECTOR 12'],
@@ -64,6 +69,7 @@ export const THEMES: Record<string, Theme> = {
     rooms: { servers: 3, office: 3, medbay: 1, storage: 1, mess: 1 },
     loot: { technology: 2, documents: 2, valuables: 1.5, electronics: 1.4 },
     clutter: ['ship_plant', 'ship_plant2', 'ship_chair', 'ship_bin', 'hack_box'],
+    smalls: ['deco_tablet', 'deco_specimen', 'deco_reagent', 'deco_coin', 'deco_milk'],
   },
   sirin: {
     id: 'sirin', names: ['LISTENING POST "SIRIN"', 'CONTACT LAB', 'THE GARDEN', 'RELAY ZERO'],
@@ -72,6 +78,7 @@ export const THEMES: Record<string, Theme> = {
     rooms: { servers: 2, medbay: 2, reactor: 2, office: 1, storage: 1 },
     loot: { alien: 2.5, minerals: 1.5, technology: 1.5 },
     clutter: ['ship_plant3', 'barrel_blue', 'hack_box', 'ship_bucket'],
+    smalls: ['deco_fungus', 'deco_rustcap', 'deco_skull', 'deco_bone', 'deco_egg'],
   },
 };
 

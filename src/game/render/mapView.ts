@@ -128,13 +128,13 @@ export function buildMapView(map: TileMap, look: MapLook = DEFAULT_LOOK): { grou
   for (const p of map.props) {
     const s = new Sprite(tex(p.sprite));
     s.anchor.set(0.5, 1);
-    s.position.set(Math.round(p.x), Math.round(p.y));
+    s.position.set(Math.round(p.x), Math.round(p.y - (p.lift ?? 0)));
     if (p.flip) s.scale.x = -1;
     if (p.tint !== undefined) s.tint = p.tint;
     if (p.layer === 'floor') floorDecor.addChild(s);
     else if (p.layer === 'wall') wallDecor.addChild(s);
     else {
-      s.zIndex = s.y;
+      s.zIndex = p.y + (p.lift ? 1 : 0);
       props.push(s);
     }
   }

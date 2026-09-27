@@ -10240,7 +10240,7 @@
     "h": 22
    }
   },
-  "fx_blood_2": {
+  "deco_specimen": {
    "frame": {
     "x": 965,
     "y": 1516,
@@ -10260,10 +10260,30 @@
     "h": 21
    }
   },
-  "item_kedr": {
+  "fx_blood_2": {
    "frame": {
     "x": 983,
     "y": 1516,
+    "w": 17,
+    "h": 21
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 17,
+    "h": 21
+   },
+   "sourceSize": {
+    "w": 17,
+    "h": 21
+   }
+  },
+  "item_kedr": {
+   "frame": {
+    "x": 0,
+    "y": 1547,
     "w": 27,
     "h": 21
    },
@@ -10282,7 +10302,7 @@
   },
   "med_kit": {
    "frame": {
-    "x": 0,
+    "x": 28,
     "y": 1547,
     "w": 24,
     "h": 21
@@ -10300,9 +10320,29 @@
     "h": 21
    }
   },
+  "deco_painting": {
+   "frame": {
+    "x": 53,
+    "y": 1547,
+    "w": 15,
+    "h": 20
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 15,
+    "h": 20
+   },
+   "sourceSize": {
+    "w": 15,
+    "h": 20
+   }
+  },
   "fx_smoke_1": {
    "frame": {
-    "x": 25,
+    "x": 69,
     "y": 1547,
     "w": 25,
     "h": 20
@@ -10322,7 +10362,7 @@
   },
   "trade_box": {
    "frame": {
-    "x": 51,
+    "x": 95,
     "y": 1547,
     "w": 18,
     "h": 20
@@ -10342,7 +10382,7 @@
   },
   "item_svk": {
    "frame": {
-    "x": 70,
+    "x": 114,
     "y": 1547,
     "w": 81,
     "h": 19
@@ -10362,7 +10402,7 @@
   },
   "med_gurney": {
    "frame": {
-    "x": 152,
+    "x": 196,
     "y": 1547,
     "w": 40,
     "h": 19
@@ -10380,9 +10420,69 @@
     "h": 19
    }
   },
+  "deco_landscape": {
+   "frame": {
+    "x": 237,
+    "y": 1547,
+    "w": 19,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 19,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 19,
+    "h": 18
+   }
+  },
+  "deco_oxygen": {
+   "frame": {
+    "x": 257,
+    "y": 1547,
+    "w": 7,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 18
+   }
+  },
+  "deco_wrench": {
+   "frame": {
+    "x": 265,
+    "y": 1547,
+    "w": 10,
+    "h": 18
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 10,
+    "h": 18
+   },
+   "sourceSize": {
+    "w": 10,
+    "h": 18
+   }
+  },
   "item_vektor": {
    "frame": {
-    "x": 193,
+    "x": 276,
     "y": 1547,
     "w": 55,
     "h": 18
@@ -10402,7 +10502,7 @@
   },
   "ship_stool": {
    "frame": {
-    "x": 249,
+    "x": 332,
     "y": 1547,
     "w": 13,
     "h": 18
@@ -10420,9 +10520,49 @@
     "h": 18
    }
   },
+  "deco_idol": {
+   "frame": {
+    "x": 346,
+    "y": 1547,
+    "w": 11,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 11,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 11,
+    "h": 17
+   }
+  },
+  "deco_quartz": {
+   "frame": {
+    "x": 358,
+    "y": 1547,
+    "w": 17,
+    "h": 17
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 17,
+    "h": 17
+   },
+   "sourceSize": {
+    "w": 17,
+    "h": 17
+   }
+  },
   "fx_smoke_0": {
    "frame": {
-    "x": 263,
+    "x": 376,
     "y": 1547,
     "w": 20,
     "h": 17
@@ -10442,7 +10582,7 @@
   },
   "fx_smoke_2": {
    "frame": {
-    "x": 284,
+    "x": 397,
     "y": 1547,
     "w": 26,
     "h": 17
@@ -10462,7 +10602,7 @@
   },
   "item_akr74": {
    "frame": {
-    "x": 311,
+    "x": 424,
     "y": 1547,
     "w": 58,
     "h": 17
@@ -10482,7 +10622,7 @@
   },
   "item_mosin": {
    "frame": {
-    "x": 370,
+    "x": 483,
     "y": 1547,
     "w": 77,
     "h": 17
@@ -10498,11 +10638,111 @@
    "sourceSize": {
     "w": 77,
     "h": 17
+   }
+  },
+  "deco_crystal": {
+   "frame": {
+    "x": 561,
+    "y": 1547,
+    "w": 13,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 13,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 13,
+    "h": 16
+   }
+  },
+  "deco_fungus": {
+   "frame": {
+    "x": 575,
+    "y": 1547,
+    "w": 11,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 11,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 11,
+    "h": 16
+   }
+  },
+  "deco_multitool": {
+   "frame": {
+    "x": 587,
+    "y": 1547,
+    "w": 14,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 16
+   }
+  },
+  "deco_ore": {
+   "frame": {
+    "x": 602,
+    "y": 1547,
+    "w": 18,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 18,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 18,
+    "h": 16
+   }
+  },
+  "deco_vodka": {
+   "frame": {
+    "x": 621,
+    "y": 1547,
+    "w": 6,
+    "h": 16
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 6,
+    "h": 16
+   },
+   "sourceSize": {
+    "w": 6,
+    "h": 16
    }
   },
   "item_ppd41": {
    "frame": {
-    "x": 448,
+    "x": 628,
     "y": 1547,
     "w": 55,
     "h": 16
@@ -10520,9 +10760,149 @@
     "h": 16
    }
   },
+  "deco_beast_skull": {
+   "frame": {
+    "x": 684,
+    "y": 1547,
+    "w": 16,
+    "h": 15
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 15
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 15
+   }
+  },
+  "deco_chalice": {
+   "frame": {
+    "x": 701,
+    "y": 1547,
+    "w": 8,
+    "h": 15
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 15
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 15
+   }
+  },
+  "deco_reagent": {
+   "frame": {
+    "x": 710,
+    "y": 1547,
+    "w": 7,
+    "h": 15
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 15
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 15
+   }
+  },
+  "deco_rustcap": {
+   "frame": {
+    "x": 718,
+    "y": 1547,
+    "w": 14,
+    "h": 15
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 15
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 15
+   }
+  },
+  "deco_egg": {
+   "frame": {
+    "x": 733,
+    "y": 1547,
+    "w": 14,
+    "h": 14
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 14
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 14
+   }
+  },
+  "deco_radio": {
+   "frame": {
+    "x": 748,
+    "y": 1547,
+    "w": 12,
+    "h": 14
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 12,
+    "h": 14
+   },
+   "sourceSize": {
+    "w": 12,
+    "h": 14
+   }
+  },
+  "deco_tablet": {
+   "frame": {
+    "x": 761,
+    "y": 1547,
+    "w": 9,
+    "h": 14
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 14
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 14
+   }
+  },
   "item_pm9": {
    "frame": {
-    "x": 504,
+    "x": 771,
     "y": 1547,
     "w": 22,
     "h": 14
@@ -10542,7 +10922,7 @@
   },
   "item_sp5": {
    "frame": {
-    "x": 527,
+    "x": 794,
     "y": 1547,
     "w": 19,
     "h": 14
@@ -10560,9 +10940,129 @@
     "h": 14
    }
   },
+  "deco_antibiotics": {
+   "frame": {
+    "x": 814,
+    "y": 1547,
+    "w": 7,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 13
+   }
+  },
+  "deco_bone": {
+   "frame": {
+    "x": 822,
+    "y": 1547,
+    "w": 16,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 16,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 16,
+    "h": 13
+   }
+  },
+  "deco_compass": {
+   "frame": {
+    "x": 839,
+    "y": 1547,
+    "w": 8,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 13
+   }
+  },
+  "deco_crown": {
+   "frame": {
+    "x": 848,
+    "y": 1547,
+    "w": 13,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 13,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 13,
+    "h": 13
+   }
+  },
+  "deco_geiger": {
+   "frame": {
+    "x": 862,
+    "y": 1547,
+    "w": 13,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 13,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 13,
+    "h": 13
+   }
+  },
+  "deco_jewelbox": {
+   "frame": {
+    "x": 876,
+    "y": 1547,
+    "w": 14,
+    "h": 13
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 14,
+    "h": 13
+   },
+   "sourceSize": {
+    "w": 14,
+    "h": 13
+   }
+  },
   "item_skv": {
    "frame": {
-    "x": 547,
+    "x": 891,
     "y": 1547,
     "w": 60,
     "h": 13
@@ -10582,7 +11082,7 @@
   },
   "item_toz12": {
    "frame": {
-    "x": 608,
+    "x": 952,
     "y": 1547,
     "w": 62,
     "h": 13
@@ -10598,12 +11098,152 @@
    "sourceSize": {
     "w": 62,
     "h": 13
+   }
+  },
+  "deco_camera": {
+   "frame": {
+    "x": 0,
+    "y": 1569,
+    "w": 13,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 13,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 13,
+    "h": 12
+   }
+  },
+  "deco_milk": {
+   "frame": {
+    "x": 14,
+    "y": 1569,
+    "w": 7,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 7,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 7,
+    "h": 12
+   }
+  },
+  "deco_skull": {
+   "frame": {
+    "x": 22,
+    "y": 1569,
+    "w": 13,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 13,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 13,
+    "h": 12
+   }
+  },
+  "deco_stew": {
+   "frame": {
+    "x": 36,
+    "y": 1569,
+    "w": 8,
+    "h": 12
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 12
+   },
+   "sourceSize": {
+    "w": 8,
+    "h": 12
+   }
+  },
+  "deco_coin": {
+   "frame": {
+    "x": 45,
+    "y": 1569,
+    "w": 9,
+    "h": 11
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 9,
+    "h": 11
+   },
+   "sourceSize": {
+    "w": 9,
+    "h": 11
+   }
+  },
+  "deco_rations": {
+   "frame": {
+    "x": 55,
+    "y": 1569,
+    "w": 10,
+    "h": 11
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 10,
+    "h": 11
+   },
+   "sourceSize": {
+    "w": 10,
+    "h": 11
+   }
+  },
+  "deco_tape": {
+   "frame": {
+    "x": 66,
+    "y": 1569,
+    "w": 13,
+    "h": 11
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 13,
+    "h": 11
+   },
+   "sourceSize": {
+    "w": 13,
+    "h": 11
    }
   },
   "item_obrez": {
    "frame": {
-    "x": 671,
-    "y": 1547,
+    "x": 80,
+    "y": 1569,
     "w": 31,
     "h": 11
    },
@@ -10620,10 +11260,30 @@
     "h": 11
    }
   },
+  "deco_cigs": {
+   "frame": {
+    "x": 112,
+    "y": 1569,
+    "w": 6,
+    "h": 10
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 6,
+    "h": 10
+   },
+   "sourceSize": {
+    "w": 6,
+    "h": 10
+   }
+  },
   "fx_blood_1": {
    "frame": {
-    "x": 703,
-    "y": 1547,
+    "x": 119,
+    "y": 1569,
     "w": 21,
     "h": 10
    },
@@ -10642,8 +11302,8 @@
   },
   "fx_flash_0": {
    "frame": {
-    "x": 725,
-    "y": 1547,
+    "x": 141,
+    "y": 1569,
     "w": 10,
     "h": 8
    },
@@ -10662,8 +11322,8 @@
   },
   "fx_flash_2": {
    "frame": {
-    "x": 736,
-    "y": 1547,
+    "x": 152,
+    "y": 1569,
     "w": 12,
     "h": 8
    },
@@ -10682,8 +11342,8 @@
   },
   "fx_blood_0": {
    "frame": {
-    "x": 749,
-    "y": 1547,
+    "x": 165,
+    "y": 1569,
     "w": 13,
     "h": 7
    },
@@ -10702,8 +11362,8 @@
   },
   "fx_flash_1": {
    "frame": {
-    "x": 763,
-    "y": 1547,
+    "x": 179,
+    "y": 1569,
     "w": 14,
     "h": 7
    },

@@ -29,6 +29,8 @@ export interface PropPlacement {
   flip?: boolean;
   /** Emissive tint for glowing props (reactor cores). */
   tint?: number;
+  /** Sits on top of furniture: drawn this many px above its base, sorted just in front. */
+  lift?: number;
 }
 
 /** Something to read on a terminal screen. */

@@ -22,6 +22,8 @@ export class CrewActor {
   private gestureLeft = 0;
   /** Set on the frame they start fiddling with their station (for its sound). */
   busied = false;
+  private glanceTimer = 4 + Math.random() * 8;
+  private glanceLeft = 0;
 
   constructor(readonly station: CrewStation, sprite: string) {
     const a = (n: CrewAnim) => anim(`crew_${sprite}_${n}`);
@@ -63,7 +65,18 @@ export class CrewActor {
       this.t = 0;
     }
     // Turn to face whoever is talking to them (seated crew stay put).
+    const home = this.station.faceRight ? -1 : 1;
     if ((near || talking) && !seated) this.sprite.scale.x = px > this.station.x ? -1 : 1;
+    else if (!seated) {
+      // Left alone, people glance around now and then instead of staring at a wall.
+      this.glanceTimer -= dt;
+      if (this.glanceTimer <= 0) {
+        this.glanceLeft = 1.2 + Math.random() * 1.6;
+        this.glanceTimer = 7 + Math.random() * 9;
+      }
+      this.glanceLeft -= dt;
+      this.sprite.scale.x = this.glanceLeft > 0 ? -home : home;
+    }
 
     const frames = this.anims[this.current];
     this.t += dt;

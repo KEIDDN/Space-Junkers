@@ -50,6 +50,8 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
   const operator = useProfile((s) => s.operator);
   const panel = useShip((s) => s.panel);
   const upgrades = useProfile((s) => s.upgrades.join());
+  // Handing in a story contract changes someone's corner of the ship.
+  const story = useProfile((s) => Object.entries(s.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id).sort().join());
   const lastPos = useRef<{ x: number; y: number } | undefined>(undefined);
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
       lastPos.current = scene.position ?? lastPos.current;
       scene.destroy();
     };
-  }, [operator, upgrades]);
+  }, [operator, upgrades, story]);
 
   return (
     <div className="screen game-screen" onPointerDown={() => audio.unlock()}>

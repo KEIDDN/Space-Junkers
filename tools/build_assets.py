@@ -252,6 +252,22 @@ DEATH_CELL = (56, 32)
 _sheet_cache: dict[str, Image.Image] = {}
 
 
+# Item icons re-cut at world scale for set dressing: (item key, fraction of icon scale).
+DECO_ITEMS = {
+    "deco_vodka": ("vodka", 0.36), "deco_cigs": ("cigs", 0.4), "deco_camera": ("camera", 0.34),
+    "deco_radio": ("radio", 0.38), "deco_skull": ("skull", 0.34), "deco_egg": ("egg", 0.36),
+    "deco_specimen": ("specimen", 0.4), "deco_crown": ("crown", 0.38), "deco_landscape": ("landscape", 0.5),
+    "deco_painting": ("painting", 0.45), "deco_stew": ("stew", 0.32), "deco_milk": ("milk", 0.32),
+    "deco_geiger": ("geiger", 0.34), "deco_tablet": ("tablet", 0.3), "deco_wrench": ("wrench", 0.3),
+    "deco_tape": ("tape", 0.3), "deco_reagent": ("reagent", 0.3), "deco_antibiotics": ("antibiotics", 0.36),
+    "deco_idol": ("idol", 0.36), "deco_chalice": ("chalice", 0.36), "deco_jewelbox": ("jewelbox", 0.34),
+    "deco_beast_skull": ("beast_skull", 0.4), "deco_fungus": ("fungus", 0.36), "deco_compass": ("compass", 0.3),
+    "deco_rations": ("rations", 0.32), "deco_oxygen": ("oxygen", 0.34), "deco_multitool": ("multitool", 0.3),
+    "deco_ore": ("iron_ore", 0.4), "deco_crystal": ("cryo", 0.4), "deco_quartz": ("frost_quartz", 0.4),
+    "deco_bone": ("bone", 0.34), "deco_rustcap": ("rustcap", 0.36), "deco_coin": ("coinroll", 0.34),
+}
+
+
 def sheet(name: str) -> Image.Image:
     if name not in _sheet_cache:
         _sheet_cache[name] = Image.open(SRC / name).convert("RGBA")
@@ -543,6 +559,14 @@ def build() -> None:
         if tint_spec:
             icon = tint(icon, tint_spec[:3], desat=tint_spec[3])
         frames[f"item_{key}"] = icon
+    # Small world-scale copies of some items, for clutter on shelves, desks and floors.
+    for key, (item, factor) in DECO_ITEMS.items():
+        spec = ITEM_ICONS[item]
+        scale = (spec[3] if len(spec) > 3 else ICON_SCALE) * factor
+        deco = to_pixels(crop(spec[0], spec[1]), scale)
+        if len(spec) > 2 and spec[2]:
+            deco = tint(deco, spec[2][:3], desat=spec[2][3])
+        frames[key] = deco
     for key, n in WEAPON_ICONS.items():
         frames[f"item_{key}"] = trim(Image.open(SRC / "Guns" / "Guns" / f"{n}.png").convert("RGBA"))
     for key, rect in CONTAINERS.items():

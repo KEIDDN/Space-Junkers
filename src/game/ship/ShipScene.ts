@@ -11,6 +11,8 @@ import { buildShip, type ShipInteractable, type ShipLayout } from '../../data/sh
 import { shipUi, useShip } from '../../state/shipStore';
 import { ActorView } from '../entities/ActorView';
 import { Lighting } from '../render/lighting';
+import { AmbientFx } from '../fx/ambient';
+import { Effects } from '../fx/effects';
 import { buildMapView, FLOOR_DECK } from '../render/mapView';
 import { hasLineOfSight, moveCircle } from '../world/collision';
 import { Doors } from '../world/doors';
@@ -37,6 +39,8 @@ export class ShipScene {
   private input!: Input;
   private camera!: Camera;
   private lighting!: Lighting;
+  private effects!: Effects;
+  private ambientFx!: AmbientFx;
   private layout!: ShipLayout;
   private doors!: Doors;
   private world = new Container();
@@ -126,7 +130,8 @@ export class ShipScene {
   }
 
   private build(): void {
-    const L = buildShip(useProfile.getState().upgrades);
+    const prof = useProfile.getState();
+    const L = buildShip(prof.upgrades, Object.entries(prof.quests).filter(([, q]) => q.status === 'turnedIn').map(([id]) => id));
     this.layout = L;
     const map = L.map;
     this.emitters = emittersFrom(L.props);
@@ -163,15 +168,25 @@ export class ShipScene {
     floorProps.addChild(hz);
     const wallProps = new Container();
     this.actors.sortableChildren = true;
+    // Cables snake across the deck, with a highlight so they read as round.
+    const cables = new Graphics();
+    for (const line of L.cables) {
+      for (const [w, c, a] of [[2, 0x0c0b0a, 0.55], [1, 0x4a4238, 0.8]] as const) {
+        cables.moveTo(line[0][0], line[0][1]);
+        for (const [x, y] of line.slice(1)) cables.lineTo(x, y);
+        cables.stroke({ width: w, color: c, alpha: a });
+      }
+    }
+    floorProps.addChild(cables);
     for (const p of L.props) {
       const s = new Sprite(tex(p.sprite));
       s.anchor.set(0.5, 1);
-      s.position.set(Math.round(p.x), Math.round(p.y));
+      s.position.set(Math.round(p.x), Math.round(p.y - (p.lift ?? 0)));
       if (p.flip) s.scale.x = -1;
       if (p.floor) floorProps.addChild(s);
       else if (p.wall) wallProps.addChild(s);
       else {
-        s.zIndex = p.y;
+        s.zIndex = p.y + (p.lift ? 1 : 0);
         this.actors.addChild(s);
       }
       if (p.bob) this.bobbers.push({ s, y: s.y, t: Math.random() * 6 });
@@ -194,8 +209,11 @@ export class ShipScene {
     audio.setOccluder((x0, y0, x1, y1) => !hasLineOfSight(map, x0, y0, x1, y1));
     this.lighting.flashlightOn = false;
 
-    this.world.addChild(ground, floorProps, this.doors.container, wallProps, this.actors);
-    this.glowWorld.addChild(this.markers);
+    // The ship's own small life: status lights, a machine that sparks, steam, dust.
+    this.effects = new Effects(map, audio);
+    this.ambientFx = new AmbientFx(L.props, this.effects, audio, (x, y, r, c, i) => this.lighting.flash(x, y, r, c, i));
+    this.world.addChild(ground, floorProps, this.effects.decals, this.doors.container, wallProps, this.actors, this.effects.lit, this.ambientFx.dust);
+    this.glowWorld.addChild(this.ambientFx.glow, this.effects.overlay, this.markers);
     this.app.stage.addChild(this.stars, this.world, this.lighting.overlay, this.glowWorld, this.glow);
     this.camera.snapTo(this.px, this.py);
   }
@@ -296,6 +314,8 @@ export class ShipScene {
       const map = this.layout.map;
       audio.setEmitters(emitterLevels(this.emitters, this.px, this.py, (x, y) => !hasLineOfSight(map, this.px, this.py - 8, x, y - 8)));
     }
+    this.effects.update(dt);
+    this.ambientFx.update(dt, this.camera.left, this.camera.top, VIEW_W, VIEW_H);
     this.lighting.update(dt, this.camera.left, this.camera.top, this.px, this.py, 0);
     this.drawStars();
     this.input.endFrame();
