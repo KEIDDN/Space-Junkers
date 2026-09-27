@@ -131,6 +131,8 @@ function menuActions(ops: InventoryOps, uid: string): { label: string; run: () =
   if (d.kind === 'med' || d.kind === 'grenade') {
     for (let i = 0; i < 4; i++) out.push({ label: `BIND TO [${i + 3}]`, run: () => ops.bindQuick(i, d.id) });
   }
+  const fix = ops.repairPrice?.(item);
+  if (ops.repair && fix) out.push({ label: `REPAIR (${fix.toLocaleString()} CR)`, run: () => ops.repair!(uid) });
   if (ops.sell && (ops.sellPrice?.(item) ?? 0) > 0) out.push({ label: `SELL (${ops.sellPrice!(item)!.toLocaleString()} CR)`, run: () => ops.sell!(uid) });
   if (ops.drop) out.push({ label: 'DROP', run: () => ops.drop!(uid) });
   return out;

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { itemDef } from '../data/items';
+import { liveTracker } from '../core/quests';
 import { haulValue } from '../core/raidResult';
+import { useProfile } from '../state/profileStore';
 import { useRaid, type FeedEntry } from '../state/raidStore';
 import { useHud } from '../state/hudStore';
 import { AtlasSprite } from './AtlasSprite';
@@ -112,6 +114,24 @@ function QuickHud() {
   );
 }
 
+/** Active contract objectives, live with this raid's progress. */
+function Tracker() {
+  const quests = useProfile((s) => s.quests);
+  const log = useRaid((s) => s.log);
+  const destination = useRaid((s) => s.destination);
+  const lines = liveTracker({ ...useProfile.getState(), quests }, log, destination).slice(0, 4);
+  if (!lines.length) return null;
+  return (
+    <div className="hud-tracker crt-text">
+      {lines.map((l, i) => (
+        <div key={i} className={l.have >= l.need ? 'ok' : ''}>
+          {l.have >= l.need ? '■' : '□'} {l.text} <span className="dim">{l.have}/{l.need}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Feed() {
   const feed = useRaid((s) => s.feed);
   const [now, setNow] = useState(() => Date.now());
@@ -140,6 +160,7 @@ export function Hud() {
   const dead = useHud((s) => s.dead);
   const cleared = useHud((s) => s.cleared);
   const weight = useHud((s) => s.weight);
+  const exfil = useHud((s) => s.exfil);
 
   const mode = useRaid((s) => s.mode);
   const seed = useRaid((s) => s.seed);
@@ -160,6 +181,7 @@ export function Hud() {
           <>
             <div>FACILITY #{String(seed).padStart(6, '0')}</div>
             <div className={flashlight ? 'warn' : 'dim'}>FLASHLIGHT {flashlight ? 'ON' : 'OFF'} [F]</div>
+            <Tracker />
           </>
         ) : (
           <>
@@ -177,6 +199,7 @@ export function Hud() {
         </div>
       )}
 
+      {exfil && <div className="hud-exfil crt-text">{exfil}</div>}
       <Feed />
 
       {countdown !== null && !dead && (

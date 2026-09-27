@@ -1,6 +1,8 @@
 import type { CrewId } from '../data/crew';
 import { DESTINATION } from '../data/destinations';
 import { buy, sell } from '../core/economy';
+import { accept, turnIn } from '../core/quests';
+import { install, repair, travelCost } from '../core/upgrades';
 import { audio } from '../engine/audio';
 import { randomSeed } from '../engine/rng';
 import { getProfile, useProfile } from './profileStore';
@@ -45,9 +47,49 @@ export const shipActions = {
     const d = DESTINATION[destination];
     if (!d || !p.destinations.includes(destination)) return { ok: false, error: 'No coordinates for that.' };
     if (p.course?.destination === destination) return { ok: false, error: 'Already there.' };
-    if (p.credits < d.cost) return { ok: false, error: 'Not enough Credits for fuel.' };
-    useProfile.getState().apply({ credits: p.credits - d.cost, course: { destination, seed: randomSeed() } });
+    const cost = travelCost(p, d.cost);
+    if (p.credits < cost) return { ok: false, error: 'Not enough Credits for fuel.' };
+    useProfile.getState().apply({ credits: p.credits - cost, course: { destination, seed: randomSeed() } });
     shipUi.patch({ jumping: true });
+    return { ok: true };
+  },
+
+  acceptQuest(id: string): void {
+    useProfile.getState().apply(accept(getProfile(), id));
+    audio.ui('equip');
+  },
+
+  /** Hand in a finished contract. Returns what the giver says. */
+  turnInQuest(id: string): { ok: true; lines: string[] } | { ok: false; error: string } {
+    const r = turnIn(getProfile(), id);
+    if (!r.ok) {
+      audio.ui('error');
+      return r;
+    }
+    useProfile.getState().apply(r.profile);
+    audio.ui('buy');
+    return { ok: true, lines: r.lines };
+  },
+
+  install(id: string): ActionResult {
+    const r = install(getProfile(), id);
+    if (!r.ok) {
+      audio.ui('error');
+      return r;
+    }
+    useProfile.getState().apply(r.profile);
+    audio.ui('equip');
+    return { ok: true };
+  },
+
+  repair(uid: string): ActionResult {
+    const r = repair(getProfile(), uid);
+    if (!r.ok) {
+      audio.ui('error');
+      return r;
+    }
+    useProfile.getState().apply(r.profile);
+    audio.ui('equip');
     return { ok: true };
   },
 };

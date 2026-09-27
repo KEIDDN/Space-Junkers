@@ -12,6 +12,7 @@ import { WEAPONS } from '../data/weapons';
 import { TEST_RANGE } from '../data/testRange';
 import { addToGrid, createItem, emptyGrid, loadoutCount, loadoutWeight, type Grid } from '../core/inventory';
 import type { Operator } from '../core/profile';
+import { useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
 import { syncHud } from '../state/hudStore';
 import { Enemy } from './ai/Enemy';
@@ -306,6 +307,7 @@ export class Game {
     });
     this.effects.update(dt);
 
+    this.trackRooms(dt);
     const view = this.interactions.update(dt, this.input, p.x, p.y, !p.alive, p.speed > 25, menuOpen);
     if (menuOpen && this.input.wasPressed('KeyE')) raid.closeInventory();
     raid.patch({
@@ -314,6 +316,20 @@ export class Game {
       extractInZone: view.inZone,
       flashlight: p.flashlight,
     });
+  }
+
+  private roomTimer = 0;
+
+  /** Notes special rooms the player walks into (contracts care about vaults). */
+  private trackRooms(dt: number): void {
+    this.roomTimer -= dt;
+    if (this.roomTimer > 0) return;
+    this.roomTimer = 0.3;
+    const tx = Math.floor(this.player.x / 32);
+    const ty = Math.floor(this.player.y / 32);
+    for (const r of this.map.rooms) {
+      if (tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h && r.role !== 'standard') raid.visit(r.role);
+    }
   }
 
   /** Requests queued by the inventory UI (drop, use). */
@@ -369,6 +385,15 @@ export class Game {
     const helmet = lo.helmet ? (lo.helmet.dur ?? 0) / (ITEMS[lo.helmet.id] as ArmorDef).durability : -1;
     const quick = lo.quick.map((id) => (id ? `${id}:${loadoutCount(lo, id)}` : '')).join('|');
     const hostiles = this.enemies.filter((e) => e.alive).length;
+    let exfil = '';
+    const ex = this.map.extraction;
+    if (ex && this.opts.mode === 'facility' && useProfile.getState().upgrades.includes('scanner')) {
+      const dx = (ex.x + ex.w / 2) * 32 - p.x;
+      const dy = (ex.y + ex.h / 2) * 32 - p.y;
+      const arrows = ['→', '↘', '↓', '↙', '←', '↖', '↑', '↗'];
+      const i = ((Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) % 8) + 8) % 8;
+      exfil = `EXFIL ${arrows[i]} ${Math.round(Math.hypot(dx, dy) / 16)} M`;
+    }
     syncHud({
       hp: Math.ceil(p.hp),
       maxHp: p.maxHp,
@@ -390,6 +415,7 @@ export class Game {
       jammed: !!w?.jammed,
       quick,
       weight: Math.round(loadoutWeight(lo)),
+      exfil,
       hostiles,
       dead: !p.alive,
       cleared: hostiles === 0,
@@ -440,7 +466,7 @@ export class Game {
       this.audio.sfx('impactFlesh', x, y);
     }
     if (r.killed) {
-      raid.kill();
+      raid.kill(enemy.def.id, headshot);
       this.overlay.kill(headshot);
       this.effects.bloodPool(enemy.x, enemy.y, true);
       this.effects.bloodHit(x, y, b.dx, b.dy, 14);

@@ -28,6 +28,13 @@ export type RaidCommand =
 
 const commands: RaidCommand[] = [];
 
+/** What happened this raid, for contracts. */
+export interface RaidLog {
+  kills: { enemy: string; headshot: boolean }[];
+  searched: number;
+  visited: string[];
+}
+
 export interface OpenContainer {
   id: string;
   label: string;
@@ -52,6 +59,9 @@ export interface RaidState {
   open: OpenContainer | null;
   inventoryOpen: boolean;
   kills: number;
+  log: RaidLog;
+  /** Contracts that moved forward (set when the raid is settled). */
+  progressed: string[];
   startedAt: number;
   endedAt: number;
   feed: FeedEntry[];
@@ -74,6 +84,8 @@ export const useRaid = create<RaidState>(() => ({
   open: null,
   inventoryOpen: false,
   kills: 0,
+  log: { kills: [], searched: 0, visited: [] },
+  progressed: [],
   startedAt: 0,
   endedAt: 0,
   feed: [],
@@ -102,6 +114,7 @@ export const raid = {
       mode, seed, destination, status: 'active', loadout,
       brought: loadoutItems(loadout).map((i) => i.uid),
       containers: {}, open: null, inventoryOpen: false, kills: 0,
+      log: { kills: [], searched: 0, visited: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
       extractCountdown: null, extractInZone: false, flashlight: true,
     });
@@ -111,8 +124,18 @@ export const raid = {
     useRaid.setState({ status, endedAt: performance.now(), prompt: null, extractCountdown: null, open: null, inventoryOpen: false });
   },
 
-  kill(): void {
-    useRaid.setState((s) => ({ kills: s.kills + 1 }));
+  kill(enemy: string, headshot: boolean): void {
+    useRaid.setState((s) => ({ kills: s.kills + 1, log: { ...s.log, kills: [...s.log.kills, { enemy, headshot }] } }));
+  },
+
+  searched(): void {
+    useRaid.setState((s) => ({ log: { ...s.log, searched: s.log.searched + 1 } }));
+  },
+
+  visit(role: string): void {
+    const s = useRaid.getState();
+    if (s.log.visited.includes(role)) return;
+    useRaid.setState({ log: { ...s.log, visited: [...s.log.visited, role] } });
   },
 
   /** Set only if changed, to avoid needless React renders. */

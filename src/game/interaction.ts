@@ -225,6 +225,7 @@ export class Interactions {
     l.searched = true;
     this.searching = null;
     if (!raid.hasContainer(l.id)) raid.setContainer(l.id, l.roll());
+    if (l.kind === 'container') raid.searched();
     const p = l.pos();
     const n = useRaid.getState().containers[l.id].items.length;
     this.audio.sfx(n ? 'loot' : 'dryfire', p.x, p.y);

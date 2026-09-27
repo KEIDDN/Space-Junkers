@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { audio } from '../engine/audio';
 import { Game } from '../game/Game';
-import { die, extract } from '../core/raidResult';
+import { applyRaid } from '../core/quests';
+import { die, extract, foundItems } from '../core/raidResult';
 import { getProfile, useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
 import { useSettings } from '../state/settingsStore';
@@ -15,7 +16,18 @@ function settleRaid(status: 'extracted' | 'dead'): void {
   if (s.mode !== 'facility') return;
   const p = getProfile();
   if (!p.raid) return; // already settled
-  useProfile.getState().apply(status === 'extracted' ? extract(p, s.loadout, s.brought, s.kills) : die(p, s.kills));
+  const extracted = status === 'extracted';
+  const after = extracted ? extract(p, s.loadout, s.brought, s.kills) : die(p, s.kills);
+  const { profile, progressed } = applyRaid(after, {
+    destination: s.destination,
+    extracted,
+    kills: s.log.kills,
+    searched: s.log.searched,
+    visited: s.log.visited,
+    found: extracted ? foundItems(s.loadout, s.brought) : [],
+  });
+  useProfile.getState().apply(profile);
+  useRaid.setState({ progressed });
 }
 
 function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onResume: () => void; onAbandon: () => void }) {

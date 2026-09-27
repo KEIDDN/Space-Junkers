@@ -3,6 +3,7 @@ import { CREW, TRUST_LEVELS, type CrewId } from '../../data/crew';
 import { RARITY_COLOR, itemDef } from '../../data/items';
 import { VENDORS } from '../../data/vendors';
 import { buyPrice, crewLevel, marketFor, sellOffer, stockKey } from '../../core/economy';
+import { repairCost } from '../../core/upgrades';
 import type { ItemInstance } from '../../core/inventory';
 import { audio } from '../../engine/audio';
 import { getProfile, useProfile } from '../../state/profileStore';
@@ -71,6 +72,7 @@ function VendorPanel({ crew }: { crew: CrewId }) {
         <div className="dim small">BUYS: {buys}</div>
         {crew === 'trader' && <div className="small"><span className="ok">▲ {CATEGORY_NAME[market.hot]}</span> · <span className="bad">▼ {CATEGORY_NAME[market.cold]}</span> today</div>}
       </div>
+      {crew === 'merc' && profile.upgrades.includes('workbench') && <div className="dim small">RIGHT-CLICK WORN ARMOR TO REPAIR IT.</div>}
       {msg && <div className={`vendor-msg ${msg.bad ? 'bad' : 'ok'}`}>{msg.text}</div>}
     </section>
   );
@@ -82,11 +84,17 @@ export function TradeScreen({ crew, onClose }: { crew: CrewId; onClose: () => vo
     shipActions.sell(crew, uid);
   }, [crew]);
   const sellPrice = useCallback((item: ItemInstance) => sellOffer(crew, item, getProfile().day), [crew]);
+  const bench = useProfile((s) => s.upgrades.includes('workbench')) && crew === 'merc';
+  const repair = useCallback((uid: string) => {
+    shipActions.repair(uid);
+  }, []);
   return (
     <ShipInventory
       onClose={onClose}
       sell={sell}
       sellPrice={sellPrice}
+      repair={bench ? repair : undefined}
+      repairPrice={bench ? repairCost : undefined}
       title="SHIP STASH"
       side={<VendorPanel crew={crew} />}
     />

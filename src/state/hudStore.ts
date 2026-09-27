@@ -33,6 +33,9 @@ export interface HudState {
   /** Carried weight, kg (rounded). */
   weight: number;
 
+  /** Signal scanner readout toward the extraction zone ('' without the upgrade). */
+  exfil: string;
+
   hostiles: number;
   dead: boolean;
   cleared: boolean;
@@ -59,6 +62,7 @@ export const useHud = create<HudState>(() => ({
   jammed: false,
   quick: '',
   weight: 0,
+  exfil: '',
   hostiles: 0,
   dead: false,
   cleared: false,

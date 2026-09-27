@@ -49,6 +49,8 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
   const hostRef = useRef<HTMLDivElement>(null);
   const operator = useProfile((s) => s.operator);
   const panel = useShip((s) => s.panel);
+  const upgrades = useProfile((s) => s.upgrades.join());
+  const lastPos = useRef<{ x: number; y: number } | undefined>(undefined);
 
   useEffect(() => {
     // TAB opens the stash here; never let it move browser focus.
@@ -58,11 +60,16 @@ export function ShipView({ onDeploy, onQuit }: { onDeploy: (destination: string,
   }, []);
 
   useEffect(() => {
-    shipUi.patch({ panel: null, prompt: null, jumping: false });
-    const scene = new ShipScene(operator);
+    const rebuild = !!lastPos.current;
+    if (!rebuild) shipUi.patch({ panel: null, prompt: null, jumping: false });
+    // Installed ship work changes the ship: rebuild it around the operator.
+    const scene = new ShipScene(operator, lastPos.current);
     void scene.init(hostRef.current!).catch((err) => console.error('Ship init failed', err));
-    return () => scene.destroy();
-  }, [operator]);
+    return () => {
+      lastPos.current = scene.position;
+      scene.destroy();
+    };
+  }, [operator, upgrades]);
 
   return (
     <div className="screen game-screen" onPointerDown={() => audio.unlock()}>

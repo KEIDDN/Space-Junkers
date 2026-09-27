@@ -33,6 +33,9 @@ export interface InventoryOps {
   sellPrice?(item: ItemInstance): number | null;
   /** Ship: show a stored backpack's contents. */
   openBag?(uid: string): void;
+  /** Ship (Molot, with the bench): what fixing an item costs, and doing it. */
+  repairPrice?(item: ItemInstance): number | null;
+  repair?(uid: string): void;
 }
 
 export const InventoryContext = createContext<InventoryOps | null>(null);

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DESTINATIONS, DESTINATION } from '../../data/destinations';
+import { travelCost } from '../../core/upgrades';
 import { audio } from '../../engine/audio';
 import { useProfile } from '../../state/profileStore';
 import { shipActions } from '../../state/shipActions';
@@ -19,11 +20,13 @@ export function NavPanel() {
   const unlocked = useProfile((s) => s.destinations);
   const credits = useProfile((s) => s.credits);
   const course = useProfile((s) => s.course);
+  const upgrades = useProfile((s) => s.upgrades);
   const [sel, setSel] = useState(course?.destination ?? 'tikhaya');
   const [error, setError] = useState<string | null>(null);
   const d = DESTINATION[sel];
   const isUnlocked = unlocked.includes(sel);
   const here = course?.destination === sel;
+  const cost = travelCost({ upgrades }, d.cost);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -83,12 +86,12 @@ export function NavPanel() {
                 <div className="tt-row"><span>DANGER</span><Danger n={d.danger} /></div>
                 <div className="tt-row"><span>SALVAGE</span><span>{d.loot}</span></div>
                 <div className="tt-row"><span>HOSTILES</span><span>{d.hostiles}</span></div>
-                <div className="tt-row"><span>FUEL</span><span className={credits < d.cost ? 'bad' : 'warn'}>{d.cost.toLocaleString()} CR</span></div>
+                <div className="tt-row"><span>FUEL</span><span className={credits < cost ? 'bad' : 'warn'}>{cost.toLocaleString()} CR{cost < d.cost ? ' (OVERHAULED)' : ''}</span></div>
                 {here ? (
                   <div className="ok nav-status">IN ORBIT. THE AIRLOCK IS READY.</div>
                 ) : (
-                  <button className="deploy" onClick={jump} disabled={credits < d.cost}>
-                    [ SET COURSE · {d.cost.toLocaleString()} CR ]
+                  <button className="deploy" onClick={jump} disabled={credits < cost}>
+                    [ SET COURSE · {cost.toLocaleString()} CR ]
                   </button>
                 )}
                 {error && <div className="bad small">{error}</div>}

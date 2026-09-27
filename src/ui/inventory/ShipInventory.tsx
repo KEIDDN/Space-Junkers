@@ -14,12 +14,14 @@ interface Props {
   /** Vendor mode: selling hooks and an extra panel on the right. */
   sell?: (uid: string) => void;
   sellPrice?: (item: ItemInstance) => number | null;
+  repair?: (uid: string) => void;
+  repairPrice?: (item: ItemInstance) => number | null;
   side?: ReactNode;
   title?: string;
 }
 
 /** Stash + loadout aboard the ship. Also the base of vendor screens. */
-export function ShipInventory({ onClose, sell, sellPrice, side, title = 'SHIP STASH' }: Props) {
+export function ShipInventory({ onClose, sell, sellPrice, repair, repairPrice, side, title = 'SHIP STASH' }: Props) {
   const loadout = useProfile((s) => s.loadout);
   const stash = useProfile((s) => s.stash);
   const credits = useProfile((s) => s.credits);
@@ -38,8 +40,10 @@ export function ShipInventory({ onClose, sell, sellPrice, side, title = 'SHIP ST
     bindQuick: ship.bindQuick,
     sell,
     sellPrice,
+    repair,
+    repairPrice,
     openBag: (uid) => setBag(uid),
-  }), [loadout, stash, sell, sellPrice]);
+  }), [loadout, stash, sell, sellPrice, repair, repairPrice]);
 
   const needsKit = !ship.hasAnyWeapon();
 

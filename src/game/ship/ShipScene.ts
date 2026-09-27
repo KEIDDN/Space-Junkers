@@ -4,7 +4,9 @@ import { audio } from '../../engine/audio';
 import { Camera } from '../../engine/camera';
 import { MAX_DT, TILE, VIEW_H, VIEW_W } from '../../engine/config';
 import { Input } from '../../engine/input';
-import { CREW } from '../../data/crew';
+import { CREW, type CrewId } from '../../data/crew';
+import { questsFor } from '../../core/quests';
+import { useProfile } from '../../state/profileStore';
 import { buildShip, type ShipInteractable, type ShipLayout } from '../../data/shipLayout';
 import { shipUi, useShip } from '../../state/shipStore';
 import { ActorView } from '../entities/ActorView';
@@ -33,9 +35,13 @@ export class ShipScene {
   private layout!: ShipLayout;
   private doors!: Doors;
   private world = new Container();
+  private glowWorld = new Container();
   private glow = new Container();
   private actors = new Container();
   private stars = new Graphics();
+  private markers = new Graphics();
+  private markerTimer = 0;
+  private markerState = new Map<CrewId, 'new' | 'ready' | null>();
   private player!: ActorView;
   private crew: CrewActor[] = [];
   private bobbers: { s: Sprite; y: number; t: number }[] = [];
@@ -47,7 +53,12 @@ export class ShipScene {
   private starField: { x: number; y: number; b: number; tw: number }[] = [];
   private jumpT = -1;
 
-  constructor(private operator: 'm' | 'f') {}
+  /** @param start where the operator stands (keeps position when the ship is rebuilt). */
+  constructor(private operator: 'm' | 'f', private start?: { x: number; y: number }) {}
+
+  get position(): { x: number; y: number } {
+    return { x: this.px, y: this.py };
+  }
 
   async init(host: HTMLElement): Promise<void> {
     await this.app.init({
@@ -106,7 +117,7 @@ export class ShipScene {
   }
 
   private build(): void {
-    const L = buildShip();
+    const L = buildShip(useProfile.getState().upgrades);
     this.layout = L;
     const map = L.map;
     this.camera = new Camera(map.pixelWidth, map.pixelHeight);
@@ -165,14 +176,15 @@ export class ShipScene {
     this.player = new ActorView({ walk: anim(`op_${this.operator}_walk_unarmed`), death: anim(`op_${this.operator}_death`) });
     this.player.setWeapon(null);
     this.actors.addChild(this.player.container);
-    this.px = L.spawn.x;
-    this.py = L.spawn.y;
+    this.px = this.start?.x ?? L.spawn.x;
+    this.py = this.start?.y ?? L.spawn.y;
 
     this.lighting = new Lighting(this.app.renderer, map);
     this.lighting.flashlightOn = false;
 
     this.world.addChild(ground, floorProps, this.doors.container, wallProps, this.actors);
-    this.app.stage.addChild(this.stars, this.world, this.lighting.overlay, this.glow);
+    this.glowWorld.addChild(this.markers);
+    this.app.stage.addChild(this.stars, this.world, this.lighting.overlay, this.glowWorld, this.glow);
     this.camera.snapTo(this.px, this.py);
   }
 
@@ -257,6 +269,8 @@ export class ShipScene {
     // --- Render
     this.camera.update(dt, this.px, this.py - 16, this.input.mouseX, this.input.mouseY);
     this.world.position.set(-this.camera.left, -this.camera.top);
+    this.glowWorld.position.set(-this.camera.left, -this.camera.top);
+    this.updateMarkers(dt);
     audio.setListener(this.px, this.py);
     const dr = Math.hypot(this.px - this.layout.reactor.x, this.py - this.layout.reactor.y);
     audio.setAmbienceIntensity(Math.max(0, 1 - dr / 260));
@@ -266,6 +280,41 @@ export class ShipScene {
   };
 
   private lastFacing = 0;
+
+  /** "!" over crew with new contracts, "?" when you can hand one in. Emissive, above the dark. */
+  private updateMarkers(dt: number): void {
+    this.markerTimer -= dt;
+    if (this.markerTimer <= 0) {
+      this.markerTimer = 0.5;
+      const p = useProfile.getState();
+      for (const c of this.layout.crew) {
+        const qs = questsFor(p, c.crew);
+        this.markerState.set(c.crew, qs.some((q) => q.status === 'ready') ? 'ready' : qs.some((q) => q.status === 'available') ? 'new' : null);
+      }
+    }
+    const g = this.markers;
+    g.clear();
+    const talking = useShip.getState().panel?.kind === 'crew';
+    if (talking) return;
+    const bob = Math.round(Math.sin(this.time * 3) * 1.5);
+    for (const c of this.layout.crew) {
+      const m = this.markerState.get(c.crew);
+      if (!m) continue;
+      const x = Math.round(c.x);
+      const y = Math.round(c.y) - 52 + bob;
+      const col = m === 'ready' ? 0x8fd18a : 0xf2a33a;
+      if (m === 'new') {
+        g.rect(x - 2, y - 1, 5, 9).fill({ color: 0x000000 });
+        g.rect(x - 2, y + 9, 5, 4).fill({ color: 0x000000 });
+        g.rect(x - 1, y, 3, 7).fill({ color: col });
+        g.rect(x - 1, y + 10, 3, 2).fill({ color: col });
+      } else {
+        // A small check mark.
+        g.rect(x - 5, y + 2, 11, 9).fill({ color: 0x000000 });
+        for (const [dx, dy] of [[-4, 5], [-3, 6], [-2, 7], [-1, 6], [0, 5], [1, 4], [2, 3], [3, 2]]) g.rect(x + dx, y + dy + 1, 2, 2).fill({ color: col });
+      }
+    }
+  }
 
   private nearest(): ShipInteractable | null {
     let best: ShipInteractable | null = null;

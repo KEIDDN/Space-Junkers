@@ -65,7 +65,8 @@ export interface ShipLayout {
 const px = (t: number) => t * TILE;
 const cx = (t: number) => t * TILE + TILE / 2;
 
-export function buildShip(): ShipLayout {
+/** @param upgrades installed ship work: the ship looks different as it improves. */
+export function buildShip(upgrades: readonly string[] = []): ShipLayout {
   const map = new TileMap(SHIP_W, SHIP_H);
   map.ambient = 0.4;
 
@@ -200,6 +201,35 @@ export function buildShip(): ShipLayout {
     { sprite: 'ship_robot', x: cx(33), y: px(26) - 4 },
   ];
 
+  // --- Ship work shows.
+  const has = (u: string) => upgrades.includes(u);
+  if (has('stash1')) {
+    props.push(
+      { sprite: 'ship_locker', x: cx(25), y: px(17) + 4, solid: [[25, 16]] },
+      { sprite: 'ship_cabinet_s', x: cx(25), y: px(18) + 4, solid: [[25, 17]] },
+    );
+  }
+  if (has('stash2')) {
+    props.push(
+      { sprite: 'ship_crate_w', x: cx(22), y: px(22) + 2, solid: [[22, 21]] },
+      { sprite: 'ship_crate_o', x: cx(23), y: px(22) + 2, solid: [[23, 21]] },
+      { sprite: 'ship_shelf', x: cx(21) + 8, y: px(15) - 6, wall: true },
+    );
+  }
+  if (has('workbench')) {
+    props.push({ sprite: 'ship_toolbox', x: cx(31), y: px(20) - 4 }, { sprite: 'ship_machine', x: px(29), y: px(20) - 2, solid: [[29, 19]] });
+  }
+  if (has('scanner')) {
+    props.push({ sprite: 'ship_radar', x: px(10), y: px(13) + 2, solid: [[9, 12], [10, 12]] });
+  }
+  if (has('lounge')) {
+    props.push(
+      { sprite: 'ship_rug', x: px(24), y: px(13) + 8, floor: true },
+      { sprite: 'ship_armchair', x: cx(25), y: px(13) - 2, solid: [[25, 12]] },
+      { sprite: 'ship_chair3', x: cx(22), y: px(13) - 4 },
+    );
+  }
+
   for (const p of props) for (const [x, y] of p.solid ?? []) map.set(x, y, Tile.Prop);
 
   const L = (x: number, y: number, color: number, radius: number, intensity: number, flicker = false): LightDef =>
@@ -216,8 +246,11 @@ export function buildShip(): ShipLayout {
     L(px(9), px(21) + 6, 0xffb070, 190, 0.55, true), // quarters: a tired bulb
     L(px(30), px(8) + 6, 0xc83a2a, 170, 0.6), // nook
     L(px(31), px(15) + 6, 0xffc07a, 210, 0.72), // armory
-    L(px(31), px(23), 0xff8a2a, 200, 0.85, true), // reactor glow
+    // The reactor glows orange and sputters until it's overhauled.
+    has('reactor') ? L(px(31), px(23), 0x6ad8ff, 210, 0.85) : L(px(31), px(23), 0xff8a2a, 200, 0.85, true),
   );
+  if (has('scanner')) map.lights.push(L(px(10), px(12), 0x7dffb0, 120, 0.5));
+  if (has('workbench')) map.lights.push(L(px(33), px(16), 0xfff0d0, 120, 0.6));
 
   const crew: CrewStation[] = [
     { crew: 'trader', x: px(16) + 6, y: px(19) - 2, anim: 'sit' },
