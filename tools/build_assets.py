@@ -247,6 +247,10 @@ DECO_ITEMS = {
     "deco_rations": ("rations", 0.32), "deco_oxygen": ("oxygen", 0.34), "deco_multitool": ("multitool", 0.3),
     "deco_ore": ("iron_ore", 0.4), "deco_crystal": ("cryo", 0.4), "deco_quartz": ("frost_quartz", 0.4),
     "deco_bone": ("bone", 0.34), "deco_rustcap": ("rustcap", 0.36), "deco_coin": ("coinroll", 0.34),
+    # What people leave where they work: paperwork, drives, dressings, spent ammo tins, parts.
+    "deco_orders": ("orders", 0.3), "deco_datachip": ("datachip", 0.26), "deco_hdd": ("hdd", 0.26),
+    "deco_bandage": ("bandage", 0.28), "deco_pills": ("pills", 0.3), "deco_ammo": ("ammo_545", 0.3),
+    "deco_cable": ("cable", 0.34), "deco_gear": ("gear", 0.3), "deco_battery": ("battery", 0.28),
 }
 
 

@@ -200,7 +200,8 @@ function FirstRaidHint() {
 
 /** Every raid: a one-line reminder of where the map and the controls are, fading out. */
 function EntryHint() {
-  const [show, setShow] = useState(true);
+  const first = useProfile((s) => s.stats.raids <= 1 && s.stats.extractions + s.stats.deaths === 0);
+  const [show, setShow] = useState(!first);
   useEffect(() => {
     const id = window.setTimeout(() => setShow(false), 7000);
     return () => window.clearTimeout(id);

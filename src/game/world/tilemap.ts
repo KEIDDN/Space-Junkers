@@ -77,6 +77,11 @@ export interface LightDef {
   fixture?: boolean;
   /** 'pulse': a slow emergency throb instead of a steady or stuttering tube. */
   style?: 'pulse';
+  /**
+   * Bounce light filling a room (world px rect): soft, shadowless, feathered at the
+   * edges, and it stays in the room instead of casting hard shadows through doorways.
+   */
+  area?: { x: number; y: number; w: number; h: number };
 }
 
 export interface ContainerPlacement {

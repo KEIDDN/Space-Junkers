@@ -2,7 +2,7 @@ import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { tex } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import { Tile, type TileMap } from '../world/tilemap';
-import { ROOM_SIGNS, SIGN_STYLES, signTexture } from './signs';
+import { ROOM_NOTICES, ROOM_SIGNS, SIGN_STYLES, signTexture } from './signs';
 
 /** Weighted floor plates (each covers 2×2 tiles): mostly plain deck, some plates and grates. */
 export type FloorStyle = [string, number][];
@@ -129,36 +129,47 @@ export function buildMapView(
   }
   wallDecor.addChild(lamps);
 
-  // A stencilled plate on each room's back wall, clear of lamps and posters.
+  // A stencilled plate on each room's back wall, clear of lamps and posters; and in most
+  // rooms a second one on the far side, about what went on there.
   for (const r of map.rooms) {
-    const sign = r.kind ? ROOM_SIGNS[r.kind] : undefined;
-    if (!sign) continue;
-    const t = signTexture(sign.ru, sign.en, SIGN_STYLES[sign.style]);
-    const half = t.width / 2;
-    const busy = [
-      ...map.lights.filter((l) => l.fixture && Math.floor(l.y / TILE) === r.y).map((l) => ({ x: l.x, w: 12 })),
-      ...map.props.filter((p) => p.layer === 'wall' && Math.abs(p.y - r.y * TILE) < 16).map((p) => ({ x: p.x, w: 16 })),
-      // Tall things standing against the back wall would hide a plate.
-      ...map.props.filter((p) => p.layer !== 'floor' && p.y - r.y * TILE > 0 && p.y - r.y * TILE < 44)
-        .map((p) => ({ x: p.x, w: tex(p.sprite).width / 2 + 2 })),
-      ...wallThings.filter((p) => p.y - r.y * TILE > -24 && p.y - r.y * TILE < 64).map((p) => ({ x: p.x, w: p.w / 2 + 2 })),
+    const placed: { x: number; w: number }[] = [];
+    const plates = [
+      { sign: r.kind ? ROOM_SIGNS[r.kind] : undefined, at: 0.3 },
+      { sign: r.kind && hash(r.x, r.y) % 4 !== 0 ? ROOM_NOTICES[r.kind] : undefined, at: 0.74 },
     ];
-    const faceAt = (x: number) => {
-      const tx = Math.floor(x / TILE);
-      return map.get(tx, r.y - 1) === Tile.Wall && isOpen(map.get(tx, r.y));
-    };
-    const fits = (cx: number) => faceAt(cx - half) && faceAt(cx + half)
-      && busy.every((b) => Math.abs(b.x - cx) > half + b.w);
-    // Prefer the left third of the wall, like a plate by the door; else anywhere it fits.
-    const xs: number[] = [];
-    for (let x = r.x * TILE + half + 6; x <= (r.x + r.w) * TILE - half - 6; x += 4) xs.push(x);
-    xs.sort((a, b) => Math.abs(a - (r.x + r.w * 0.3) * TILE) - Math.abs(b - (r.x + r.w * 0.3) * TILE));
-    const cx = xs.find(fits);
-    if (cx === undefined) continue;
-    const s = new Sprite(t);
-    s.anchor.set(0.5, 0);
-    s.position.set(Math.round(cx), r.y * TILE - 27);
-    wallDecor.addChild(s);
+    for (const { sign, at } of plates) {
+      if (!sign) continue;
+      const t = signTexture(sign.ru, sign.en, SIGN_STYLES[sign.style]);
+      const half = t.width / 2;
+      const busy = [
+        ...placed,
+        ...map.lights.filter((l) => l.fixture && Math.floor(l.y / TILE) === r.y).map((l) => ({ x: l.x, w: 12 })),
+        ...map.props.filter((p) => p.layer === 'wall' && Math.abs(p.y - r.y * TILE) < 16).map((p) => ({ x: p.x, w: 16 })),
+        // Tall things standing against the back wall would hide a plate.
+        ...map.props.filter((p) => p.layer !== 'floor' && p.y - r.y * TILE > 0 && p.y - r.y * TILE < 44)
+          .map((p) => ({ x: p.x, w: tex(p.sprite).width / 2 + 2 })),
+        ...wallThings.filter((p) => p.y - r.y * TILE > -24 && p.y - r.y * TILE < 64).map((p) => ({ x: p.x, w: p.w / 2 + 2 })),
+        // Lockers and cabinets against the back wall are drawn apart from the props.
+        ...map.containers.filter((c) => c.ty === r.y).map((c) => ({ x: c.tx * TILE + TILE / 2, w: TILE / 2 + 4 })),
+      ];
+      const faceAt = (x: number) => {
+        const tx = Math.floor(x / TILE);
+        return map.get(tx, r.y - 1) === Tile.Wall && isOpen(map.get(tx, r.y));
+      };
+      const fits = (cx: number) => faceAt(cx - half) && faceAt(cx + half)
+        && busy.every((b) => Math.abs(b.x - cx) > half + b.w);
+      // The name by the door (left third); the notice toward the far end.
+      const xs: number[] = [];
+      for (let x = r.x * TILE + half + 6; x <= (r.x + r.w) * TILE - half - 6; x += 4) xs.push(x);
+      xs.sort((a, b) => Math.abs(a - (r.x + r.w * at) * TILE) - Math.abs(b - (r.x + r.w * at) * TILE));
+      const cx = xs.find(fits);
+      if (cx === undefined) continue;
+      const s = new Sprite(t);
+      s.anchor.set(0.5, 0);
+      s.position.set(Math.round(cx), r.y * TILE - 27);
+      wallDecor.addChild(s);
+      placed.push({ x: cx, w: half + 4 });
+    }
   }
 
   const props: Sprite[] = [];
