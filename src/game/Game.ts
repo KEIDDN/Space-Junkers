@@ -1,4 +1,4 @@
-import { Application, ColorMatrixFilter, Container, Graphics, type Ticker } from 'pixi.js';
+import { Application, Container, Graphics, type Ticker } from 'pixi.js';
 import { loadAssets } from '../engine/assets';
 import { audio, type ROOMS } from '../engine/audio';
 import { Camera } from '../engine/camera';
@@ -96,9 +96,6 @@ export class Game {
   private targets: Hittable[] = [];
   private hitstopTime = 0;
   private deadTime = 0;
-  /** 0..1 how far the death fade has gone (colour drains out). */
-  private dying = 0;
-  private dyingFilter: ColorMatrixFilter | null = null;
   private ending: { kind: 'extracted' | 'mia'; t: number } | null = null;
   private ended = false;
   private theme: Theme = themeFor(undefined);
@@ -237,8 +234,6 @@ export class Game {
     this.grenades?.clear();
     this.hitstopTime = 0;
     this.deadTime = 0;
-    this.dying = 0;
-    this.dyingFilter = null;
     this.ending = null;
     this.ended = false;
 
@@ -364,6 +359,9 @@ export class Game {
     if (this.ending || this.ended) return;
     this.ending = { kind, t: 0 };
     this.player.untouchable = true;
+    // Bank the result now: closing the tab during the last beat must not turn a clean
+    // extraction into an M.I.A. (settling twice is a no-op).
+    if (kind === 'extracted') this.opts.onEnd?.('extracted');
     raid.patch({ ending: kind, prompt: null, extractCountdown: null });
     raid.closeOverlay();
     if (kind === 'extracted') this.lighting?.flash(this.player.x, this.player.y, 320, 0xd8ffe0, 1.4, 0.4);
@@ -380,17 +378,15 @@ export class Game {
 
     if (!this.player.alive) {
       if (this.deadTime === 0) {
-        // Hearing goes first; the world slows and loses its colour.
+        // Hearing goes first; the world slows (and the overlay drains its colour).
         this.audio.setMuffled(true);
         if (this.opts.mode === 'facility') raid.patch({ ending: 'dead' });
       }
       this.deadTime += dt;
-      this.dying = Math.min(1, this.deadTime / 1.2);
       dt *= 0.35 + 0.65 * Math.min(1, this.deadTime / 2);
       if (this.opts.mode === 'range' && this.input.wasPressed('KeyR')) {
         raid.start('range', 0, 'range', useRaid.getState().loadout);
         this.audio.setMuffled(false);
-        this.dying = 0;
         this.startRun();
         this.input.endFrame();
         return;
@@ -403,10 +399,9 @@ export class Game {
       if (this.ending.kind === 'extracted' && this.ending.t > 0.3) this.player.view.container.visible = false;
       if (this.ending.t > (this.ending.kind === 'extracted' ? 1.6 : 2.4)) this.endRun(this.ending.kind === 'extracted' ? 'extracted' : 'dead', this.ending.kind === 'mia');
     }
-    this.applyDying();
 
-    if (this.input.wasPressed('Tab') && this.player.alive) raid.toggleInventory();
-    if (this.input.wasPressed('KeyM') && this.player.alive && this.opts.mode === 'facility') {
+    if (this.input.wasPressed('Tab') && this.player.alive && !this.ending) raid.toggleInventory();
+    if (this.input.wasPressed('KeyM') && this.player.alive && !this.ending && this.opts.mode === 'facility') {
       raid.toggleMap();
       this.audio.ui(useRaid.getState().mapOpen ? 'open' : 'close');
     }
@@ -432,7 +427,8 @@ export class Game {
         closedTerminal = true;
       }
     }
-    const menuOpen = raid.overlayOpen() || closedTerminal;
+    // During the last beat of a raid the hands are off the controls.
+    const menuOpen = raid.overlayOpen() || closedTerminal || !!this.ending;
     this.runCommands();
 
     const aim = this.camera.toWorld(this.input.mouseX, this.input.mouseY);
@@ -508,34 +504,6 @@ export class Game {
     const onScreen = x > this.camera.left && x < this.camera.left + VIEW_W && y > this.camera.top && y < this.camera.top + VIEW_H;
     if (onScreen && hasLineOfSight(this.map, p.x, p.y - 8, x, y - 8)) return;
     this.overlay.soundCue(Math.atan2(y - p.y, x - p.x), radius > 500);
-  }
-
-  /** Drain the colour out of the world as the operator dies. */
-  private applyDying(): void {
-    if (this.dying <= 0) {
-      if (this.dyingFilter) {
-        this.worldLit.filters = [];
-        this.dyingFilter = null;
-      }
-      return;
-    }
-    if (!this.dyingFilter) {
-      this.dyingFilter = new ColorMatrixFilter();
-      this.worldLit.filters = [this.dyingFilter];
-    }
-    const k = this.dying;
-    // Blend identity toward a dim, slightly red greyscale.
-    const g = (r: number, gg: number, b: number) => [r, gg, b];
-    const lum = g(0.3, 0.59, 0.11);
-    const m: number[] = [];
-    const rows: [number, number[]][] = [[1.05, [1, 0, 0]], [0.8, [0, 1, 0]], [0.8, [0, 0, 1]]];
-    for (let i = 0; i < 3; i++) {
-      const [tint, id] = rows[i];
-      for (let j = 0; j < 3; j++) m.push(id[j] * (1 - k) + lum[j] * tint * k * (1 - k * 0.35));
-      m.push(0, 0);
-    }
-    m.push(0, 0, 0, 1, 0);
-    this.dyingFilter.matrix = m as unknown as ColorMatrixFilter['matrix'];
   }
 
   /** Machinery near the player hums in the right ear, quieter through walls. */

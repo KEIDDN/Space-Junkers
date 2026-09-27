@@ -724,3 +724,6 @@ button { font-family: var(--mono); }
 }
 .toggle.on { color: var(--ok); border-color: rgba(143, 209, 138, 0.5); }
 .toggle:hover { border-color: var(--edge-hi); }
+/* Dying: the colour drains out of the world behind the red. */
+.raid-ending.dead { animation: ending-dead 2.4s ease-in forwards, drain 1.2s ease-out forwards; }
+@keyframes drain { from { backdrop-filter: grayscale(0) brightness(1); } to { backdrop-filter: grayscale(0.9) brightness(0.75); } }
