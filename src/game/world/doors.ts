@@ -23,6 +23,8 @@ interface DoorState {
 }
 
 const LOCKED_TINT = 0xd0584a;
+/** A jammed shutter: rust, not the red of a security door. */
+const JAMMED_TINT = 0xa07a52;
 
 export interface DoorUser {
   x: number;
@@ -63,7 +65,7 @@ export class Doors {
       const cy = ((a.ty + b.ty) / 2 + 0.5) * TILE;
       let lamp: Graphics | null = null;
       if (def.locked) {
-        la.tint = lb.tint = LOCKED_TINT;
+        la.tint = lb.tint = def.jammed ? JAMMED_TINT : LOCKED_TINT;
         lamp = new Graphics();
         lamp.position.set(def.vertical ? cx : cx + TILE + 4, def.vertical ? cy - TILE - 8 : cy - 22);
         this.container.addChild(lamp);
@@ -73,7 +75,7 @@ export class Doors {
     }
   }
 
-  /** Swipe a keycard: the security door works like any other from now on. */
+  /** Swipe a keycard (or force a shutter, or a seal fails): the door works like any other from now on. */
   unlock(def: DoorDef): void {
     const d = this.doors.find((q) => q.def === def);
     if (!d || !def.locked) return;
@@ -85,7 +87,7 @@ export class Doors {
 
   private drawLamp(d: DoorState): void {
     if (!d.lamp) return;
-    const c = d.def.locked ? 0xff3a2a : 0x7dff9a;
+    const c = !d.def.locked ? 0x7dff9a : d.def.jammed ? 0xffa030 : 0xff3a2a;
     d.lamp.clear().rect(-3, -2, 6, 4).fill({ color: 0x14110e }).rect(-2, -1, 4, 2).fill({ color: c });
   }
 

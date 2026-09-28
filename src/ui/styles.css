@@ -304,6 +304,7 @@ button { font-family: var(--mono); }
 .results-meaning { color: #c9b98a; font-style: italic; }
 .results-death { border-left: 2px solid var(--bad, #c65a3a); padding: 2px 0 2px 8px; margin: 4px 0; display: flex; flex-direction: column; gap: 3px; }
 .results-lesson { color: #d8cfb4; font-size: 13px; }
+.results-story { color: #c9bf9f; border-left: 2px solid rgba(215,164,95,0.55); padding: 2px 0 2px 8px; margin: 6px 0 2px; display: flex; flex-direction: column; gap: 2px; font-style: italic; }
 .results-panel .deploy { align-self: center; }
 
 /* ===========================================================================

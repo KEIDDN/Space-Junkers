@@ -33,6 +33,7 @@ import { Player, STEADY_SPREAD } from './entities/Player';
 import { PadAim, type AimTarget } from './padAim';
 import { RadioCoach } from './coach';
 import { haulValue } from '../core/raidResult';
+import { WORTH_KEEPING, exitMoments } from '../core/story';
 import { raidPlan } from '../core/quests';
 import { AmbientFx } from './fx/ambient';
 import { Effects } from './fx/effects';
@@ -281,6 +282,7 @@ export class Game {
     this.map = facility
       ? generateFacility(this.opts.seed, {
         danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme, lootBonus: dest?.lootBonus ?? 0, gentle: learning,
+        site: dest?.site,
         // The open contracts decide what's fitted to the walls down here, and who's waiting.
         plan: dest ? raidPlan(useProfile.getState(), dest.id) : undefined,
       })
@@ -292,7 +294,8 @@ export class Game {
     this.alarmSquad = false;
     this.attention = freshAttention();
     this.attentionSaid = 0;
-    this.events = facility ? planEvents(this.opts.seed, this.window, learning) : [];
+    const sealed = this.map.doors.some((d) => d.locked && !d.jammed);
+    this.events = facility ? planEvents(this.opts.seed, this.window, learning, dest?.events, sealed) : [];
     this.farShots = [];
     this.explored = new Uint8Array(this.map.width * this.map.height);
     this.surveyTimer = 0;
@@ -411,7 +414,13 @@ export class Game {
     this.player.untouchable = true;
     // Bank the result now: closing the tab during the last beat must not turn a clean
     // extraction into an M.I.A. (settling twice is a no-op).
-    if (kind === 'extracted') this.opts.onEnd?.('extracted');
+    if (kind === 'extracted') {
+      // How it ended is part of the story: who was still coming, how long was left, how hurt.
+      const p = this.player;
+      const hunted = p.lastHitAgo < 3 || this.enemies.some((e) => e.alive && e.aware && Math.hypot(e.x - p.x, e.y - p.y) < 360);
+      for (const m of exitMoments({ timeLeft: this.window - this.elapsed, hpFrac: p.hp / p.maxHp, hunted })) raid.moment(m);
+      this.opts.onEnd?.('extracted');
+    }
     raid.patch({ ending: kind, prompt: null, extractCountdown: null, death: kind === 'mia' ? this.deathFacts(true) : null });
     raid.closeOverlay();
     this.silenceMusic(kind === 'extracted' ? 1.5 : 4);
@@ -860,13 +869,51 @@ export class Game {
           },
         });
         this.ctx.emitNoise(victim.x, victim.y, 620, 'enemy');
+        raid.moment({ kind: 'gunfire' });
         return;
       }
       case 'blackout':
         this.lighting?.outage(22);
         this.audio.ui('error');
         raid.notice('SHURA: the reserve just dipped. the whole place is dark. it\'ll come back. probably.', 'radio');
+        raid.moment({ kind: 'blackout' });
         return;
+      case 'patrol': {
+        // A crew walks back through rooms the operator has already been through: the part of
+        // the map they'd stopped worrying about. They're heard, not announced; Shura only
+        // says there are boots on the band.
+        const through = this.map.rooms.filter((r) => {
+          if (r.role === 'vault' || r.role === 'start') return false;
+          const cx = Math.floor(r.x + r.w / 2);
+          const cy = Math.floor(r.y + r.h / 2);
+          return this.explored[cy * this.map.width + cx] === 1 && far(cx * 32, cy * 32);
+        });
+        if (!through.length) return;
+        const r = through[Math.floor(Math.random() * through.length)];
+        if (!this.spawnSquad(null, { x: (r.x + r.w / 2) * 32, y: (r.y + r.h / 2) * 32 })) return;
+        this.audio.ui('squelch');
+        raid.notice('SHURA: boots on the band. someone\'s walking back through rooms you already cleared. watch behind you.', 'radio');
+        raid.moment({ kind: 'patrol' });
+        return;
+      }
+      case 'seal': {
+        // The reserve cell behind a sealed door finally dies, and the seal with it: the vault
+        // is open, and everyone near it heard it go. (Nothing, if it was already opened.)
+        const doors = this.map.doors.filter((d) => d.locked && !d.jammed);
+        if (!doors.length || !this.doors) return;
+        for (const d of doors) this.doors.unlock(d);
+        const [a, b] = doors[0].tiles;
+        const x = ((a.tx + b.tx) / 2 + 0.5) * 32;
+        const y = ((a.ty + b.ty) / 2 + 0.5) * 32;
+        this.audio.sfx('breaker', x, y);
+        this.audio.sfx('hiss', x, y);
+        this.lighting?.sag(x, y, 260);
+        this.ctx.emitNoise(x, y, 560, 'enemy');
+        this.audio.ui('squelch');
+        raid.notice('SHURA: a seal just let go somewhere deep. its reserve cell died. whatever it was keeping shut, isn\'t.', 'radio');
+        raid.moment({ kind: 'seal' });
+        return;
+      }
       case 'alarm': {
         // An alarm trips somewhere deep and stops: everyone near it goes to look.
         const rooms = this.map.rooms.filter((r) => r.role !== 'vault' && far((r.x + r.w / 2) * 32, (r.y + r.h / 2) * 32));
@@ -877,11 +924,13 @@ export class Game {
         this.audio.sfx('alarm', x, y);
         this.ctx.emitNoise(x, y, 720, 'enemy');
         raid.notice('Somewhere deep in the station an alarm starts, and stops.', 'warn');
+        raid.moment({ kind: 'alarm' });
         return;
       }
       case 'nine':
         this.audio.nineNow();
         raid.notice('CHANNEL NINE: static. five tones. static.', 'radio');
+        raid.moment({ kind: 'nine' });
         return;
     }
   }
@@ -950,7 +999,7 @@ export class Game {
       height: map.height,
       tiles: map.tiles,
       explored: this.explored,
-      doors: map.doors.map((d) => ({ tiles: d.tiles, locked: !!d.locked })),
+      doors: map.doors.map((d) => ({ tiles: d.tiles, locked: !!d.locked, jammed: !!d.locked && !!d.jammed })),
       exits: map.exits.map((e) => ({
         kind: e.kind, x: e.x, y: e.y, w: e.w, h: e.h,
         powered: this.interactions.isPowered(e),
@@ -995,6 +1044,9 @@ export class Game {
         if (r.rest) g = addToGrid({ ...g, h: g.h + 4 }, r.rest).grid;
         raid.setContainer(id, g);
         this.audio.sfx('drop', this.player.x, this.player.y);
+        // Leaving something good on the floor to make room is a decision worth remembering.
+        const worth = itemValueDeep(c.item);
+        if (c.chosen && worth >= WORTH_KEEPING && this.opts.mode === 'facility') raid.moment({ kind: 'leftBehind', n: worth });
       }
     }
   }

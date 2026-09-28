@@ -12,6 +12,7 @@ import { issueReserve } from '../core/reserve';
 import { LORE_BY_ID } from '../data/lore';
 import { AtlasSprite } from './AtlasSprite';
 import { deathCause, deathLesson, haulMeaning } from '../core/debrief';
+import { raidStory } from '../core/story';
 import { DESTINATION } from '../data/destinations';
 import { travelCost } from '../core/upgrades';
 import { Key } from './Glyph';
@@ -44,7 +45,8 @@ function useCountUp(target: number, delayMs: number, durationMs = 900): number {
  * wonder "did I lose that?") what was kept either way.
  */
 export function Results({ onContinue }: { onContinue: () => void }) {
-  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed, mia, destination, lore, death } = useRaid();
+  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed, mia, destination, lore, death, log } = useRaid();
+  const story = raidStory(log.moments);
   const profile = useProfile();
   const extracted = status === 'extracted';
   const secs = Math.max(0, Math.round((endedAt - startedAt) / 1000));
@@ -83,6 +85,11 @@ export function Results({ onContinue }: { onContinue: () => void }) {
           <div className="results-death">
             <div className="bad small">{deathCause(death)}</div>
             <div className="results-lesson">MOLOT: “{deathLesson(death)}”</div>
+          </div>
+        )}
+        {story.length > 0 && (
+          <div className="results-story small">
+            {story.map((line) => <div key={line}>— {line}</div>)}
           </div>
         )}
         <div className="results-sub">{extracted ? 'RECOVERED FROM THE FACILITY' : mia ? 'LOST WITH YOU' : 'LEFT ON YOUR BODY'}</div>
