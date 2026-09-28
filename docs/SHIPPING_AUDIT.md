@@ -526,3 +526,72 @@ These were the open points after the polish pass; the master pass above closed t
   character pass.)
 - **Performance hardware.** Measured in a headless browser with software GL. A pass on
   target hardware should confirm 60 FPS with the GPU doing real work.
+
+## World, narrative, combat and extraction depth pass
+
+The game worked; this pass was about making it make sense. The audit before any change found:
+
+- **Works well (kept):** gunplay core, perception AI (sight, sound, shouts, flanking, cover,
+  search), lighting as gameplay, deterministic generator, radio coach, lore threads, inventory.
+- **Contradictions:** Fedya's "Parts for the Old Girl" asked for scrap and pipe that Fedya sells;
+  "A Small Garden" wanted a power cell Shura sells; the prologue said the ship needed pump parts
+  but the first contract only said "extract once"; Molot rewarded a helmet he also sold; the
+  timeline drifted ("scrubbed in 2291", "every day for eleven years" vs "forty years ago", a lab
+  clock at 03:14 vs the 00:00:00.000 of every other record); a "tsarina's crown" leaned on real
+  history.
+- **Missing:** site-specific objectives; any reason noise mattered after the fight; any zone
+  structure beyond depth-scaled loot; any explanation of a death.
+
+### What changed
+
+| Area | Change |
+|---|---|
+| World | `docs/LORE_BIBLE.md`: premise, timeline (the Blackout, the Wait, the Leaving, the Salvage), how the economy works, why facilities aren't stripped (reserve cells hold the seals; when they fail, doors open: a fresh signal), why the crew are together, tone, dialogue classes. Drift fixed. |
+| Contracts | 23 contracts, none asking for anything sold aboard (tested). New objective kinds: `retrieve` (a part fitted to a wall, placed by the generator while the contract is open), `task` (a job done at a site), `haul` (one heavy run), `read` (records). A named hostile (Gvozd) holds a deep room with posted guards while his contract is open. Every contract has a plain `intel` line on its card and the job sheet. Contract goods are never rolled, never sold, and go to whoever asked. Old saves' progress is repaired to fit. |
+| First raid | Fedya's pump regulator is failing; Zarya-7 ran the same pump; the regulator is on the wall of its pump hall (mid-station), unbolting it is loud, and it counts once it's aboard. The radio talks the operator to it and then says "that's the job; everything after this is greed". |
+| Dialogue | Crew intros, greetings, reactions and topics rewritten shorter and conversational; relationships and disagreements (Fedya/Molot on risk, Doc counting, Shura and Sirin, Lis and value); greetings and chatter that change with what's been done (the pump stops knocking). |
+| Combat | Damage falloff (buckshot past 30% of reach, pistol/SMG past half, rifles none). Shots carry their source. |
+| Noise | Loud things the operator does are remembered ("attention"): the next crew lands up to half a gap sooner and heads toward the last loud place. Shura says so, twice at most. |
+| AI | Everyone returns to their station after searching; posted guards hold their room against shouts, chases and pursuit past a leash; the last one standing, hurt, falls back. |
+| Levels | Zones (entry, working, restricted, deep) with room purposes weighted by zone, darker and better-guarded depths, clearance plates on restricted and deep rooms. |
+| Environment | Three new scenes with notes (an unfinished card game with a chair on its side, a repair left half done, a packed suitcase under an evacuation order); three new original props. Sparse raid events: someone else's firefight, a real brown-out, a distant alarm, channel nine. |
+| Extraction | The report says what the haul means in fuel at a trader's prices, and names the contract goods brought home. A death says who, where, how deep, and the one lesson that fits. The ship log says what the ship is waiting on. |
+
+### Browser playtest (headless Chromium, scripted, this pass)
+
+Driven through the real UI with the dev hooks. Where the harness teleported past a walk or
+put down the hostiles around a pad, that's stated; nothing below was played by hand.
+
+- **Raid A, first ever:** new game → intro → locker scene → Fedya's job on the intercom (all six
+  lines seen) → course to Zarya-7 → airlock → deploy. The regulator was placed in the pump hall;
+  the tracker, job sheet intel and map marker showed; holding E took it (bag + feed); extraction
+  (harness cleared one hostile near the pad) → report named it → ship log switched to "waiting on
+  The Pump" → hand-in dialogue → +900 KR, contract done. One run died on the pad first (harness
+  teleported straight into a guarded deep room); the report correctly said who and where.
+- **Raids C/E/G, greedy, death with loot, contract progress on failure:** Tikhaya with Gvozd, the
+  relay and the heavy run open. Gvozd spawned in a deep workshop with posted guards; the relay was
+  done (counted after death, ship log showed it ready); five valuables in the bag; shooting built
+  attention; death report: "KILLED BY GVOZD'S TOZ-12 PUMP · WORKSHOP (DEEP SECTOR)" and "You had
+  2,890 KR on you and kept going deeper." (The killing blow was applied by the harness: headless
+  software GL runs the simulation at a fraction of real time.)
+- **Raid D, early and modest:** one container, straight out; "Not a jump's worth of fuel. But
+  you're alive, and that's the expensive part."; the heavy-run contract correctly didn't count.
+- **Found and fixed during playtest:** posted guards could leave their room when coming out of
+  cover or a retreat; a bag's row in the report showed its contents' value again; Fedya's first
+  face-to-face line ignored the radio briefing; the map legend lacked the job marker.
+- **Performance:** 0.6 ms of game code per frame (300 ticks averaged) in a Tikhaya facility with
+  12 hostiles, open contracts and a raid event scheduled.
+
+### Not verified
+
+- Real-time feel (recoil, falloff, the emotional curve of a greedy raid): headless software GL
+  runs far below real time, so nothing about feel was judged by playing.
+- Clearance plates were not caught on screen on the seed checked (their placement competes with
+  lamps and furniture for wall space); the code path and letters are tested.
+- 60 FPS on target hardware (unchanged from the previous pass's limit).
+
+### Rejected to avoid scope creep
+
+Faction reputation, weapon mods, crafting, hunger, a relationship system, a campaign layer, new
+destinations, internet asset packs (every new need was met by original ASCII art or existing
+sprites), per-line dialogue metadata beyond a class on topics and chatter, and enemy vocal barks.

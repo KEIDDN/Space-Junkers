@@ -72,6 +72,7 @@ export function TacticalMap({ snapshot, name, timeLeft }: { snapshot: () => Tact
           <span><i style={{ background: C.pad }} /> EXFIL</span>
           <span><i style={{ background: C.lift }} /> LIFT</span>
           <span><i style={{ background: C.locked }} /> SEALED</span>
+          <span><i style={{ background: '#ffa030' }} /> THE JOB</span>
           <span className="grow" />
           <span className="dim"><ByDevice kbm={<>[M] CLOSE</>} pad={<><Key a="back" /> CLOSE</>} /></span>
         </div>

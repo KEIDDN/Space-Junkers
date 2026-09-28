@@ -543,10 +543,7 @@ export class Enemy implements Hittable {
           if (this.weapon.ammo < this.weapon.def.magSize) this.weapon.startReload();
           this.coverHold -= dt;
           if (sees && !this.weapon.reloading && this.coverHold < 0.8) this.setState('combat');
-          else if (this.coverHold <= 0 && !this.weapon.reloading) {
-            this.setState('chase');
-            this.repath(this.lastKnownX, this.lastKnownY);
-          }
+          else if (this.coverHold <= 0 && !this.weapon.reloading) this.pursue();
         }
         break;
       }
@@ -564,10 +561,7 @@ export class Enemy implements Hittable {
         } else if (this.stateTime > 1) {
           // Holding behind cover; if the target shows up, fight.
           if (sees) this.setState('combat');
-          else if (this.stateTime > 4) {
-            this.setState('chase');
-            this.repath(this.lastKnownX, this.lastKnownY);
-          }
+          else if (this.stateTime > 4) this.pursue();
         }
         break;
       }
@@ -786,6 +780,16 @@ export class Enemy implements Hittable {
       this.setState('patrol');
       this.repath(this.route[this.patrolIndex].x, this.route[this.patrolIndex].y);
     } else this.returnToPost();
+  }
+
+  /** Go after the last known position, unless it's past a posted guard's leash. */
+  private pursue(): void {
+    if (this.leashed(this.lastKnownX, this.lastKnownY)) {
+      this.returnToPost();
+      return;
+    }
+    this.setState('chase');
+    this.repath(this.lastKnownX, this.lastKnownY);
   }
 
   /** Walk back to where they were stationed (or just stand, if they're there). */

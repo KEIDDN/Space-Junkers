@@ -72,7 +72,8 @@ export const CREW: Record<CrewId, CrewDef> = {
     sprite: 'trader', portrait: 'portrait_trader', voice: 150, color: '#d7a45f', idleAnim: 'sit',
     blurb: 'Owns the Lastochka, on paper, and owes money on her. Buys anything, sells everything, remembers every kopek.',
     intro: [
-      'So you\'re the new one. Good. The last one owed me money too.',
+      'So. Face to face. You\'re shorter than you sound on the radio.',
+      'The last one owed me money too. Don\'t take it personally.',
       'This is my ship. Fifty years old. Held together with tape and a man on the Belt who wants his loan back.',
       'You go down, you bring things up, I turn things into kosmorubli, and she keeps flying. That\'s the whole arrangement.',
     ],

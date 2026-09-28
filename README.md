@@ -1,9 +1,11 @@
 # Space Junkers
 
-A 2D top-down pixel-art extraction shooter. You're a salvage operator on the *Lastochka*, a
-decommissioned Commonwealth ore tender, picking over the facilities the Commonwealth left
-running when the lights went out. Prepare on the ship, drop into a dark facility, take what
-you can carry, and get out before someone takes it off your body.
+A 2D top-down pixel-art extraction shooter. Forty-one years ago every clock in the Commonwealth
+stopped on the same second and the orders stopped coming. You're the newest member of the
+crew of the *Lastochka*, a fifty-year-old ore tender kept flying by going down into what was
+left behind. Prepare on the ship, drop into a dark facility, do the job, take what you can
+carry, and get out before someone takes it off your body. (The setting, its timeline and why
+the crew are together: `docs/LORE_BIBLE.md`.)
 
 React + TypeScript + Vite + PixiJS + Zustand.
 
@@ -22,8 +24,8 @@ SFX_SRC=/path/to/raw python3 tools/build_sfx.py   # rebuild recorded sounds and 
 
 A new operator starts with the premise typed over black and wakes at their bunk on the
 Lastochka: Molot signs their kit over at the locker, Fedya gives the first job over the
-cockpit radio (service station Zarya-7 on Tikhaya stopped answering), and the airlock
-leads down. The ship log under the ship's name says where to go next; nothing stops you.
+cockpit radio (the coolant pump is dying; service station Zarya-7 on Tikhaya ran the same
+pump; unbolt its regulator and bring it home), and the airlock leads down. The ship log under the ship's name says where to go next; nothing stops you.
 Until their first extraction the crew talk them through Tikhaya on the radio, and its
 scavengers give them a chance to learn.
 
@@ -39,7 +41,9 @@ scavengers give them a chance to learn.
 5. **Extract** on the shuttle pad (12 s, and the alarm brings company) or on the maintenance lift
    (quiet and quick, once you've thrown its breaker somewhere else). The Lastochka can only hold
    orbit so long: miss the window and you're M.I.A.
-6. **Return.** Extract and everything you carry comes home. Die and it stays on your body.
+6. **Return.** Extract and everything you carry comes home, and the report says what it's worth
+   in fuel. Die and it stays on your body; the report says who, where, and the one thing to do
+   differently.
    The crew notice how it went (and what you read down there). Sell, hand in contracts,
    upgrade, go again. Everything you've read is kept in the service record's RECOVERED
    RECORDS, sorted by the threads that run through every world.
@@ -110,6 +114,16 @@ grade), and with a controller connected, aim speed, aim assist and vibration.
 Crew: **Fedya** (trader, captain), **Molot** (mercenary, armour repair), **Doc** (medic),
 **Shura** (hacker, keycards), **Lis** (smuggler). Trust grows with trade and contracts and
 unlocks stock, lines and destinations.
+
+Contracts are the crew's own needs, and none asks for anything a crew member sells: shops
+prepare you, raids do the job. A contract may want a part taken off a particular wall (placed in
+the facility while the contract is open), a job done with your hands at a site, one heavy run,
+records read, or a particular man dealt with. Each says plainly where to look.
+
+Facilities have a grammar: an entry zone, working rooms, a restricted ring (clearance plates,
+fewer lights, better finds, worse company) and deep rooms. Noise has a memory: loud raids bring
+the next crew down sooner, toward where the shooting was. Now and then something happens that
+you didn't cause.
 
 ## Layout
 

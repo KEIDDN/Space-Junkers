@@ -97,7 +97,7 @@ export function Results({ onContinue }: { onContinue: () => void }) {
                 {it.qty > 1 && <span className="dim">×{it.qty}</span>}
                 {!extracted && <span className={`loot-tag ${foundSet.has(it.uid) ? 'found' : ''}`}>{foundSet.has(it.uid) ? 'FOUND' : 'YOUR KIT'}</span>}
                 <span className="grow" />
-                <span>{itemValueDeep(it).toLocaleString()} KR</span>
+                <span>{(it.contents ? d.value : itemValueDeep(it)).toLocaleString()} KR</span>
               </div>
             );
           })}
