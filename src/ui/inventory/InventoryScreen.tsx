@@ -1,11 +1,11 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { itemDef } from '../../data/items';
-import { EQUIP_SLOTS, findInGrid, findSpot, loadoutCount, loadoutValue, loadoutWeight, slotAccepts } from '../../core/inventory';
+import { EQUIP_SLOTS, findInGrid, loadoutCount, loadoutValue, loadoutWeight, slotAccepts } from '../../core/inventory';
 import { getGrid, locate, type GridKey } from '../../core/transfer';
 import { audio } from '../../engine/audio';
 import { raid, useRaid } from '../../state/raidStore';
 import { DragLayer } from './DragLayer';
-import { useDrag } from './dragStore';
+import { resetInventoryUi, useDrag } from './dragStore';
 import { GridView, QuickBar, SlotView } from './GridView';
 import { CELL, InventoryContext, activeInventory, useOps, type InventoryOps } from './ops';
 import { ByDevice, Key } from '../Glyph';
@@ -146,14 +146,7 @@ function useRaidOps(): InventoryOps {
       },
       load: (w, a) => raid.load(w, a),
       unload: (uid) => raid.unload(uid),
-      split: (uid) => {
-        const loc = locate(ws, uid);
-        if (!loc || 'slot' in loc.where || loc.item.qty < 2) return false;
-        const g = getGrid(ws, loc.where.grid)!;
-        const half = Math.floor(loc.item.qty / 2);
-        const spot = findSpot(g, { ...loc.item, qty: half });
-        return spot ? raid.split(uid, half, { grid: loc.where.grid, x: spot.x, y: spot.y }) : false;
-      },
+      split: (uid, qty) => raid.splitAuto(uid, qty),
       bindQuick: (slot, id) => raid.bindQuick(slot, id),
       drop: (uid) => raid.drop(uid),
     };
@@ -182,6 +175,10 @@ export function RaidInventory() {
   const ops = useRaidOps();
   const inventoryOpen = useRaid((s) => s.inventoryOpen);
   useRegisterInventory(inventoryOpen ? ops : null);
+  // Closing the bag (TAB, E, walking off) drops any half-finished split or open menu with it.
+  useEffect(() => {
+    if (!inventoryOpen) resetInventoryUi();
+  }, [inventoryOpen]);
   if (!inventoryOpen) return null;
   return (
     <InventoryContext.Provider value={ops}>

@@ -5,7 +5,7 @@ import { itemDef } from '../../data/items';
 import { locate } from '../../core/transfer';
 import { installDeviceWatch, noteDevice, useDevice } from '../../state/deviceStore';
 import { commitDrop, resolveTarget, validDrop } from '../inventory/drag';
-import { useDrag, type DragInfo } from '../inventory/dragStore';
+import { closeInventoryPopup, useDrag, type DragInfo } from '../inventory/dragStore';
 import { CELL, activeInventory } from '../inventory/ops';
 import { nearestTo, pickNext, readingOrder, type Box, type Dir } from './spatial';
 
@@ -317,7 +317,13 @@ class Navigator {
       this.startCarry(f);
       return;
     }
-    if (f instanceof HTMLInputElement) return;
+    if (f instanceof HTMLInputElement) {
+      // A on a slider submits the dialog it belongs to (the split picker), if it has one.
+      const submit = scope.querySelector<HTMLButtonElement>('[data-nav-submit]');
+      if (submit && visible(submit) && !submit.disabled) submit.click();
+      else if (submit) audio.ui('error');
+      return;
+    }
     f.click();
     // A click can swap the whole view (dialogue pages): re-check next frame.
     if (!f.isConnected) this.validate(scope);
@@ -329,8 +335,7 @@ class Navigator {
       audio.ui('close');
       return;
     }
-    if (useDrag.getState().menu) {
-      useDrag.setState({ menu: null });
+    if (closeInventoryPopup()) {
       audio.ui('close');
       return;
     }

@@ -184,19 +184,63 @@ function spotOf(ws: Workspace, key: GridKey, uid: string): [number, number, bool
   return [p.x, p.y, p.rot];
 }
 
-/** Split `qty` off a stack into a target cell. */
-export function splitStack(ws: Workspace, uid: string, qty: number, to: { grid: GridKey; x: number; y: number }, newUid: string): Workspace | null {
+/**
+ * Split `qty` off a stack into a target cell. Atomic: either both stacks exist afterwards
+ * (source reduced, new stack placed, quantities summing to the original) or nothing changes.
+ */
+export function splitStack(
+  ws: Workspace, uid: string, qty: number, to: { grid: GridKey; x: number; y: number; rot?: boolean }, newUid: string,
+): Workspace | null {
   const src = locate(ws, uid);
-  if (!src || 'slot' in src.where || qty <= 0 || qty >= src.item.qty) return null;
+  if (!src || 'slot' in src.where || !Number.isInteger(qty) || qty <= 0 || qty >= src.item.qty) return null;
   const part: ItemInstance = { ...src.item, uid: newUid, qty };
   const target = getGrid(ws, to.grid);
-  if (!target) return null;
-  const rot = false;
+  if (!target || !gridAccepts(to.grid, part)) return null;
+  const rot = !!to.rot;
   // Placing into the same grid must not overlap the source stack.
   if (!canPlace(target, part, to.x, to.y, rot)) return null;
   let next = setGrid(ws, src.where.grid, replaceItem(getGrid(ws, src.where.grid)!, { ...src.item, qty: src.item.qty - qty }));
   next = setGrid(next, to.grid, place(getGrid(next, to.grid)!, part, to.x, to.y, rot));
   return next;
+}
+
+/** The quantities a stack of `qty` can be split into: taking 1 up to qty - 1 off it. */
+export function splitRange(qty: number): { min: number; max: number } | null {
+  return qty >= 2 ? { min: 1, max: qty - 1 } : null;
+}
+
+/**
+ * Read a typed split amount. Anything that isn't a whole number from 1 to qty - 1 is
+ * refused (null) rather than guessed at.
+ */
+export function parseSplitQty(text: string, qty: number): number | null {
+  const t = text.trim();
+  if (!/^\d+$/.test(t)) return null;
+  const n = Number(t);
+  const r = splitRange(qty);
+  return r && n >= r.min && n <= r.max ? n : null;
+}
+
+/**
+ * Split with no target chosen (the SPLIT action): the new stack goes to the first free spot
+ * in the same grid, then, for carried stacks, in the other carried grid (pockets ↔ backpack).
+ * Returns null when there is no room anywhere: nothing is ever split onto the floor.
+ */
+export function splitStackAuto(ws: Workspace, uid: string, qty: number, newUid: string): Workspace | null {
+  const src = locate(ws, uid);
+  if (!src || 'slot' in src.where) return null;
+  const from = src.where.grid;
+  const order: GridKey[] = from === 'pockets' ? ['pockets', 'backpack'] : from === 'backpack' ? ['backpack', 'pockets'] : [from];
+  const part: ItemInstance = { ...src.item, uid: newUid, qty };
+  for (const key of order) {
+    const g = getGrid(ws, key);
+    if (!g) continue;
+    const spot = findSpot(g, part);
+    if (!spot) continue;
+    const next = splitStack(ws, uid, qty, { grid: key, x: spot.x, y: spot.y, rot: spot.rot }, newUid);
+    if (next) return next;
+  }
+  return null;
 }
 
 /** Remove an item from wherever it is. */

@@ -64,9 +64,9 @@ const KB_CONTROLS: [string, string][] = [
   ['3–6', 'Quick slots'],
   ['F', 'Flashlight'],
   ['E', 'Use · hold to search'],
-  ['TAB', 'Inventory'],
-  ['M', 'Map'],
-  ['ESC', 'Pause'],
+  ['TAB', 'Inventory (again to close)'],
+  ['M', 'Map & job sheet'],
+  ['ESC', 'Close · pause'],
 ];
 
 const PAD_CONTROLS: [GlyphId, string][] = [
@@ -84,7 +84,7 @@ const PAD_CONTROLS: [GlyphId, string][] = [
   ['flashlight', 'Flashlight'],
   ['interact', 'Use · hold to search'],
   ['inventory', 'Bag'],
-  ['map', 'Map'],
+  ['map', 'Map & job sheet'],
   ['pause', 'Pause'],
 ];
 

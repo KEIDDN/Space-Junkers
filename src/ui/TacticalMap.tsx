@@ -3,6 +3,7 @@ import type { TacticalSnapshot } from '../game/tactical';
 import { Tile } from '../game/world/tilemap';
 import { useRaid } from '../state/raidStore';
 import { ByDevice, Key } from './Glyph';
+import { ContractLog } from './ContractLog';
 
 const ROOM_NAMES: Record<string, string> = {
   entry: 'LANDING', exfil: 'SHUTTLE PAD', vault: 'VAULT', storage: 'STORAGE', barracks: 'BARRACKS', office: 'OFFICE',
@@ -27,8 +28,10 @@ const C = {
 };
 
 /**
- * [M] Wrist map. Shows only what the operator has seen (plus exits and the vault with the
- * scanner upgrade). Redraws a few times a second while open, from a snapshot the game builds.
+ * [M] Wrist map and job sheet. The map shows only what the operator has seen (plus exits and
+ * the vault with the scanner upgrade); beside it, the contracts this raid is for, with live
+ * progress. One overlay, one key, so the controller needs no extra button for either.
+ * Redraws a few times a second while open, from a snapshot the game builds.
  */
 export function TacticalMap({ snapshot, name, timeLeft }: { snapshot: () => TacticalSnapshot | null; name: string; timeLeft: number }) {
   const open = useRaid((s) => s.mapOpen);
@@ -55,11 +58,14 @@ export function TacticalMap({ snapshot, name, timeLeft }: { snapshot: () => Tact
     <div className="tac-screen" data-nav-scope="map">
       <div className="panel tac-panel crt">
         <div className="panel-title">
-          {name} <span className="dim">// TACTICAL</span>
+          {name} <span className="dim">// TACTICAL · JOBS</span>
           <span className="grow" />
           {timeLeft >= 0 && <span className={t < 120 ? 'bad' : t < 300 ? 'warn' : 'dim'}>ORBIT {fmt(t)}</span>}
         </div>
-        <div ref={wrap} className="tac-wrap"><canvas ref={canvas} /></div>
+        <div className="tac-body">
+          <div ref={wrap} className="tac-wrap"><canvas ref={canvas} /></div>
+          <aside className="tac-jobs"><ContractLog /></aside>
+        </div>
         <div className="tac-legend">
           <span><i style={{ background: C.box }} /> UNSEARCHED</span>
           <span><i style={{ background: C.searched }} /> SEARCHED</span>

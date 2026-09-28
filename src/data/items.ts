@@ -30,7 +30,10 @@ interface BaseItem {
   /** Footprint in inventory cells. */
   w: number;
   h: number;
-  /** Max per stack (1 = doesn't stack). */
+  /**
+   * Max units per stack (1 = doesn't stack). Deliberately per item: ammo and small field
+   * dressings stack, loot doesn't, so what you carry home still costs space.
+   */
   stack: number;
   /** Atlas frame. */
   icon: string;
@@ -67,10 +70,11 @@ export interface ArmorDef extends BaseItem {
 export interface BackpackDef extends BaseItem { kind: 'backpack'; grid: { w: number; h: number } }
 export interface MedDef extends BaseItem {
   kind: 'med';
-  /** Instant healing. For pooled kits this is the total pool, drained over several uses. */
+  /**
+   * Health one unit restores when used. A property of the item type, never of the stack:
+   * using one unit removes it from the stack (quantity - 1); `heal` stays what it is.
+   */
   heal: number;
-  /** Multi-use kit: each use heals what's missing and drains the pool (instance durability). */
-  pooled?: boolean;
   /** Seconds to apply. You can't shoot while doing it. */
   useTime: number;
   stopsBleed: boolean;
@@ -305,10 +309,10 @@ const CATALOG: ItemDef[] = [
   backpack('raidpack', 'Beta-7 Raid Pack', 'Beta-7', 'rare', 11500, 2.6, [3, 3], [6, 6], 'Military cargo frame. For people who plan on greed.'),
 
   // --- Medical consumables -----------------------------------------------------------------------
-  med('bandage', 'Bandage', 'Bandage', 'common', 60, 0.1, [1, 1], 6, 2.2, true, 'Stops bleeding. Restores a little health.'),
+  med('bandage', 'Bandage', 'Bandage', 'common', 60, 0.1, [1, 1], 6, 2.2, true, 'Stops bleeding. Restores a little health.', { stack: 10 }),
   med('pills', 'Analgin Painkillers', 'Analgin', 'common', 320, 0.1, [1, 1], 0, 1.4, false, 'Slowly restores 30 health over twenty seconds.', { regen: { hp: 30, seconds: 20 } }),
-  med('carkit', 'Automedik Kit', 'Automedik', 'common', 950, 0.6, [1, 1], 60, 3, true, 'Glovebox first-aid kit. Stops bleeding, restores up to 60 health in total.', { pooled: true }),
-  med('medkit', 'Sanitar Field Medkit', 'Sanitar', 'uncommon', 2600, 1.5, [2, 1], 160, 3.2, true, 'Military trauma kit. Stops bleeding, restores up to 160 health in total.', { pooled: true }),
+  med('carkit', 'Automedik Kit', 'Automedik', 'common', 950, 0.6, [1, 1], 60, 3, true, 'Glovebox first-aid kit. One kit stops bleeding and restores 60 health.', { stack: 5 }),
+  med('medkit', 'Sanitar Field Medkit', 'Sanitar', 'uncommon', 1500, 1.5, [2, 1], 80, 3.2, true, 'Military trauma kit. One kit stops bleeding and restores 80 health.', { stack: 5 }),
   med('stim', 'Adrenal-M Stimulant', 'Adrenal', 'uncommon', 1600, 0.1, [1, 1], 15, 0.9, false, 'Combat stim. Quick health and a burst of speed. Side effects: yes.', { boost: { speedMul: 1.18, seconds: 25 }, regen: { hp: 20, seconds: 8 } }),
   med('surgkit', 'Surgical Kit', 'Surgical', 'rare', 5200, 2, [2, 1], 100, 7, true, 'Full field surgery. Restores 100 health, but takes a long time.'),
 

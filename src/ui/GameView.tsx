@@ -13,9 +13,11 @@ import { TacticalMap } from './TacticalMap';
 import { TerminalView } from './TerminalView';
 import { ControlsList, SettingsRows } from './Settings';
 import { RaidInventory } from './inventory/InventoryScreen';
+import { closeInventoryPopup } from './inventory/dragStore';
 import { Results } from './Results';
 import { Key } from './Glyph';
 import { PostFx } from './PostFx';
+import { ContractLog } from './ContractLog';
 
 /** Bank or lose the loadout. Runs once per raid, from whichever path ends it first. */
 export function settleRaid(status: 'extracted' | 'dead'): void {
@@ -64,6 +66,7 @@ function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onRes
         )}
           </div>
           <div className="pause-col controls-col">
+            {facility && <ContractLog compact />}
             <div className="dim small">CONTROLS</div>
             <ControlsList />
           </div>
@@ -139,6 +142,11 @@ export function GameView({ mode, seed, onExit }: { mode: 'range' | 'facility'; s
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'Tab') e.preventDefault(); // never let TAB move browser focus mid-raid
       if (e.code !== 'Escape') return;
+      // Innermost first: a split picker or action menu, then the overlay, then pause.
+      if (useRaid.getState().inventoryOpen && closeInventoryPopup()) {
+        audio.ui('close');
+        return;
+      }
       if (raid.closeOverlay()) {
         audio.ui('close');
         return;

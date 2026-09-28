@@ -12,9 +12,12 @@ import { WEAPONS } from '../data/weapons';
 export interface ItemInstance {
   uid: string;
   id: string;
-  /** Stack count (ammo). 1 for everything else. */
+  /**
+   * Units in this stack: rounds, bandages, kits. Always a count of physical things you own
+   * (1 for anything that doesn't stack), never a strength or a charge.
+   */
   qty: number;
-  /** Armor durability, pooled medkit HP or keycard uses. */
+  /** Condition, not quantity: armor durability or keycard uses left. */
   dur?: number;
   /** Weapons: rounds in the magazine and which ammo they are. */
   loaded?: number;
@@ -52,7 +55,11 @@ export interface Loadout {
   armor: ItemInstance | null;
   backpack: ItemInstance | null;
   pockets: Grid;
-  /** Item ids bound to quick-use keys. */
+  /**
+   * Quick-use keys, bound to an item type (id), not to a hidden copy of it: a key uses a
+   * real unit from the pockets or backpack. Bindings with nothing left to use are cleared
+   * (see `pruneQuick`), so a key never points at an item the operator doesn't have.
+   */
   quick: (string | null)[];
 }
 
@@ -90,9 +97,6 @@ export function createItem(id: string, opts: CreateOptions = {}): ItemInstance {
     case 'armor':
     case 'helmet':
       item.dur = opts.dur ?? def.durability;
-      break;
-    case 'med':
-      if (def.pooled) item.dur = opts.dur ?? def.heal;
       break;
     case 'key':
       item.dur = opts.dur ?? def.uses;
@@ -306,7 +310,6 @@ export function itemValue(item: ItemInstance): number {
   const d = itemDef(item.id);
   let v = d.value * item.qty;
   if ((d.kind === 'armor' || d.kind === 'helmet') && item.dur !== undefined) v *= 0.35 + 0.65 * (item.dur / d.durability);
-  if (d.kind === 'med' && d.pooled && item.dur !== undefined) v *= 0.2 + 0.8 * (item.dur / d.heal);
   if (d.kind === 'key' && item.dur !== undefined) v *= item.dur / d.uses;
   return Math.round(v);
 }
@@ -387,6 +390,39 @@ export function loadoutValue(l: Loadout): number {
 
 export function loadoutCount(l: Loadout, id: string): number {
   return countInGrid(l.pockets, id) + (l.backpack?.contents ? countInGrid(l.backpack.contents, id) : 0);
+}
+
+/** Can this item be bound to a quick-use key at all? */
+export function quickUsable(id: string): boolean {
+  const k = itemDef(id).kind;
+  return k === 'med' || k === 'grenade';
+}
+
+/**
+ * Drop quick-use bindings that point at nothing: an item type the operator no longer
+ * carries in pockets or backpack (used up, dropped, stashed, lost). Returns the same object
+ * when nothing changed, so it is cheap to run after every inventory write.
+ */
+export function pruneQuick(l: Loadout): Loadout {
+  let changed = l.quick.length !== QUICK_SLOTS;
+  const quick = Array.from({ length: QUICK_SLOTS }, (_, i) => {
+    const id = l.quick[i] ?? null;
+    if (id && (!ITEMS[id] || !quickUsable(id) || loadoutCount(l, id) === 0)) {
+      changed = true;
+      return null;
+    }
+    return id;
+  });
+  return changed ? { ...l, quick } : l;
+}
+
+/** Bind an item type to a key (unbinding it from any other key). Only carried items bind. */
+export function bindQuickSlot(l: Loadout, slot: number, id: string | null): Loadout {
+  if (slot < 0 || slot >= QUICK_SLOTS) return l;
+  if (id && (!quickUsable(id) || loadoutCount(l, id) === 0)) return l;
+  const quick = l.quick.map((q) => (q === id ? null : q));
+  quick[slot] = id;
+  return { ...l, quick };
 }
 
 function withBackpackGrid(l: Loadout, grid: Grid): Loadout {

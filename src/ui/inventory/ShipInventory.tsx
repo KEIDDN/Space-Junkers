@@ -5,7 +5,7 @@ import { audio } from '../../engine/audio';
 import { useProfile } from '../../state/profileStore';
 import { ship } from '../../state/shipOps';
 import { DragLayer } from './DragLayer';
-import { useDrag } from './dragStore';
+import { closeInventoryPopup, resetInventoryUi, useDrag } from './dragStore';
 import { GridPanel, InventoryHints, LoadoutPanel, useRegisterInventory } from './InventoryScreen';
 import { ByDevice, Key } from '../Glyph';
 import { InventoryContext, type InventoryOps } from './ops';
@@ -50,11 +50,13 @@ export function ShipInventory({ onClose, sell, sellPrice, repair, repairPrice, s
   useRegisterInventory(ops);
 
   useEffect(() => {
+    // TAB toggles: it closes the whole screen. ESC backs out one step: the split picker or
+    // action menu, then an opened bag, then the screen.
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'Escape' && e.code !== 'Tab') return;
       e.preventDefault();
-      if (useDrag.getState().menu) useDrag.setState({ menu: null });
-      else if (bag) setBag(null);
+      if (e.code === 'Escape' && closeInventoryPopup()) audio.ui('close');
+      else if (e.code === 'Escape' && bag) setBag(null);
       else {
         audio.ui('close');
         onClose();
@@ -63,6 +65,7 @@ export function ShipInventory({ onClose, sell, sellPrice, repair, repairPrice, s
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, bag]);
+  useEffect(() => resetInventoryUi, []);
 
   return (
     <InventoryContext.Provider value={ops}>

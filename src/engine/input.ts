@@ -191,6 +191,9 @@ export class Input {
   private onKeyDown = (e: KeyboardEvent) => {
     // Menus talk to themselves with synthetic keys (controller "back"): not gameplay.
     if (!e.isTrusted) return;
+    // Typing into a field (the split amount) is not gameplay either; TAB and ESC still are.
+    const t = e.target as HTMLElement | null;
+    if (t instanceof HTMLInputElement && t.type !== 'range' && e.code !== 'Tab' && e.code !== 'Escape') return;
     if (!this.held.has(e.code)) this.keysPressed.add(e.code);
     this.held.add(e.code);
   };

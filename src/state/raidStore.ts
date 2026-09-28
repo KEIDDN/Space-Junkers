@@ -1,15 +1,19 @@
 import { create } from 'zustand';
 import {
-  createItem, emptyLoadout, loadoutAdd, loadoutCount, loadoutItems, loadoutTake, loadoutUpdate, newUid,
-  type Grid, type ItemInstance, type Loadout,
+  bindQuickSlot, createItem, emptyLoadout, loadoutAdd, loadoutCount, loadoutItems, loadoutTake, loadoutUpdate, newUid,
+  pruneQuick, type Grid, type ItemInstance, type Loadout,
 } from '../core/inventory';
+import { itemDef } from '../data/items';
 import type { LoreEntry } from '../data/lore';
 import {
-  loadWeapon, moveItem, quickMove, removeItem, splitStack, unloadWeapon, updateItem,
+  loadWeapon, moveItem, quickMove, removeItem, splitStack, splitStackAuto, unloadWeapon, updateItem,
   type GridKey, type Target, type Workspace,
 } from '../core/transfer';
 
 export type RaidStatus = 'active' | 'extracted' | 'dead';
+
+/** How long each way out takes, in seconds (the HUD draws the countdown against it). */
+export const EXTRACT_SECONDS = { pad: 12, lift: 7 } as const;
 export type RaidMode = 'range' | 'facility';
 
 export type FeedTone = 'ok' | 'warn' | 'bad' | 'loot' | 'radio';
@@ -118,11 +122,23 @@ function workspace(s: RaidState): Workspace {
   return { loadout: s.loadout, stash: null, external: s.open ? s.containers[s.open.id] ?? null : null };
 }
 
+/**
+ * Every write of the carried loadout goes through here, so quick-use keys can never point
+ * at an item type that is no longer carried (see `pruneQuick`).
+ * @returns the item types whose quick-use key was just cleared.
+ */
+function setLoadout(loadout: Loadout, extra: Partial<RaidState> = {}): string[] {
+  const pruned = pruneQuick(loadout);
+  const cleared = loadout.quick.filter((q, i) => q && !pruned.quick[i]) as string[];
+  useRaid.setState({ ...extra, loadout: pruned });
+  return cleared;
+}
+
 function commit(ws: Workspace | null): boolean {
   if (!ws) return false;
   const s = useRaid.getState();
   const containers = s.open && ws.external ? { ...s.containers, [s.open.id]: ws.external } : s.containers;
-  useRaid.setState({ loadout: ws.loadout, containers });
+  setLoadout(ws.loadout, { containers });
   return true;
 }
 
@@ -165,7 +181,7 @@ export const raid = {
   start(mode: RaidMode, seed: number, destination: string, loadout: Loadout): void {
     commands.length = 0;
     useRaid.setState({
-      mode, seed, destination, status: 'active', loadout,
+      mode, seed, destination, status: 'active', loadout: pruneQuick(loadout),
       brought: loadoutItems(loadout).map((i) => i.uid),
       containers: {}, open: null, inventoryOpen: false, kills: 0,
       log: { kills: [], searched: 0, visited: [] }, progressed: [],
@@ -269,6 +285,11 @@ export const raid = {
     return keepProvenance([uid], () => commit(splitStack(workspace(useRaid.getState()), uid, qty, to, newUid())));
   },
 
+  /** Split `qty` off a stack into the first free spot (same grid, then the other carried grid). */
+  splitAuto(uid: string, qty: number): boolean {
+    return keepProvenance([uid], () => commit(splitStackAuto(workspace(useRaid.getState()), uid, qty, newUid())));
+  },
+
   load(weaponUid: string, ammoUid: string): boolean {
     return keepProvenance([weaponUid, ammoUid], () => commit(loadWeapon(workspace(useRaid.getState()), weaponUid, ammoUid, newUid)));
   },
@@ -285,20 +306,19 @@ export const raid = {
     return r.item;
   },
 
-  bindQuick(slot: number, itemId: string | null): void {
-    useRaid.setState((s) => {
-      const quick = s.loadout.quick.map((q) => (q === itemId ? null : q));
-      quick[slot] = itemId;
-      return { loadout: { ...s.loadout, quick } };
-    });
+  /** Bind a carried item type to a quick-use key (or clear the key with null). */
+  bindQuick(slot: number, itemId: string | null): boolean {
+    const s = useRaid.getState();
+    const next = bindQuickSlot(s.loadout, slot, itemId);
+    if (next === s.loadout) return false;
+    useRaid.setState({ loadout: next });
+    return true;
   },
 
   // --- Simulation hooks --------------------------------------------------------
 
   updateItem(item: ItemInstance): void {
-    const s = useRaid.getState();
-    const ws = updateItem(workspace(s), item);
-    commit(ws);
+    commit(updateItem(workspace(useRaid.getState()), item));
   },
 
   count(id: string): number {
@@ -308,7 +328,7 @@ export const raid = {
   take(id: string, qty: number): number {
     const s = useRaid.getState();
     const r = loadoutTake(s.loadout, id, qty);
-    if (r.taken) useRaid.setState({ loadout: r.loadout });
+    if (r.taken) setLoadout(r.loadout);
     return r.taken;
   },
 
@@ -320,28 +340,46 @@ export const raid = {
     let rest: ItemInstance | null = null;
     keepProvenance([from], () => {
       const r = loadoutAdd(useRaid.getState().loadout, item);
-      useRaid.setState({ loadout: r.loadout });
+      setLoadout(r.loadout);
       rest = r.rest;
       return true;
     });
     return rest;
   },
 
-  /** Consume one charge/instance of a consumable. Pooled kits lose `drain` points instead. */
-  consume(uid: string, drain = 0): void {
+  /**
+   * Use up one unit of this exact stack: quantity drops by one, and the stack goes when it
+   * was the last. If that was the last one carried, its quick-use key is cleared (and said so).
+   */
+  consume(uid: string): boolean {
+    const s = useRaid.getState();
+    const it = loadoutItems(s.loadout).find((i) => i.uid === uid);
+    if (!it) return false;
+    let cleared: string[];
+    if (it.qty > 1) cleared = setLoadout(loadoutUpdate(s.loadout, { ...it, qty: it.qty - 1 }));
+    else {
+      const r = removeItem(workspace(s), uid);
+      if (!r) return false;
+      cleared = setLoadout(r.ws.loadout);
+    }
+    for (const id of cleared) raid.notice(`LAST ${itemDef(id).short.toUpperCase()} USED`, 'warn', id);
+    return true;
+  },
+
+  /**
+   * Spend one use of a multi-use item (a keycard): its condition, not its quantity. The
+   * item goes when the last use is spent.
+   */
+  spendUse(uid: string): void {
     const s = useRaid.getState();
     const it = loadoutItems(s.loadout).find((i) => i.uid === uid);
     if (!it) return;
-    if (drain > 0 && it.dur !== undefined && it.dur - drain > 0.5) {
-      useRaid.setState({ loadout: loadoutUpdate(s.loadout, { ...it, dur: it.dur - drain }) });
-      return;
+    const left = (it.dur ?? 1) - 1;
+    if (left > 0) setLoadout(loadoutUpdate(s.loadout, { ...it, dur: left }));
+    else {
+      const r = removeItem(workspace(s), uid);
+      if (r) commit(r.ws);
     }
-    if (it.qty > 1) {
-      useRaid.setState({ loadout: loadoutUpdate(s.loadout, { ...it, qty: it.qty - 1 }) });
-      return;
-    }
-    const r = removeItem(workspace(s), uid);
-    if (r) commit(r.ws);
   },
 
   notice(text: string, tone: FeedTone, itemId?: string): void {
@@ -389,5 +427,5 @@ export function rangeLoadout(): Loadout {
   l = loadoutAdd(l, createItem('bandage')).loadout;
   for (const id of ['frag', 'frag', 'smoke']) l = loadoutAdd(l, createItem(id)).loadout;
   l.quick = ['bandage', 'medkit', 'frag', 'smoke'];
-  return l;
+  return pruneQuick(l);
 }

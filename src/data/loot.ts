@@ -164,7 +164,8 @@ export function foundInstance(rng: Rng, id: string): ItemInstance {
     case 'helmet':
       return createItem(id, { dur: Math.round(d.durability * (0.35 + rng.next() * 0.65)) });
     case 'med':
-      return createItem(id, d.pooled ? { dur: Math.round(d.heal * (0.4 + rng.next() * 0.6)) } : {});
+      // Dressings turn up a few at a time (and stack); kits one at a time.
+      return createItem(id, { qty: d.stack >= 10 ? rng.int(1, 3) : 1 });
     default:
       return createItem(id);
   }

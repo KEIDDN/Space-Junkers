@@ -532,7 +532,7 @@ export class Player implements Hittable {
     const missing = this.maxHp - this.hp;
     const healOf = (it: ItemInstance) => {
       const d = itemDef(it.id) as MedDef;
-      return (d.pooled ? it.dur ?? d.heal : d.heal) + (d.regen?.hp ?? 0);
+      return d.heal + (d.regen?.hp ?? 0);
     };
     let pick: ItemInstance | undefined;
     if (this.bleeding) {
@@ -610,18 +610,11 @@ export class Player implements Hittable {
     const it = loadoutItems(useRaid.getState().loadout).find((i) => i.uid === u.uid);
     if (!it) return; // dropped mid-use
     const def = u.def;
-    let drain = 0;
     if (def.stopsBleed && this.bleeding) {
       this.bleeding = false;
-      drain += 8;
       this.notice('BLEEDING STOPPED', 'ok');
     }
-    if (def.heal > 0) {
-      const available = def.pooled ? it.dur ?? def.heal : def.heal;
-      const heal = Math.min(this.maxHp - this.hp, available);
-      this.hp += heal;
-      drain += heal;
-    }
+    if (def.heal > 0) this.hp = Math.min(this.maxHp, this.hp + def.heal);
     if (def.regen) {
       this.regenLeft = def.regen.seconds;
       this.regenRate = def.regen.hp / def.regen.seconds;
@@ -630,7 +623,8 @@ export class Player implements Hittable {
       this.boostLeft = def.boost.seconds;
       this.boostMul = def.boost.speedMul;
     }
-    raid.consume(it.uid, def.pooled ? Math.max(1, drain) : 0);
+    // One unit used: the stack is one smaller. What a unit heals never changes.
+    raid.consume(it.uid);
     this.ctx.audio.sfx('heal', this.x, this.y);
     this.ctx.haptics?.pulse(0, 0.25, 90);
     this.ctx.effects.healPuff(this.x, this.y);

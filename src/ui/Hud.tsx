@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { itemDef } from '../data/items';
 import { liveTracker } from '../core/quests';
-import { haulValue } from '../core/raidResult';
+import { foundItems, haulValue } from '../core/raidResult';
 import { useProfile } from '../state/profileStore';
 import { facilityName } from '../data/themes';
 import { fmt } from './TacticalMap';
-import { useRaid, type FeedEntry } from '../state/raidStore';
+import { EXTRACT_SECONDS, useRaid, type FeedEntry } from '../state/raidStore';
 import { useHud } from '../state/hudStore';
 import { AtlasSprite } from './AtlasSprite';
 import { ByDevice, Key, Prompt } from './Glyph';
@@ -114,10 +114,32 @@ function QuickHud() {
             <div key={i} className={`hq-slot ${id && n === '0' ? 'empty' : ''}`}>
               <span className="hq-key"><ByDevice kbm={<>{i + 3}</>} pad={<>{QUICK_PAD[i]}</>} /></span>
               {id && <AtlasSprite name={itemDef(id).icon} fit={{ w: 26, h: 22 }} />}
-              {id && <span className="hq-count">{n}</span>}
+              {id && <span className="hq-count">×{n}</span>}
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * YOU ARE EXTRACTING. Big, central, one glance: what's happening, how long, and whether the
+ * clock is running. Off the pad it turns red and says the clock stopped.
+ */
+function ExtractBanner({ countdown, inZone, kind }: { countdown: number; inZone: boolean; kind: 'pad' | 'lift' }) {
+  const total = EXTRACT_SECONDS[kind];
+  const frac = Math.max(0, Math.min(1, 1 - countdown / total));
+  const final = inZone && countdown <= 5;
+  return (
+    <div className={`hud-extract crt-text ${inZone ? 'holding' : 'paused'} ${final ? 'final' : ''}`}>
+      <div className="extract-head">{kind === 'lift' ? 'EXTRACTING · MAINTENANCE LIFT' : 'EXTRACTING · SHUTTLE INBOUND'}</div>
+      <div className="extract-row">
+        <span className="extract-bar"><span style={{ width: `${frac * 100}%` }} /></span>
+        <span className={`big ${inZone ? 'ok' : 'bad'}`}>{countdown.toFixed(1)}</span>
+      </div>
+      <div className={inZone ? 'dim small' : 'bad blink'}>
+        {inZone ? (kind === 'lift' ? 'STAY ON THE PLATFORM' : 'HOLD THE PAD · THEY HEARD THE ALARM') : 'OFF THE PAD · CLOCK STOPPED · GET BACK ON'}
       </div>
     </div>
   );
@@ -128,13 +150,16 @@ function Tracker() {
   const quests = useProfile((s) => s.quests);
   const log = useRaid((s) => s.log);
   const destination = useRaid((s) => s.destination);
-  const lines = liveTracker({ ...useProfile.getState(), quests }, log, destination).slice(0, 4);
+  const loadout = useRaid((s) => s.loadout);
+  const brought = useRaid((s) => s.brought);
+  const lines = liveTracker({ ...useProfile.getState(), quests }, log, destination, foundItems(loadout, brought)).slice(0, 3);
   if (!lines.length) return null;
   return (
     <div className="hud-tracker crt-text">
       {lines.map((l, i) => (
         <div key={i} className={l.have >= l.need ? 'ok' : ''}>
           {l.have >= l.need ? '■' : '□'} {l.text} <span className="dim">{l.have}/{l.need}</span>
+          {l.note && l.have < l.need && <span className="obj-note"> · {l.note}</span>}
         </div>
       ))}
     </div>
@@ -184,17 +209,17 @@ function FirstRaidHint() {
         kbm={
           <>
             <div><b>WASD</b> MOVE · <b>SHIFT</b> SPRINT · <b>C</b> SNEAK · <b>F</b> FLASHLIGHT · <b>R</b> RELOAD · <b>RMB</b> STEADY</div>
-            <div><b>E</b> SEARCH / USE · <b>TAB</b> BAG · <b>M</b> MAP · <b>G</b> GRENADE · <b>H</b> TREAT · <b>ESC</b> PAUSE</div>
+            <div><b>E</b> SEARCH / USE · <b>TAB</b> BAG · <b>M</b> MAP &amp; JOBS · <b>G</b> GRENADE · <b>H</b> TREAT · <b>ESC</b> PAUSE</div>
           </>
         }
         pad={
           <>
             <div><Key a="move" /> MOVE · <Key a="sprint" /> SPRINT · <Key a="sneak" /> SNEAK · <Key a="aim" /> AIM · <Key a="fire" /> FIRE · <Key a="steady" /> STEADY · <Key a="reload" /> RELOAD</div>
-            <div><Key a="interact" /> SEARCH / USE · <Key a="inventory" /> BAG · <Key a="map" /> MAP · <Key a="grenade" /> GRENADE · <Key a="heal" /> TREAT · <Key a="flashlight" /> LIGHT</div>
+            <div><Key a="interact" /> SEARCH / USE · <Key a="inventory" /> BAG · <Key a="map" /> MAP &amp; JOBS · <Key a="grenade" /> GRENADE · <Key a="heal" /> TREAT · <Key a="flashlight" /> LIGHT</div>
           </>
         }
       />
-      <div className="dim">Find the shuttle pad or the lift. Loot is only yours once you're out.</div>
+      <div className="dim">Find what you came for, then the shuttle pad or the lift. Loot is only yours once you're out.</div>
     </div>
   );
 }
@@ -210,7 +235,7 @@ function EntryHint() {
   if (!show) return null;
   return (
     <div className="hud-entry dim small">
-      <Key a="map" /> MAP · <Key a="inventory" /> BAG · <Key a="pause" /> CONTROLS
+      <Key a="map" /> MAP &amp; JOBS · <Key a="inventory" /> BAG · <Key a="pause" /> CONTROLS
     </div>
   );
 }
@@ -273,12 +298,7 @@ export function Hud() {
       <Feed />
 
       {countdown !== null && !dead && (
-        <div className="hud-extract crt-text">
-          <div className={inZone ? 'ok' : 'bad blink'}>
-            {extractKind === 'lift' ? 'LIFT RISING. STAY ON THE PLATFORM' : inZone ? 'EXTRACTION INBOUND. HOLD THE ZONE' : 'RETURN TO THE EXTRACTION ZONE'}
-          </div>
-          <div className="big ok">{countdown.toFixed(1)}</div>
-        </div>
+        <ExtractBanner countdown={countdown} inZone={inZone} kind={extractKind ?? 'pad'} />
       )}
 
       {prompt && !dead && !inventoryOpen && <div className="hud-prompt crt-text"><Prompt text={prompt} /></div>}

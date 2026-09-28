@@ -72,9 +72,9 @@ recognised and their button names shown). Prompts follow whichever you touched l
 | Quick slots | 3–6 | D-pad |
 | Flashlight | F | R3 |
 | Interact; hold to search, swipe, throw breakers | E | A |
-| Inventory / stash | TAB | View (PlayStation: Create) |
-| Tactical map | M | Hold View (PlayStation: touchpad) |
-| Pause (ship: menu and settings) | ESC | Menu (PlayStation: Options) |
+| Inventory / stash (press again to close) | TAB | View (PlayStation: Create) |
+| Tactical map and job sheet | M | Hold View (PlayStation: touchpad) |
+| Close what's open, else pause (ship: menu and settings) | ESC | B closes, Menu pauses (PlayStation: Options) |
 
 Menus are fully playable on a controller: the D-pad or stick moves focus, A confirms, B goes
 back, LB/RB switch tabs or panels, the right stick scrolls. In inventories A picks an item up
@@ -83,6 +83,15 @@ Y opens its actions (or rotates what you're carrying).
 
 With the mouse: drag to move, R or Space rotates while dragging, Shift-click quick-moves,
 Ctrl-click equips/uses, right-click for actions, drag outside to drop.
+
+Item tiles follow one rule: the bottom-right `×N` is always how many units you own (rounds,
+bandages, kits). Condition is drawn differently (a magazine fraction, a durability bar,
+keycard pips), and what one unit does ("HEALS 60 HP") is in the tooltip and the USE action.
+Bandages and medkits stack; loot, weapons and armour don't, so space still decides what comes
+home. SPLIT… opens a quantity picker (type a number and Enter, the slider, or 1 / HALF / MAX;
+on a controller the D-pad and A, LT/RT for 1 and max). Quick-use keys point at an item type
+you carry, never at a copy of it: using one takes a unit from the real stack, and a key whose
+last unit is used, dropped or stashed clears itself.
 
 Settings (title screen, pause menu, the ship menu): volume, music, screen shake, brightness,
 optional sound cues toward unseen gunfire and alarms, the film finish (vignette, grain,
