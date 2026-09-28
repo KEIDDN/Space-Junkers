@@ -15,7 +15,8 @@ export interface GameContext {
   /** Controller rumble for the player's own actions (absent in tests). */
   haptics?: Haptics;
   /** A loud event (gunfire, explosion) that enemies within `radius` can hear. */
-  emitNoise(x: number, y: number, radius: number): void;
+  /** Something made a sound. `by`: who made it (the player's noise builds the facility's attention). */
+  emitNoise(x: number, y: number, radius: number, by?: 'player' | 'enemy'): void;
   /** Freeze the simulation briefly for impact emphasis. */
   hitstop(seconds: number): void;
   /** Brief light burst (no-op where there is no darkness). */

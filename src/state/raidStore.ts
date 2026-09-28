@@ -5,6 +5,7 @@ import {
 } from '../core/inventory';
 import { itemDef } from '../data/items';
 import type { LoreEntry } from '../data/lore';
+import type { DeathFacts } from '../core/debrief';
 import {
   loadWeapon, moveItem, quickMove, removeItem, splitStack, splitStackAuto, unloadWeapon, updateItem,
   type GridKey, type Target, type Workspace,
@@ -88,6 +89,8 @@ export interface RaidState {
   mia: boolean;
   /** The last beat of a raid (for the ending overlay), before the report. */
   ending: 'extracted' | 'dead' | 'mia' | null;
+  /** How it went wrong, for the report (null on a clean extraction). */
+  death: DeathFacts | null;
 }
 
 let feedId = 0;
@@ -118,6 +121,7 @@ export const useRaid = create<RaidState>(() => ({
   mapOpen: false,
   mia: false,
   ending: null,
+  death: null,
 }));
 
 function workspace(s: RaidState): Workspace {
@@ -189,7 +193,7 @@ export const raid = {
       log: { kills: [], searched: 0, visited: [], tasks: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
       extractCountdown: null, extractInZone: false, extractKind: null, flashlight: true,
-      terminal: null, mapOpen: false, mia: false, ending: null, lore: [],
+      terminal: null, mapOpen: false, mia: false, ending: null, lore: [], death: null,
     });
   },
 

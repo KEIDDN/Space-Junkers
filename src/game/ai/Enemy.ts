@@ -215,7 +215,12 @@ export class Enemy implements Hittable {
     if (!this.aware) {
       this.facing = Math.atan2(killerY - this.y, killerX - this.x);
       this.investigate(killerX + (Math.random() - 0.5) * 80, killerY + (Math.random() - 0.5) * 80, 'alert');
+      return;
     }
+    // The last one standing, already hurt, thinks twice about pushing: they fall back and
+    // make you come to them. (Not a rout: they'll fight from wherever they end up.)
+    const alone = !this.allies.some((a) => a !== this && a.alive && Math.hypot(a.x - this.x, a.y - this.y) < 320);
+    if (alone && !this.retreated && this.hp < this.def.hp * 0.7 && Math.random() < 0.6) this.startRetreat(killerX, killerY);
   }
 
   /** A round snapped past. */
@@ -662,7 +667,7 @@ export class Enemy implements Hittable {
     const startle = 1 + this.tuning.startle * Math.max(0, 1 - this.fightTime / STARTLE_TIME);
     const err = this.def.aimError * this.tuning.aim * startle * (1 + this.suppression * 1.6);
     const aim = toTarget + (Math.random() - 0.5) * 2 * err * DEG;
-    discharge(this.ctx, this.view, w, this.x, this.y, aim, 'enemy', 0);
+    discharge(this.ctx, this.view, w, this.x, this.y, aim, 'enemy', 0, 0, 1, `${this.def.named ? this.def.name : `a ${this.def.name.toLowerCase()}`}'s ${w.def.name}`);
     this.lastShotAgo = 0;
     if (w.def.cycled && w.ammo > 0) this.cycleTimer = Math.min(0.28, 0.45 / w.def.fireRate);
     this.burstLeft--;

@@ -36,6 +36,29 @@ export interface Bullet {
   pellet: boolean;
   /** Last target this bullet whizzed past (reported once). */
   near: Hittable | null;
+  /** How damage fades with distance (see `damageAt`). */
+  falloff: Falloff | null;
+  /** Who fired it and with what, for the after-action report ("a Raider's TOZ-12"). */
+  source: string | null;
+}
+
+/** Full damage out to `from` × range, then fading linearly to `min` × damage at full range. */
+export interface Falloff {
+  from: number;
+  min: number;
+}
+
+/**
+ * How hard a round still hits after travelling this far. Buckshot is murder across a table
+ * and a rumour across a hall; pistol rounds tire; rifle rounds don't (no falloff).
+ */
+export function damageAt(b: Pick<Bullet, 'damage' | 'travelled' | 'range' | 'falloff'>): number {
+  const f = b.falloff;
+  if (!f) return b.damage;
+  const k = b.travelled / Math.max(1, b.range);
+  if (k <= f.from) return b.damage;
+  const t = Math.min(1, (k - f.from) / Math.max(0.01, 1 - f.from));
+  return b.damage * (1 - t * (1 - f.min));
 }
 
 export interface ShotSpec {
@@ -47,6 +70,8 @@ export interface ShotSpec {
   faction: Faction;
   color: number;
   pellet?: boolean;
+  falloff?: Falloff;
+  source?: string;
 }
 
 /** Perpendicular miss distance (px) under which a hit counts as a headshot. */
@@ -101,6 +126,8 @@ export class Projectiles {
     b.color = spec.color;
     b.pellet = !!spec.pellet;
     b.near = null;
+    b.falloff = spec.falloff ?? null;
+    b.source = spec.source ?? null;
   }
 
   update(dt: number, map: TileMap, targets: readonly Hittable[], ev: ProjectileEvents): void {
@@ -130,6 +157,7 @@ export class Projectiles {
         continue;
       }
       if (bestTarget) {
+        b.travelled += step * bestT;
         b.x += (nx - b.x) * bestT;
         b.y += (ny - b.y) * bestT;
         b.active = false;
