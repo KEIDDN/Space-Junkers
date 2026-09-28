@@ -10,7 +10,7 @@ export interface TacticalSnapshot {
   tiles: Uint8Array;
   /** 1 = seen. */
   explored: Uint8Array;
-  doors: { tiles: { tx: number; ty: number }[]; locked: boolean }[];
+  doors: { tiles: { tx: number; ty: number }[]; locked: boolean; jammed: boolean }[];
   exits: {
     kind: ExitKind;
     x: number;

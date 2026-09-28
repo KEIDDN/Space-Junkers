@@ -1,7 +1,7 @@
 import { TILE } from '../../engine/config';
 import { DEFAULT_AI, STARTLE_TIME, type AiTuning, type EnemyDef } from '../../data/enemies';
 import { ITEMS, defaultAmmo, type ArmorDef, type WeaponItemDef } from '../../data/items';
-import { WEAPONS } from '../../data/weapons';
+import { CARRIES, WEAPONS } from '../../data/weapons';
 import { HEADSHOT_MUL, resolveHit } from '../../core/damage';
 import { discharge } from '../combat/fire';
 import type { Hittable } from '../combat/projectiles';
@@ -12,6 +12,7 @@ import { enemyLook } from '../entities/look';
 import { playAnimEvents, weaponAction } from '../entities/handling';
 import { hasLineOfSight, moveCircle } from '../world/collision';
 import { findPath } from '../world/pathfinding';
+import type { TileMap } from '../world/tilemap';
 
 export type AIState =
   | 'idle' | 'patrol' | 'investigate' | 'alert' | 'search' | 'chase' | 'combat'
@@ -34,6 +35,15 @@ const SHOUT_RANGE = 300;
 const SHOUT_RANGE_WALLS = 170;
 /** How far a posted guard will go from their post (tiles). */
 const LEASH_TILES = 7;
+/**
+ * Hearing, as a fraction of how far a sound reaches them: closer than NEAR_EAR it's a
+ * direction and a distance (a loud one sends them at a run); past FAR_EAR it's only
+ * "somewhere that way", and whether they go and look depends on who they are.
+ */
+const NEAR_EAR = 0.35;
+const FAR_EAR = 0.6;
+/** How close a squad-mate's investigation has to be for this one to cover it instead (px). */
+const OVERWATCH_RANGE = 170;
 
 /**
  * Enemy soldier. Perceives the world through sight (cone, range, light, line of sight, smoke)
@@ -104,6 +114,14 @@ export class Enemy implements Hittable {
   private queried = false;
   /** Where they were stationed: after a search they go back to it, not wherever they ended up. */
   private readonly home: { x: number; y: number };
+  /** Stopped to listen: facing a far-off noise, not moving, for this long. */
+  private listenTimer = 0;
+  private listenAngle = 0;
+  /** Where the noise they're checking came from (the search centres on it). */
+  private noiseX = 0;
+  private noiseY = 0;
+  /** Covering a squad-mate who's gone to look: stop short and watch, don't search. */
+  private covering = false;
 
   constructor(
     private ctx: GameContext,
@@ -161,18 +179,23 @@ export class Enemy implements Hittable {
     return !this.ctx.smokeBetween(this.x, this.y - 6, t.x, t.y - 6);
   }
 
-  /** A noise was heard. Position is approximate, worse with distance. */
+  /**
+   * A noise was heard. They only know roughly where it came from: worse the further it
+   * was, worse again through walls. A loud noise close by brings them at a run; a noise at
+   * the edge of hearing is "somewhere that way", and scavengers would often rather stop,
+   * face it and listen than go and find out.
+   */
   hear(x: number, y: number, radius: number): void {
     if (!this.alive) return;
     const d = Math.hypot(x - this.x, y - this.y);
     // Walls deaden sound.
-    const through = hasLineOfSight(this.ctx.map, this.x, this.y, x, y) ? 1 : 0.6;
-    if (d > radius * this.def.hearing * through) return;
+    const clear = hasLineOfSight(this.ctx.map, this.x, this.y, x, y);
+    const reach = radius * this.def.hearing * (clear ? 1 : 0.6);
+    if (d > reach) return;
     this.edge = Math.max(this.edge, 0.5);
     if (this.state === 'combat' || this.state === 'retreat' || this.state === 'cover') return;
-    const err = d * 0.14;
-    const ex = x + (Math.random() - 0.5) * err;
-    const ey = y + (Math.random() - 0.5) * err;
+    const f = d / reach;
+    const { x: ex, y: ey } = this.guess(x, y, d * (0.12 + f * 0.3) * (clear ? 1 : 1.5));
     if (this.state === 'chase' || this.state === 'flank') {
       // Already hunting: update the guess.
       this.lastKnownX = ex;
@@ -183,8 +206,45 @@ export class Enemy implements Hittable {
       this.facing = Math.atan2(ey - this.y, ex - this.x);
       return;
     }
-    // Loud nearby noises (gunfire) put them on alert, quiet ones make them curious.
-    this.investigate(ex, ey, radius > 250 ? 'alert' : 'investigate');
+    const loud = radius >= CARRIES;
+    if (f > FAR_EAR && (!loud || Math.random() > this.def.temper.curiosity)) {
+      // Far off: stop, turn toward it, listen. They're on edge now, but they stay put.
+      if (this.state === 'idle' || this.state === 'patrol') {
+        this.listenTimer = 2.5 + Math.random() * 3;
+        this.listenAngle = Math.atan2(ey - this.y, ex - this.x);
+      }
+      return;
+    }
+    const fresh = this.state !== 'investigate' && this.state !== 'alert' && this.state !== 'search';
+    // A loud noise close by: at a run, weapon up. Anything else: a careful look.
+    this.investigate(ex, ey, loud && f <= NEAR_EAR ? 'alert' : 'investigate');
+    // Someone on the squad is already checking that: cover them from halfway instead.
+    if (this.def.temper.overwatch && this.allies.some((a) => a !== this && a.alive && a.checking(ex, ey))) {
+      this.covering = true;
+      this.repath(this.x + (ex - this.x) * 0.5, this.y + (ey - this.y) * 0.5);
+    }
+    // "Who's there?" They say it out loud, once, when something first draws them.
+    if (fresh && !this.queried && !loud) {
+      this.queried = true;
+      this.ctx.audio.sfx('query', this.x, this.y);
+    }
+  }
+
+  /** Is this one already on its way to (or searching) somewhere near here? */
+  checking(x: number, y: number): boolean {
+    if (this.covering) return false;
+    if (this.state !== 'investigate' && this.state !== 'alert' && this.state !== 'search') return false;
+    return Math.hypot(this.noiseX - x, this.noiseY - y) < OVERWATCH_RANGE;
+  }
+
+  /** A point near (x, y), off by up to `err`, that isn't inside a wall. */
+  private guess(x: number, y: number, err: number): { x: number; y: number } {
+    for (let i = 0; i < 4; i++) {
+      const gx = x + (Math.random() - 0.5) * err;
+      const gy = y + (Math.random() - 0.5) * err;
+      if (!this.ctx.map.isSolidAt(gx, gy)) return { x: gx, y: gy };
+    }
+    return { x, y };
   }
 
   /** Posted guards don't leave their room for a shout from across the facility. */
@@ -212,6 +272,14 @@ export class Enemy implements Hittable {
     if (!sees && d > 110) return;
     this.edge = 1;
     this.suppression = Math.min(1, this.suppression + 0.35);
+    // Some people see a friend drop and run. Scavengers, mostly.
+    if (!this.retreated && !this.post && Math.random() < this.def.temper.panic) {
+      this.facing = Math.atan2(killerY - this.y, killerX - this.x);
+      this.lastKnownX = killerX;
+      this.lastKnownY = killerY;
+      this.startRetreat(killerX, killerY);
+      if (this.state === 'retreat') return;
+    }
     if (!this.aware) {
       this.facing = Math.atan2(killerY - this.y, killerX - this.x);
       this.investigate(killerX + (Math.random() - 0.5) * 80, killerY + (Math.random() - 0.5) * 80, 'alert');
@@ -238,6 +306,10 @@ export class Enemy implements Hittable {
   private investigate(x: number, y: number, as: 'investigate' | 'alert'): void {
     this.lastKnownX = x;
     this.lastKnownY = y;
+    this.noiseX = x;
+    this.noiseY = y;
+    this.covering = false;
+    this.listenTimer = 0;
     this.setState(as);
     this.repath(x, y);
   }
@@ -383,7 +455,11 @@ export class Enemy implements Hittable {
     let wantFacing = this.facing;
     let running = false;
 
-    switch (this.state) {
+    // Stopped to listen: facing where a far noise came from, not moving.
+    const listening = this.listenTimer > 0 && (this.state === 'idle' || this.state === 'patrol');
+    if (this.listenTimer > 0) this.listenTimer -= dt;
+    if (listening) wantFacing = this.listenAngle;
+    else switch (this.state) {
       case 'idle': {
         this.lookTimer -= dt;
         if (this.lookTimer <= 0) {
@@ -424,7 +500,7 @@ export class Enemy implements Hittable {
           wantFacing = this.state === 'alert' && this.stateTime % 3 > 2
             ? Math.atan2(this.lastKnownY - this.y, this.lastKnownX - this.x)
             : Math.atan2(moveY, moveX);
-        } else this.startSearch();
+        } else this.startSearch(this.covering);
         break;
       }
       case 'chase': {
@@ -480,7 +556,13 @@ export class Enemy implements Hittable {
             }
           }
           wantFacing = this.idleLook ?? this.facing;
-          if (!this.searchPoints.length && this.stateTime > 7) this.resumeRoutine();
+          // Covering: keep the gun on where the noise was.
+          if (this.covering && this.lookTimer > 0.4) wantFacing = Math.atan2(this.noiseY - this.y, this.noiseX - this.x);
+          if (!this.searchPoints.length && this.stateTime > this.def.temper.patience) {
+            // Giving up, out loud: a listening operator knows they've stopped looking.
+            this.ctx.audio.sfx('mutter', this.x, this.y);
+            this.resumeRoutine();
+          }
         }
         break;
       }
@@ -493,8 +575,11 @@ export class Enemy implements Hittable {
               // Holding the room: back to the post, gun on the door.
               if (!this.takeCover(this.lastKnownX, this.lastKnownY)) this.returnToPost();
             } else if (!this.tryFlank()) {
-              this.setState('chase');
-              this.repath(this.lastKnownX, this.lastKnownY);
+              // Raiders come after you; the garrison holds a corner and waits for you to show.
+              if (Math.random() < this.def.temper.push || !this.takeCover(this.lastKnownX, this.lastKnownY)) {
+                this.setState('chase');
+                this.repath(this.lastKnownX, this.lastKnownY);
+              }
             }
           }
           wantFacing = Math.atan2(this.lastKnownY - this.y, this.lastKnownX - this.x);
@@ -762,20 +847,20 @@ export class Enemy implements Hittable {
     this.repath(spot.x, spot.y);
   }
 
-  /** Arrived where they thought you were: check a few spots around it. */
-  private startSearch(): void {
+  /**
+   * Arrived where they thought you were: check the room it came from and the rooms next
+   * to it, the way a person would, not random spots. Covering a squad-mate, they stay and
+   * watch instead.
+   */
+  private startSearch(covering = false): void {
     this.setState('search');
-    this.searchPoints = [];
-    const map = this.ctx.map;
-    for (let i = 0; i < 8 && this.searchPoints.length < 3; i++) {
-      const x = this.lastKnownX + (Math.random() - 0.5) * TILE * 7;
-      const y = this.lastKnownY + (Math.random() - 0.5) * TILE * 7;
-      if (!map.isSolidAt(x, y)) this.searchPoints.push({ x, y });
-    }
+    this.covering = covering;
+    this.searchPoints = covering ? [] : searchPlan(this.ctx.map, this.lastKnownX, this.lastKnownY, this.def.temper.sweep);
   }
 
   private resumeRoutine(): void {
     this.awareness = 0.3;
+    this.covering = false;
     if (this.route && this.route.length > 1) {
       this.setState('patrol');
       this.repath(this.route[this.patrolIndex].x, this.route[this.patrolIndex].y);
@@ -826,6 +911,43 @@ export class Enemy implements Hittable {
     this.stateTime = 0;
     this.lookTimer = 0;
   }
+}
+
+/**
+ * Where to look for someone heard or lost near (x, y): a spot or two in the room it came
+ * from, then the middle of the nearest rooms around it, within `sweep` tiles. In a corridor
+ * or an open map, a few spots around the point. At most four, nearest first.
+ */
+export function searchPlan(map: TileMap, x: number, y: number, sweep: number): { x: number; y: number }[] {
+  const out: { x: number; y: number }[] = [];
+  const tx = x / TILE;
+  const ty = y / TILE;
+  const inside = (r: { x: number; y: number; w: number; h: number }) => tx >= r.x && tx < r.x + r.w && ty >= r.y && ty < r.y + r.h;
+  const floor = (px: number, py: number) => !map.isSolidAt(px, py);
+  const here = map.rooms.find(inside);
+  if (here) {
+    for (let i = 0; i < 6 && out.length < 2; i++) {
+      const px = (here.x + 0.5 + Math.random() * (here.w - 1)) * TILE;
+      const py = (here.y + 0.5 + Math.random() * (here.h - 1)) * TILE;
+      if (floor(px, py)) out.push({ x: px, y: py });
+    }
+  }
+  const near = map.rooms
+    .filter((r) => r !== here && r.role !== 'vault')
+    .map((r) => ({ x: (r.x + r.w / 2) * TILE, y: (r.y + r.h / 2) * TILE }))
+    .map((c) => ({ ...c, d: Math.hypot(c.x - x, c.y - y) }))
+    .filter((c) => c.d < sweep * TILE * 1.6 && floor(c.x, c.y))
+    .sort((a, b) => a.d - b.d);
+  for (const c of near) {
+    if (out.length >= 4) break;
+    out.push({ x: c.x, y: c.y });
+  }
+  for (let i = 0; i < 10 && out.length < 3; i++) {
+    const px = x + (Math.random() - 0.5) * TILE * sweep;
+    const py = y + (Math.random() - 0.5) * TILE * sweep;
+    if (floor(px, py)) out.push({ x: px, y: py });
+  }
+  return out;
 }
 
 function angleDiff(a: number, b: number): number {

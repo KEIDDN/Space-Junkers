@@ -12,6 +12,7 @@ import { LORE_BY_ID } from '../../data/lore';
 import { ContractCard, rewardText } from './Contracts';
 import { TradeScreen } from './TradeScreen';
 import { Key } from '../Glyph';
+import type { Moment } from '../../core/story';
 
 /** How the last raid went, so the crew can react to it once. Not saved. */
 export const recentRaid: {
@@ -24,7 +25,9 @@ export const recentRaid: {
   /** Brought back something rare or better. */
   bigFind: boolean;
   kills: number;
-} = { outcome: null, greeted: new Set(), lore: [], wounded: false, bigFind: false, kills: 0 };
+  /** What happened down there (see core/story.ts). */
+  moments: Moment[];
+} = { outcome: null, greeted: new Set(), lore: [], wounded: false, bigFind: false, kills: 0, moments: [] };
 
 /** What this crew member says first after a raid, if anything in particular. */
 function reaction(crew: CrewId, flags: Record<string, boolean>): { line: string; flag?: string } | null {
@@ -36,6 +39,12 @@ function reaction(crew: CrewId, flags: Record<string, boolean>): { line: string;
     if (e?.react?.crew === crew && !flags[`react_${id}`]) return { line: e.react.line, flag: `react_${id}` };
   }
   if (recentRaid.outcome === 'dead') return { line: pick(def.afterDeath)! };
+  // Something that happened down there, if it's theirs to talk about: the latest first (how
+  // you got out is what they saw, and what they'll bring up).
+  for (const m of [...recentRaid.moments].reverse()) {
+    const line = pick(def.moments?.[m.kind]);
+    if (line) return { line };
+  }
   const special = (recentRaid.wounded && pick(def.wounded)) || (recentRaid.bigFind && pick(def.bigFind)) || (recentRaid.kills >= 3 && pick(def.hardFight));
   return { line: special || pick(def.welcomeBack)! };
 }

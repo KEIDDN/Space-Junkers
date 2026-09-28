@@ -1,3 +1,5 @@
+import type { MomentKind } from '../core/story';
+
 /**
  * The crew of the Lastochka. Each has a station on the ship, a trade, a voice, a reason to
  * be out here, and opinions about the others. Lines are short on purpose: they're people,
@@ -35,6 +37,11 @@ export interface CrewDef {
   wounded?: string[];
   bigFind?: string[];
   hardFight?: string[];
+  /**
+   * Something that happened down there (see core/story.ts) that this one has an opinion
+   * about. Only one crew member owns each moment, so it's said once, by the right person.
+   */
+  moments?: Partial<Record<MomentKind, string[]>>;
   /** Extra greetings once a contract (id) has been handed in: the ship remembers. */
   greetingsAfter?: Record<string, string[]>;
   /**
@@ -76,6 +83,7 @@ export const CREW: Record<CrewId, CrewDef> = {
       'The last one owed me money too. Don\'t take it personally.',
       'This is my ship. Fifty years old. Held together with tape and a man on the Belt who wants his loan back.',
       'You go down, you bring things up, I turn things into kosmorubli, and she keeps flying. That\'s the whole arrangement.',
+      'Fuel, parts, food, the loan. Every week, all four. That\'s what you\'re going down for. Not glory. Fuel.',
     ],
     greetings: [
       'Buying or selling? Both is also acceptable.',
@@ -98,6 +106,15 @@ export const CREW: Record<CrewId, CrewDef> = {
       'Wait. Put that on the table. Slowly. Do you know what that is? I do. Sit down, we should talk.',
       'Now that is a reason to go down there. Don\'t tell Lis you have it.',
     ],
+    moments: {
+      lastMinute: [
+        'I had my hand on the throttle, {name}. On it. Every minute I hold orbit is fuel I haven\'t paid for yet.',
+        'Next time you want to see how close we can cut the window, remember who\'s paying for the window.',
+      ],
+      patrol: [
+        'Shura said somebody walked in behind you. That\'s how it goes. You think the rooms behind you are done. They\'re never done.',
+      ],
+    },
     afterDeath: [
       'Eh. The facility keeps what it takes. Take a tea. Start again.',
       'You lost the kit. You didn\'t lose yourself. One of those is replaceable, and I sell it.',
@@ -105,6 +122,9 @@ export const CREW: Record<CrewId, CrewDef> = {
     ],
     topics: [
       { q: 'Why do the stations still run?', lore: 'tk_grid', kind: 'lore', a: ['Reserve power. The Commonwealth built for a hundred years and got sixty.', 'What I don\'t understand is what gets the power first when there\'s almost none. It\'s never the heating.'] },
+      { q: 'What exactly do I owe you?', kind: 'character', a: ['The fare off the Belt. The bunk. The food. The rounds Molot counts into your pockets.', 'You pay it off with what you bring up. Some weeks you\'ll be ahead. Don\'t get used to it.', 'And yes, I need you alive. Operators are expensive. Dead ones are more expensive.'] },
+      { q: 'Why not just buy what the ship needs?', kind: 'functional', a: ['With what? Everything on this ship runs on fuel, fuel runs on money, and money comes up out of a hole in the ground.', 'And half of what she needs, nobody makes any more. What\'s left is down there. So somebody goes down. You.'] },
+      { q: 'Why fly further out?', kind: 'functional', a: ['Tikhaya is close and cheap and picked over. Good for a pump. Not good for a loan.', 'Further out costs more fuel and pays more, because fewer crews come back from there. Every jump is a bet. I try to only make the ones we can afford to lose.'] },
       { q: 'What is this ship?', kind: 'character', a: ['The Lastochka. Swallow. A Commonwealth ore tender, decommissioned twice. Recommissioned once, by me.', 'I bought her at an auction nobody else came to. The reactor was still warm. So was the previous owner, but that\'s another story.'] },
       { q: 'What happened to the Commonwealth?', kind: 'lore', a: ['The Blackout. One night every clock stopped. Then the orders stopped. Then the pay.', 'The garrisons waited. Then they stopped waiting. The factories just... kept the lights on.'] },
       { q: 'And Earth?', kind: 'lore', a: ['Earth is where the orders came from. Then it\'s where the orders didn\'t come from.', 'Shura thinks something switched us off. I think they forgot us. Which is worse, I haven\'t decided.'] },
@@ -121,6 +141,7 @@ export const CREW: Record<CrewId, CrewDef> = {
     intro: [
       'You\'re the operator.',
       'I keep the guns clean and the crew breathing. Down there, you do what I told you up here, and you come back.',
+      'Those places were built to be defended, and some still are. Squatters. Other crews. Soldiers nobody told to stop.',
       'Need iron, me. Need advice, also me. Need a hug, the Doctor.',
     ],
     greetings: [
@@ -144,13 +165,24 @@ export const CREW: Record<CrewId, CrewDef> = {
       'That was a fight, not a salvage run. Good that you won it. Better if you hadn\'t needed to.',
       'Every shot you fire down there, someone hears. Remember that next time you\'re winning.',
     ],
+    moments: {
+      forced: [
+        'You went through a shutter instead of round it. Fine. You bought time with noise. Just know you bought it.',
+        'Forcing a door is a decision. Everyone on the other side of it gets to make one too.',
+      ],
+      hunted: [
+        'They were on the pad with you. On Krasnaya we lost two waiting for a shuttle in the open. Hold a corner. Let the shuttle come to you.',
+        'You got out with them behind you. I left Depot 4 like that. I still hear them some nights. Lose them first. Then leave.',
+      ],
+    },
     afterDeath: [
       'You got dropped. It happens to everybody once. Don\'t let it happen twice in the same doorway.',
       'Walk me through it. Where did the shot come from? ... Right. Next time, you check that corner.',
       'You had enough and you stayed. I know. Everybody stays once.',
     ],
     topics: [
-      { q: 'Any advice for down there?', kind: 'functional', a: ['Listen before you look. If you hear them first, you choose the fight.', 'Walking is quiet, running isn\'t, shooting is the loudest thing you own. Every shot tells the whole level where you are.', 'Flashlight is a beacon. Use it when you need eyes, not when you\'re scared.'] },
+      { q: 'Any advice for down there?', kind: 'functional', a: ['Listen before you look. If you hear them first, you choose the fight.', 'Walking is quiet, running isn\'t, shooting is the loudest thing you own.', 'A pistol is a conversation: the room hears it, maybe next door. A rifle, the level. A shotgun is an announcement. Pick what you want them to hear.', 'Far off, they only know "somewhere that way". Close, they know where. Shoot, then move.', 'Flashlight is a beacon. Use it when you need eyes, not when you\'re scared.'] },
+      { q: 'Who else is down there?', kind: 'functional', a: ['On Tikhaya, squatters who think it\'s home, and scavengers who think everything is theirs. Raider crews anywhere: people like us, but worse.', 'On Krasnaya, the garrison. They never got the order to stop. On Kombinat, security paid to guard things they don\'t understand.', 'None of them are waiting for you. All of them will shoot.'] },
       { q: 'What about armour?', kind: 'functional', a: ['Class matters more than weight. Pistol rounds won\'t go through a Zhuk plate. Rifle rounds will go through your shirt.', 'Buckshot is murder across a table and a rumour across a hall. Armour-piercing rounds are expensive. So is dying.'] },
       { q: 'When do I leave?', kind: 'functional', a: ['When you think "one more room". That\'s the signal.', 'The deeper rooms pay better because fewer people come back from them. That\'s not a coincidence. That\'s the price.'] },
       { q: 'Where did you serve?', minTrust: 1, kind: 'character', a: ['Seventh Orbital. We held the Krasnaya depots after the Blackout. Eleven months after the pay stopped.', 'Nobody relieved us. So I relieved myself. Walked out through the red dust. Fedya picked me up at the spaceport and never asked.'] },
@@ -165,6 +197,7 @@ export const CREW: Record<CrewId, CrewDef> = {
     intro: [
       'Sit. No, not there, that\'s the clean side.',
       'Sokolova. I fix what the facilities break. I also look at what the facilities grow.',
+      'Medicine is the most expensive thing on this ship. You\'re the second. I\'d like to keep both, so nobody down there is grading you on bravery.',
       'Bring me medicine. And anything that looks alive and shouldn\'t. I pay for both.',
     ],
     greetings: [
@@ -187,6 +220,12 @@ export const CREW: Record<CrewId, CrewDef> = {
       'You came back with more holes than you left with. Let me count them.',
       'Next time you\'re this hurt down there, you leave. Nobody\'s grading you on bravery. I\'m grading you on pulse.',
     ],
+    moments: {
+      lowHp: [
+        'Sit. No. Lie down. At Kharon we had a word for numbers like yours. Near the end we stopped writing it on the charts.',
+        'You got out on what was left of you. I have held enough hands going out. Leave earlier. That\'s not advice, that\'s a prescription.',
+      ],
+    },
     afterDeath: [
       'Your signal dropped. I counted the seconds. Don\'t make me count so often.',
       'We pulled your tracker out of the feed. I\'m glad it was only the tracker.',
@@ -194,6 +233,7 @@ export const CREW: Record<CrewId, CrewDef> = {
     ],
     topics: [
       { q: 'Any medical advice?', kind: 'functional', a: ['Bleeding kills slower than bullets, but it kills. Bandage first, then heal.', 'Painkillers work over time. Take them before the fight, not during. And if you\'re under half, that\'s the ship telling you to come home.'] },
+      { q: 'What was the Leaving?', kind: 'lore', a: ['When the supply ships stopped for good, everyone who could, left for the Belt. About ten years after the Blackout, over about ten more.', 'Some stations had weeks. Some had six minutes. The ones who couldn\'t leave are still on the rosters. You\'ll read them.'] },
       { q: 'What are the samples for?', minTrust: 1, kind: 'lore', a: ['The things growing in the lower levels shouldn\'t exist. Fungus that eats steel. Things in sealed fridges with no parent species.', 'Somebody in the Commonwealth brought them here. I want to know from where.'] },
       { q: 'Does it matter what happened to Earth?', kind: 'character', a: ['Not to anyone I\'ve ever stitched.'] },
       { q: 'Where did you work before?', minTrust: 3, kind: 'character', a: ['Kharon General. Nine hundred beds. When the supply ships stopped, I chose who got the last of the antibiotics.', 'I don\'t want to choose like that again. So I stockpile. So you go downstairs.'] },
@@ -206,6 +246,8 @@ export const CREW: Record<CrewId, CrewDef> = {
     intro: [
       'oh. hi. you\'re the new operator? cool cool cool.',
       'I do the ship systems. the scanners, the locks. basically everything that beeps. and your radio.',
+      'the stations down there are still running, you know. forty years, nobody at the controls, and their networks still talk to each other. doors, terminals, records. useful.',
+      'also a bit weird. I\'ll tell you about weird when you\'ve been down.',
       'bring me drives. chips. anything with memory. I want to know what happened out there. like, really happened.',
     ],
     greetings: [
@@ -223,6 +265,18 @@ export const CREW: Record<CrewId, CrewDef> = {
       'signal was clean the whole time. nice.',
       'your heart rate on the way out was very funny. sorry. not funny. interesting.',
     ],
+    moments: {
+      seal: [
+        'that seal. reserve cells don\'t just die on a schedule. except they keep dying when somebody\'s standing near them. I\'m writing it down.',
+        'a seal let go while you were in there. I checked the log afterwards: every seal I\'ve ever seen fail, failed on the minute. not the second. the minute.',
+      ],
+      nine: [
+        'nine came through a speaker down there? five tones? ... okay. okay. tell me exactly where you were standing. exactly.',
+      ],
+      blackout: [
+        'when the lights went, the channel didn\'t. everything else in that station lost power and the receiver kept listening. just saying.',
+      ],
+    },
     afterDeath: [
       'your biomonitor flatlined and I kind of panicked. glad you\'re... back. anyway.',
       'I saved the last thirty seconds of your helmet cam. you don\'t want to watch it. Molot watched it. he made notes.',
@@ -230,6 +284,8 @@ export const CREW: Record<CrewId, CrewDef> = {
     topics: [
       { q: 'What is channel nine?', lore: 'tk_radio9', kind: 'lore', a: ['every Commonwealth node had a receiver on nine. military, civilian, a tractor plant: all of them. nobody could tell you why.', 'since the Blackout it carries something. not a voice. a pattern that repeats every eleven minutes. I\'ve been recording it.'] },
       { q: 'What are you looking for?', kind: 'character', a: ['the Blackout logs. the moment the network went dark, every node recorded something.', 'nobody\'s put them together. I\'m going to. I was born into the dark. I\'d like to know who turned it off.'] },
+      { q: 'Why do sealed doors open?', kind: 'functional', a: ['the deep doors were sealed by protocol after the Blackout. they stay shut while the station\'s reserve cells hold.', 'when a station runs out of reserve, some of them open again. that\'s mostly what a fresh signal is on the nav: a place that just came unsealed. everyone races for those.', 'why they open on the minute and never between is the part I don\'t like.'] },
+      { q: 'What\'s a jammed shutter?', kind: 'functional', a: ['rust on the leaves, amber lamp. somebody welded it shut behind them once.', 'you can force it. hold on it a few seconds. it screams halfway and bangs at the end. anyone a room or two off hears both, and so does the channel.', 'it\'s usually the short way to somewhere deep. the long way round is quieter. and full of people. pick one.'] },
       { q: 'What\'s a vault keycard for?', kind: 'functional', a: ['deep facilities have a vault. security-sealed. red door, you can\'t miss it.', 'cards wear out after three swipes. I can sell you one. at cost. ish.'] },
       { q: 'What do you think happened?', minTrust: 2, kind: 'lore', a: ['I think something on the ninth channel talked, and something here listened.', 'every node that went dark was listening to the same channel. that\'s not a coincidence, that\'s a message.', 'Doc says it doesn\'t matter. Doc wasn\'t born in it.'] },
     ],
@@ -242,6 +298,7 @@ export const CREW: Record<CrewId, CrewDef> = {
       '...',
       'You need something the others won\'t sell. I have it.',
       'You find something the others won\'t buy. I buy it.',
+      'We\'re not the only crew going down. The Belt is full of them. The ones that last know what sells, and who\'s buying.',
       'We never talked.',
     ],
     greetings: [
@@ -252,10 +309,14 @@ export const CREW: Record<CrewId, CrewDef> = {
       'Fedya counted his cards again. He\'s short one. He\'s always short one.',
     ],
     welcomeBack: ['You\'re still breathing. Profitable.', 'Anything shiny?', 'Hm. You walk differently when you\'re carrying something good.'],
+    moments: {
+      leftBehind: ['You left something on the floor down there. I heard. Somebody else is carrying it now. They\'ll sell it to me.'],
+    },
     afterDeath: ['Unlucky.', 'The dead don\'t pay. You\'re not dead. Pay attention.'],
     topics: [
       { q: 'Who are you?', kind: 'character', a: ['Someone who delivers.', 'Next question.'] },
       { q: 'What happened to Earth?', kind: 'lore', a: ['Depends who\'s paying.', 'For you, free: I met a man once who said he\'d been there. He wanted forty kosmorubli for the rest.', 'I didn\'t pay. I regret it about once a year.'] },
+      { q: 'Who else does what we do?', kind: 'character', a: ['Anyone with a hull and nothing to lose.', 'Most sell to the same six buyers on the Belt. I sell to the seventh. That\'s why you\'ll get more from me for jewellery and stones, and less than Fedya pays for the ordinary things.'] },
       { q: 'Who buys what you sell?', minTrust: 1, kind: 'lore', a: ['People who don\'t exist, on stations that aren\'t on maps.', 'Kombinat Holdings buys stations at auction. Kombinat Holdings buys from me too. Don\'t tell Kombinat Holdings.'] },
       { q: 'How long have you been on this ship?', minTrust: 3, kind: 'character', a: ['Longer than Fedya.', 'Don\'t tell him.'] },
     ],

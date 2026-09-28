@@ -1,3 +1,24 @@
+/**
+ * How a faction behaves, beyond how well it shoots: the same senses and the same code,
+ * different people. Scavengers are nervous and would rather not know; raiders go looking
+ * and keep coming; the garrison moves in pairs and holds; corporate security searches
+ * properly and covers each other.
+ */
+export interface Temper {
+  /** 0..1 chance to go and look at a gunshot heard from far off (else: stop, face it, listen). */
+  curiosity: number;
+  /** Seconds a search lasts before they give up and go back to what they were doing. */
+  patience: number;
+  /** How far around where they think you were they'll search (tiles). */
+  sweep: number;
+  /** 0..1 chance to go after you when you break line of sight, rather than hold a corner. */
+  push: number;
+  /** 0..1 chance to fall back when a friend drops nearby. */
+  panic: number;
+  /** When a squad-mate is already checking a noise, stop halfway and cover them. */
+  overwatch: boolean;
+}
+
 export interface EnemyDef {
   id: string;
   name: string;
@@ -38,6 +59,7 @@ export interface EnemyDef {
   retreatBelow: number;
   /** Somebody in particular (a contract target): referred to by name, never rolled into a mix. */
   named?: boolean;
+  temper: Temper;
 }
 
 export const ENEMIES: Record<string, EnemyDef> = {
@@ -48,6 +70,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
     helmet: 'respcap', armorChance: 0.25, ammo: [4, 18], pockets: [0, 2],
     reactionTime: 0.55, aimError: 4, sightRange: 300, fov: 65, hearing: 1,
     preferredRange: 150, burst: [2, 4], retreatBelow: 0.35,
+    // Would rather not know. Freeze at distant shots, give up quickly, scatter when one drops.
+    temper: { curiosity: 0.4, patience: 5, sweep: 5, push: 0.3, panic: 0.35, overwatch: false },
   },
   /** Organised salvage crews. Aggressive, close-range, decent kit. */
   raider: {
@@ -56,6 +80,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
     armor: 'vest_ps2', helmet: 'respcap', armorChance: 0.5, ammo: [12, 35], pockets: [1, 2], grenades: 1,
     reactionTime: 0.45, aimError: 3.2, sightRange: 320, fov: 70, hearing: 1.15,
     preferredRange: 110, burst: [3, 6], retreatBelow: 0.25,
+    // Go toward the noise, search wide and long, and push when you break contact.
+    temper: { curiosity: 0.95, patience: 11, sweep: 9, push: 0.8, panic: 0.1, overwatch: false },
   },
   /** Commonwealth garrison that never stood down. Disciplined, armored, accurate. */
   soldier: {
@@ -64,6 +90,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
     armor: 'vest_zhuk', helmet: 'k6helmet', armorChance: 0.85, ammo: [20, 50], pockets: [0, 2], grenades: 1,
     reactionTime: 0.38, aimError: 2.2, sightRange: 380, fov: 75, hearing: 1.2,
     preferredRange: 200, burst: [2, 5], retreatBelow: 0.3,
+    // One checks, one covers. Hold corners rather than chase.
+    temper: { curiosity: 0.7, patience: 9, sweep: 7, push: 0.35, panic: 0.05, overwatch: true },
   },
   /** Corporate security on Kombinat. Heavy armor, expensive guns, no mercy. */
   security: {
@@ -72,6 +100,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
     armor: 'vest_granit', helmet: 'zaslon', armorChance: 0.7, ammo: [20, 45], pockets: [1, 2], grenades: 2,
     reactionTime: 0.32, aimError: 1.6, sightRange: 400, fov: 80, hearing: 1.25,
     preferredRange: 220, burst: [3, 5], retreatBelow: 0.2,
+    // Methodical: they sweep the rooms around a noise, and cover each other doing it.
+    temper: { curiosity: 0.85, patience: 12, sweep: 8, push: 0.5, panic: 0.05, overwatch: true },
   },
   /**
    * Gvozd, "the Nail": the scavengers' boss on Tikhaya. Sits in the back of whatever plant he
@@ -84,6 +114,8 @@ export const ENEMIES: Record<string, EnemyDef> = {
     armor: 'vest_ps2', helmet: 'k6helmet', armorChance: 1, ammo: [12, 24], pockets: [2, 3], grenades: 1,
     reactionTime: 0.42, aimError: 2.6, sightRange: 330, fov: 75, hearing: 1.25,
     preferredRange: 90, burst: [1, 2], retreatBelow: 0.15,
+    // Doesn't go looking. Waits for you to come to him.
+    temper: { curiosity: 0.2, patience: 4, sweep: 4, push: 0.2, panic: 0, overwatch: false },
   },
 };
 

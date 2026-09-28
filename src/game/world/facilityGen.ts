@@ -2,7 +2,7 @@ import { TILE } from '../../engine/config';
 import { Rng } from '../../engine/rng';
 import { THEMES, type RoomKind, type Theme } from '../../data/themes';
 import { MARKS, siteOf, type Zone } from '../../data/objectives';
-import { Tile, TileMap, type Room, type Spawn } from './tilemap';
+import { Tile, TileMap, type DoorDef, type Room, type Spawn } from './tilemap';
 
 /**
  * Procedural facility generator.
@@ -40,6 +40,25 @@ export interface FacilityOptions {
    * what the seed makes.
    */
   plan?: { items: string[]; tasks: string[]; marks: string[] };
+  /** How this world builds (see SiteRules): cramped or open, lit or dark, guarded how. */
+  site?: SiteRules;
+}
+
+/**
+ * What makes one world's facilities play differently from another's, not just look it:
+ * Merzlota's rooms are cramped and dark, so fights happen at arm's length; Krasnaya's are
+ * big and fortified, with guards who hold them; Kombinat's are lit and watched. Tikhaya is
+ * the baseline (no rules), so its facilities, and the first job's station, are as they were.
+ */
+export interface SiteRules {
+  /** Room size: cramped (tunnels, short sightlines) or open (halls, long ones). */
+  rooms?: 'cramped' | 'open';
+  /** Added to the chance a room's lights still work (negative: darker). */
+  light?: number;
+  /** Chance a guard in a restricted or deep room is posted there: holds it, won't be drawn out. */
+  posted?: number;
+  /** × cover per room. */
+  cover?: number;
 }
 
 /**
@@ -118,8 +137,15 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
       const ox = MARGIN + cx * CELL_W;
       const oy = MARGIN + cy * CELL_H;
       // Interior must stay within [o+2, o+size-3] so walls leave a 2-tile gap between cells.
-      const w = rng.int(6, CELL_W - 4);
-      const h = rng.int(5, CELL_H - 4);
+      let w = rng.int(6, CELL_W - 4);
+      let h = rng.int(5, CELL_H - 4);
+      if (opts.site?.rooms === 'cramped') {
+        w = 6 + Math.floor((w - 6) * 0.5);
+        h = 5 + Math.floor((h - 5) * 0.5);
+      } else if (opts.site?.rooms === 'open') {
+        w = Math.max(w, 9);
+        h = Math.max(h, 7);
+      }
       const x = ox + 2 + rng.int(0, CELL_W - 4 - w);
       const y = oy + 2 + rng.int(0, CELL_H - 4 - h);
       cells.push({ cx, cy, room: { x, y, w, h, role: 'standard', depth: 0 }, links: [], openings: [] });
@@ -158,6 +184,9 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
     cells[a].links.push(b);
     cells[b].links.push(a);
   }
+  const treeEdges = cells.length - 1;
+  // A shortcut someone jammed shut: see pickShutter. Never for a learning operator.
+  const shutter = opts.gentle ? -1 : pickShutter(cells, edges, treeEdges, startIdx, new Rng((seed ^ 0x5407) >>> 0));
 
   // --- Carve rooms
   for (const c of cells) {
@@ -166,10 +195,12 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   }
 
   // --- Carve corridors (+ doors)
-  for (const [ia, ib] of edges) {
+  let shutterDoor: DoorDef | null = null;
+  edges.forEach(([ia, ib], e) => {
     const [a, b] = cells[ia].cx < cells[ib].cx || cells[ia].cy < cells[ib].cy ? [cells[ia], cells[ib]] : [cells[ib], cells[ia]];
-    carveCorridor(map, rng, a, b);
-  }
+    const door = carveCorridor(map, rng, a, b, e === shutter);
+    if (e === shutter) shutterDoor = door;
+  });
 
   // --- Walls around everything walkable
   for (let y = 0; y < map.height; y++) {
@@ -189,17 +220,8 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
     }
   }
 
-  // --- Roles from graph depth
-  const depth = new Map<number, number>([[startIdx, 0]]);
-  const queue = [startIdx];
-  while (queue.length) {
-    const cur = queue.shift()!;
-    for (const n of cells[cur].links) {
-      if (depth.has(n)) continue;
-      depth.set(n, depth.get(cur)! + 1);
-      queue.push(n);
-    }
-  }
+  // --- Roles from graph depth: the long way round (a jammed shutter doesn't count yet).
+  const depth = depthsFrom(cells, startIdx, shutter >= 0 ? edges[shutter] : null);
   const maxDepth = Math.max(...depth.values());
   cells.forEach((c, i) => (c.room.depth = depth.get(i) ?? 0));
   cells[startIdx].room.role = 'start';
@@ -208,12 +230,15 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   cells[extractionIdx].room.role = 'extraction';
   const deadEnds = byDepth.filter((i) => i !== extractionIdx && cells[i].links.length === 1);
   // The vault gets sealed, so it must not be a room everyone else has to walk through.
+  // (The jammed shutter doesn't count as a way round: it starts shut.)
+  const shut = shutter >= 0 ? edges[shutter] : null;
   const sealable = (v: number) => {
     const seen = new Set([startIdx, v]);
     const q = [startIdx];
     while (q.length) {
-      for (const n of cells[q.pop()!].links) {
-        if (seen.has(n)) continue;
+      const cur = q.pop()!;
+      for (const n of cells[cur].links) {
+        if (seen.has(n) || (shut && shut.includes(cur) && shut.includes(n))) continue;
         seen.add(n);
         q.push(n);
       }
@@ -223,6 +248,17 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   const vaultIdx = deadEnds[0] ?? byDepth.find((i) => i !== extractionIdx && sealable(i)) ?? byDepth[1];
   const vaultLocked = sealable(vaultIdx);
   cells[vaultIdx].room.role = 'vault';
+  // The vault's own seal wins: a shutter into the vault would just be a second vault door.
+  if (shutterDoor && shutter >= 0 && edges[shutter].includes(vaultIdx)) shutterDoor = null;
+  if (shutterDoor) {
+    const d: DoorDef = shutterDoor;
+    d.locked = true;
+    d.jammed = true;
+    for (const t of d.tiles) map.setDoorLocked(t.tx, t.ty, true);
+    // Its amber lamp throws a little light, so it reads as something from across a dark room.
+    const [a, b] = d.tiles;
+    map.lights.push({ x: ((a.tx + b.tx) / 2 + 0.5) * TILE, y: ((a.ty + b.ty) / 2 + 0.5) * TILE, color: 0xffa030, radius: 72, intensity: 0.45, flicker: false, style: 'pulse' });
+  }
   for (const i of deadEnds.slice(1)) cells[i].room.role = 'loot';
 
   // --- Zones and purposes: what a room was for leans on how deep it is.
@@ -259,7 +295,7 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   const breakerRooms = cells.map((_, i) => i).filter((i) => i !== lift && i !== vaultIdx && i !== startIdx && !cells[lift]?.links.includes(i));
   const plan: RoomPlan = {
     lift, breaker: lift >= 0 && breakerRooms.length ? rng.pick(breakerRooms) : -1, guards, vaultLocked, breakerAt: null, lootBonus: opts.lootBonus ?? 0,
-    sites: new Map(), marks: new Map(),
+    sites: new Map(), marks: new Map(), site: opts.site ?? {},
   };
   if (opts.plan) planSites(cells, plan, opts.plan, new Rng(seed ^ 0x0b1ec7));
 
@@ -515,6 +551,50 @@ function wearCorridors(map: TileMap, rng: Rng, rooms: Room[]): void {
   }
 }
 
+/** Graph depth of every room from the entrance, optionally ignoring one link. */
+function depthsFrom(cells: Cell[], start: number, skip: [number, number] | null): Map<number, number> {
+  const depth = new Map<number, number>([[start, 0]]);
+  const queue = [start];
+  const skipped = (a: number, b: number) => !!skip && ((skip[0] === a && skip[1] === b) || (skip[0] === b && skip[1] === a));
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const n of cells[cur].links) {
+      if (depth.has(n) || skipped(cur, n)) continue;
+      depth.set(n, depth.get(cur)! + 1);
+      queue.push(n);
+    }
+  }
+  return depth;
+}
+
+/**
+ * A shortcut, jammed shut: one of the extra links (never part of the tree, so everything
+ * stays reachable without it) that joins a shallow room to a much deeper one. Forcing it
+ * takes time and is heard across the level; the other way round is long and guarded. That's
+ * the choice. The landing and the pad are never on it: it cuts the middle out, not the
+ * whole raid. Returns the edge index, or -1 (most facilities get one, some don't).
+ */
+function pickShutter(cells: Cell[], edges: [number, number][], treeEdges: number, start: number, rng: Rng): number {
+  const full = depthsFrom(cells, start, null);
+  const deepest = Math.max(...full.values());
+  let best = -1;
+  let bestGain = 2;
+  for (let e = treeEdges; e < edges.length; e++) {
+    const [a, b] = edges[e];
+    if (a === start || b === start) continue;
+    const without = depthsFrom(cells, start, edges[e]);
+    // The pad is the deepest room the long way round; keep it off the shortcut.
+    const pad = Math.max(...without.values());
+    if ([a, b].some((i) => without.get(i) === pad || full.get(i) === deepest)) continue;
+    const gain = Math.abs((without.get(a) ?? 0) - (without.get(b) ?? 0));
+    if (gain > bestGain) {
+      bestGain = gain;
+      best = e;
+    }
+  }
+  return best >= 0 && rng.chance(0.8) ? best : -1;
+}
+
 function neighbours(cx: number, cy: number, w: number, h: number): [number, number][] {
   const out: [number, number][] = [];
   if (cx > 0) out.push([cx - 1, cy]);
@@ -524,12 +604,13 @@ function neighbours(cx: number, cy: number, w: number, h: number): [number, numb
   return out;
 }
 
-/** a is left of / above b. */
-function carveCorridor(map: TileMap, rng: Rng, a: Cell, b: Cell): void {
+/** a is left of / above b. `needDoor`: this corridor must have a door (the shutter). */
+function carveCorridor(map: TileMap, rng: Rng, a: Cell, b: Cell, needDoor = false): DoorDef | null {
   const A = a.room;
   const B = b.room;
   const doorAtA = rng.chance(0.5);
-  const hasDoor = rng.chance(0.8);
+  const hasDoor = rng.chance(0.8) || needDoor;
+  let door: DoorDef | null = null;
   const floor = (x: number, y: number) => {
     if (map.get(x, y) !== Tile.Door) map.set(x, y, Tile.Floor);
   };
@@ -558,7 +639,8 @@ function carveCorridor(map: TileMap, rng: Rng, a: Cell, b: Cell): void {
       const dy = doorAtA ? yA : yB;
       map.set(dx, dy, Tile.Door);
       map.set(dx, dy + 1, Tile.Door);
-      map.doors.push({ tiles: [{ tx: dx, ty: dy }, { tx: dx, ty: dy + 1 }], vertical: true });
+      door = { tiles: [{ tx: dx, ty: dy }, { tx: dx, ty: dy + 1 }], vertical: true };
+      map.doors.push(door);
     }
   } else {
     // Vertical link through the horizontal gap between the two cells.
@@ -584,9 +666,11 @@ function carveCorridor(map: TileMap, rng: Rng, a: Cell, b: Cell): void {
       const dy = doorAtA ? ay : by;
       map.set(dx, dy, Tile.Door);
       map.set(dx + 1, dy, Tile.Door);
-      map.doors.push({ tiles: [{ tx: dx, ty: dy }, { tx: dx + 1, ty: dy }], vertical: false });
+      door = { tiles: [{ tx: dx, ty: dy }, { tx: dx + 1, ty: dy }], vertical: false };
+      map.doors.push(door);
     }
   }
+  return door;
 }
 
 /** A piece of furniture. Footprint is `w`×`h` tiles; the sprite stands on its bottom edge. */
@@ -740,6 +824,7 @@ interface RoomPlan {
   sites: Map<number, { kind: 'item' | 'task'; id: string }[]>;
   /** A named hostile holding the room, per room index. */
   marks: Map<number, string>;
+  site: SiteRules;
 }
 
 /**
@@ -975,7 +1060,7 @@ function furnishRoom(
 
   // --- Cover
   const area = r.w * r.h;
-  const clusters = Math.min(5, Math.round((area / 26) * kit.cover + rng.next() * 0.8));
+  const clusters = Math.min(5, Math.round((area / 26) * kit.cover * (plan.site.cover ?? 1) + rng.next() * 0.8));
   for (let k = 0, tries = 0; k < clusters && tries < 30; tries++) {
     const shape = rng.pick(COVER_SHAPES);
     const bx = rng.int(r.x + 1, r.x + r.w - 2);
@@ -1037,7 +1122,7 @@ function furnishRoom(
 
   // --- Lights, in fixtures on the back wall.
   // Deeper is darker: the mains reach the working rooms, not the far end.
-  const litChance = r.zone === 'deep' ? 0.35 : r.zone === 'restricted' ? 0.55 : r.zone === 'entry' ? 0.8 : 0.7;
+  const litChance = (r.zone === 'deep' ? 0.35 : r.zone === 'restricted' ? 0.55 : r.zone === 'entry' ? 0.8 : 0.7) + (plan.site.light ?? 0);
   const lit = r.role === 'standard' ? rng.chance(litChance) : r.role === 'loot' ? rng.chance(litChance - 0.1) : true;
   if (!lit) {
     // Mains are out: a battery emergency lamp throbs over the back wall, barely enough.
@@ -1108,10 +1193,15 @@ function furnishRoom(
     };
     // The first one a learning operator meets carries a pistol, not a sawn-off.
     if (gentle && r.depth <= 2) spawn.weapon = rng.pick(['sp5', 'pm9']);
+    // Where the world keeps a watch, the restricted and deep rooms are held, not wandered.
+    // (Its own stream: a world without the rule gets exactly the guards it always did.)
+    const posted = plan.site.posted ?? 0;
+    if (posted > 0 && (r.zone === 'restricted' || r.zone === 'deep') && r.role === 'standard'
+      && new Rng((map.seed ^ 0x9057) + index * 31 + i).chance(posted)) spawn.post = true;
     // Some guards walk a route between this room and its neighbours, never into the entry:
     // an operator's first seconds down there are theirs.
     const routes = cell.links.filter((l) => cells[l].room.role !== 'start');
-    if (i === 0 && r.role === 'standard' && routes.length && rng.chance(0.4)) {
+    if (i === 0 && r.role === 'standard' && routes.length && rng.chance(0.4) && !spawn.post) {
       const other = cells[rng.pick(routes)].room;
       spawn.patrol = [
         { x: spawn.x, y: spawn.y },

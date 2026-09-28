@@ -14,6 +14,37 @@ down into what was left behind and bringing up what still works. You are the new
 The story is not "what happened to the Commonwealth". The story is five people trying to keep
 a ship running in a universe that has mostly moved on without them.
 
+## Who these people are (the north star)
+
+A small independent crew of salvagers, smugglers and opportunists living aboard an old
+Commonwealth ore tender, on the edge of a civilisation that disappeared without properly
+ending. Not an army, not heroes, not trying to save anything. They need fuel, parts, medicine,
+kit and money every week, and they get them by going down into what the Commonwealth left
+behind. The Lastochka is not a hub between raids: it's their home, their workplace and the only
+thing that keeps them moving. Keeping it flying is the practical reason behind almost everything.
+
+**The operator** came aboard at a Belt station with nothing but the fare they owe. Fedya
+needed someone who goes down; the last operator didn't come back. That's the whole backstory,
+on purpose: not special, not chosen, just the newest person on a crew where somebody has to go.
+The arrangement, in Fedya's words: *you go, you come back, you get a share, you eat at my table,
+you work off the fare. It isn't charity. It isn't prison either.*
+
+**Why they raid:** nobody sells what the ship needs, and if anybody did, they couldn't pay. So
+they go and take it from somewhere that doesn't need it any more. The first job (the pump
+regulator) is that sentence made playable.
+
+**Why they go further:** each world costs more fuel and pays more, because fewer crews come
+back from it. Tikhaya keeps the ship running week to week; Merzlota pays for going further;
+Krasnaya is where the kit has to get better to come home; Kombinat is where the salvage becomes
+valuable enough to change things; Sirin stops being about salvage at all.
+
+**Two layers, never mixed.** Layer 1, the present, is always clear: we're a salvage crew, the
+ship needs fuel and parts, we raid and sell, we keep moving. Layer 2, the past, stays evidence:
+why the clocks stopped, what nine is, what Sirin is, whether anyone aboard is right. A player who
+ignores every record must still understand the game; one who reads everything finds more, never
+the answer. Explain the practical fact first, then let a character say what bothers them about
+it (the seals open when a station's reserve dies; *why on the minute* is Shura's problem).
+
 ## The world is its own thing
 
 The Commonwealth is fictional. Its visual language (stencils, Cyrillic labels, brutalist
@@ -49,6 +80,10 @@ three different versions depending on the buyer. All of them can be partly right
   hold. When a station's reserve finally fails, its seals fail with it and doors that held for
   forty years open: a fresh "signal". Crews race for those. The Lastochka's nav console lists
   them by signal number; that is why every raid is somewhere new.
+- **Why some doors are jammed.** Crews weld shutters behind them to keep the next crew off
+  their backs, or to keep something in. Forcing one is quick and very loud.
+- **Why a seal can fail while you're inside.** Reserve cells die when they die. Shura keeps a
+  log of when; she has noticed they fail on the minute, never between. Nobody explains that.
 - **Why it's dangerous.** Squatters (scavengers) live in the plants and treat them as home.
   Raider crews got there first. On Krasnaya the garrison's children still hold the depots under
   orders nobody countermanded. On Kombinat, corporate security guards property they don't

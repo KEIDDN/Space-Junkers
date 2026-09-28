@@ -260,7 +260,7 @@ const CATALOG: ItemDef[] = [
   loot('coinroll', 'Coin Roll', 'Coin Roll', 'valuables', 'uncommon', 230, 0.4, [1, 1], 'Someone was saving up.'),
   loot('compass', 'Brass Compass', 'Compass', 'valuables', 'uncommon', 260, 0.2, [1, 1], 'Points at nothing in particular out here.'),
   loot('ring', 'Gold Ring', 'Ring', 'valuables', 'rare', 380, 0.05, [1, 1], 'Engraved. The name is scratched out.'),
-  loot('watch', 'Pocket Watch', 'Watch', 'valuables', 'rare', 520, 0.2, [1, 1], 'Pre-Collapse. Still ticking.'),
+  loot('watch', 'Pocket Watch', 'Watch', 'valuables', 'rare', 520, 0.2, [1, 1], 'Pre-Blackout. Still ticking, which is more than its owner managed.'),
   loot('chain', 'Gold Chain', 'Chain', 'valuables', 'rare', 590, 0.1, [1, 1], 'Heavy links. Somebody\'s pension.'),
   loot('emerald', 'Emerald', 'Emerald', 'valuables', 'rare', 620, 0.2, [1, 1], 'Worth a month of fuel.'),
   loot('gold_bar', 'Gold Bar', 'Gold Bar', 'valuables', 'rare', 780, 1, [1, 1], 'Stamped with a dead bank\'s seal.'),

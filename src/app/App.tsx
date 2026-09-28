@@ -103,6 +103,7 @@ export function App() {
       const hud = useHud.getState();
       recentRaid.wounded = hud.maxHp > 0 && hud.hp / hud.maxHp < 0.5;
       recentRaid.kills = s.kills;
+      recentRaid.moments = s.log.moments;
       recentRaid.bigFind = s.status === 'extracted'
         && foundItems(s.loadout, s.brought).some((i) => RARITY_ORDER[itemDef(i.id).rarity] >= RARITY_ORDER.rare);
       const p = getProfile();

@@ -24,6 +24,15 @@ export interface Exchange {
 
 export const CHATTER: Exchange[] = [
   {
+    // The whole game in four lines: why somebody goes down.
+    id: 'buy', kind: 'character', before: 'fedya_first', lines: [
+      { who: 'hacker', text: 'why don\'t we just buy a regulator?' },
+      { who: 'trader', text: 'From who? With what?' },
+      { who: 'hacker', text: '...right.' },
+      { who: 'merc', text: 'That\'s what the operator is for.' },
+    ],
+  },
+  {
     id: 'pump', kind: 'character', before: 'fedya_first', lines: [
       { who: 'trader', text: 'The pump is making the noise again.' },
       { who: 'merc', text: 'Which noise.' },
@@ -153,6 +162,44 @@ export const CHATTER: Exchange[] = [
     ],
   },
   {
+    id: 'enough', kind: 'character', afterExtraction: true, lines: [
+      { who: 'medic', text: 'That\'s enough for this week.' },
+      { who: 'trader', text: 'We need the money.' },
+      { who: 'medic', text: 'We need them more.' },
+      { who: 'trader', text: '... Both. We need both. That\'s the whole problem, Vera.' },
+    ],
+  },
+  {
+    id: 'spent', kind: 'character', afterExtraction: true, lines: [
+      { who: 'trader', text: 'How much did we spend on that jump?' },
+      { who: 'smuggler', text: 'You don\'t want to know.' },
+      { who: 'trader', text: 'I always want to know. I just never like knowing.' },
+    ],
+  },
+  {
+    id: 'crews', kind: 'character', afterExtraction: true, lines: [
+      { who: 'smuggler', text: 'Three crews went down on Tikhaya last week. Two came back up.' },
+      { who: 'merc', text: 'And the third?' },
+      { who: 'smuggler', text: 'Their kit is on the market. Cheap.' },
+    ],
+  },
+  {
+    id: 'creditor', kind: 'character', lines: [
+      { who: 'trader', text: 'He called again.' },
+      { who: 'medic', text: 'The man on the Belt?' },
+      { who: 'trader', text: 'He asked how she\'s flying. He means: what is she worth, if he takes her.' },
+      { who: 'merc', text: 'She\'s flying. Tell him that.' },
+    ],
+  },
+  {
+    id: 'landing', kind: 'character', afterExtraction: true, lines: [
+      { who: 'medic', text: 'Do you ever think about landing somewhere, Fedya? For good?' },
+      { who: 'trader', text: 'Every day.' },
+      { who: 'merc', text: 'And?' },
+      { who: 'trader', text: 'And then I look at the fuel gauge.' },
+    ],
+  },
+  {
     id: 'counting', kind: 'character', afterDeath: true, lines: [
       { who: 'medic', text: 'Forty-one seconds. That\'s how long the signal was down.' },
       { who: 'merc', text: 'You counted.' },
@@ -160,6 +207,43 @@ export const CHATTER: Exchange[] = [
     ],
   },
 ];
+
+/**
+ * One line from the crew at the airlock before a raid (not the first: that one is a scene).
+ * Money first: if the jump took the last of it, Fedya says so. Otherwise whoever has
+ * something to say about where you're going, or something that's always true. Picked by
+ * the facility's seed, so it doesn't change while you stand there.
+ */
+export const DEPARTURE: Record<string, { who: CrewId; text: string }[]> = {
+  any: [
+    { who: 'trader', text: 'Fuel\'s paid. If the Lastochka starts screaming on the way down, that\'s normal.' },
+    { who: 'merc', text: 'Count your rounds on the way down. You won\'t have time on the way up.' },
+    { who: 'medic', text: 'Under half, you come home. I mean it every time I say it.' },
+    { who: 'hacker', text: 'radio check. ... yep, I\'ve got you. go.' },
+    { who: 'smuggler', text: 'Bring me something nobody else is selling.' },
+  ],
+  tikhaya: [{ who: 'trader', text: 'Tikhaya. Cheap fuel, cheap salvage. Bring me anything that still works.' }],
+  merzlota: [{ who: 'hacker', text: 'most of the bores lost their heating years ago. and their lights. take the flashlight seriously.' }],
+  krasnaya: [{ who: 'merc', text: 'They\'ll be at their posts. They always are. Don\'t walk into a room they\'re holding if there\'s a way round.' }],
+  kombinat: [{ who: 'smuggler', text: 'Kombinat\'s cameras don\'t work. Their guards do.' }],
+  sirin: [{ who: 'medic', text: 'Come back. That\'s all. Just come back.' }],
+};
+
+export function departureLine(
+  p: { credits: number },
+  destination: string,
+  seed: number,
+  /** What the short hop home costs right now. */
+  homeCost: number,
+): { who: CrewId; text: string } {
+  if (p.credits < homeCost) {
+    return destination === 'tikhaya'
+      ? { who: 'trader', text: 'You\'re on my tab for this one. Come back heavy.' }
+      : { who: 'trader', text: 'That jump was the last of the fuel money. Come back heavy, or we stay wherever we are.' };
+  }
+  const pool = [...(DEPARTURE[destination] ?? []), ...(DEPARTURE[destination] ?? []), ...DEPARTURE.any];
+  return pool[Math.abs(seed) % pool.length];
+}
 
 /** What the ship might say right now, given what has happened so far. */
 export function chatterFor(

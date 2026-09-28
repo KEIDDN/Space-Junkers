@@ -67,14 +67,15 @@ export const QUESTS: QuestDef[] = [
     id: 'fedya_first', giver: 'trader', title: 'The Pump',
     brief: [
       'The coolant pump. You hear that knock? That\'s a regulator with nine days left in it. Maybe seven.',
-      'Zarya-7 ran the same pump. Every station on Tikhaya did. Unbolt theirs, bring it here.',
-      'Anything else you find down there is yours to sell. The regulator is mine.',
+      'Nobody sells them. Nobody\'s made one in forty years. But Zarya-7 ran the same pump, and Zarya-7 doesn\'t need it any more.',
+      'Unbolt theirs, bring it here. Anything else you find down there is yours to sell. The regulator is the ship\'s.',
     ],
     intel: 'Pump halls sit mid-facility: big tanks, loud machinery. Unbolting is noisy. It only counts once it\'s aboard.',
     done: [
       'Let me hear it.',
       '... Listen to that. Nothing. Beautiful nothing.',
-      'You came back with the part. That puts you ahead of the last three. Here, your share.',
+      'That\'s the whole life, you understand. Something on the ship breaks, nobody sells it, somebody goes down and takes it.',
+      'You came back with the part. That puts you ahead of the last three. Here, your share. The rest buys fuel.',
     ],
     objectives: [{ kind: 'retrieve', item: 'regulator', destination: 'tikhaya' }],
     reward: { credits: 900, trust: 12 },
@@ -82,7 +83,7 @@ export const QUESTS: QuestDef[] = [
   {
     id: 'fedya_parts', giver: 'trader', title: 'Fuel Money',
     brief: [
-      'Good news: the pump works. Bad news: it pumps into a reactor that wants feeding.',
+      'Good news: the pump works. Bad news: it pumps into a reactor that wants feeding, and the man on the Belt wants his instalment.',
       'I need one good run. Not a brave run. A heavy one. Come home with a week of fuel on your back.',
     ],
     intel: 'Carry out 1,500 KR of salvage from a single raid. Anything you brought down doesn\'t count.',

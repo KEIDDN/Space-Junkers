@@ -70,6 +70,8 @@ export interface DoorDef {
   vertical: boolean;
   /** Security door: stays shut until someone swipes a keycard. */
   locked?: boolean;
+  /** A shutter jammed shut (a shortcut): locked until someone forces it, loudly. No card needed. */
+  jammed?: boolean;
 }
 
 /**

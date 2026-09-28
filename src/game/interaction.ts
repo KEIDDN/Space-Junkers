@@ -20,6 +20,12 @@ const ALARM_INTERVAL = 4;
 const ALARM_RADIUS = 720;
 const BREAKER_TIME = 2.4;
 const SWIPE_TIME = 1.2;
+/**
+ * Forcing a jammed shutter: long enough to regret, as loud as a marksman's shot (anyone a
+ * room or two away comes to look, and the channel remembers it; see game/attention.ts).
+ */
+const FORCE_TIME = 3.5;
+const FORCE_NOISE = 780;
 
 export type LootKind = 'container' | 'body' | 'pile';
 
@@ -46,7 +52,7 @@ export interface InteractionEvents {
   onExtracted(): void;
   /** The pad alarm started: everyone in the facility knows where you'll be. */
   onSignal?(x: number, y: number): void;
-  /** A keycard opened a security door. */
+  /** A keycard opened a security door, or a jammed shutter was forced. */
   onUnlock?(door: DoorDef): void;
   /** The player sat down at a terminal (or picked up a note). */
   onTerminal?(entry: number, note?: string): void;
@@ -97,6 +103,8 @@ export class Interactions {
   private sweepStep = 0;
   private done = false;
   private pileCount = 0;
+  /** A shutter being forced has already groaned once (half way). */
+  private groaned = false;
 
   /**
    * @param layer depth-sorted actor layer; container and pile sprites go in it.
@@ -370,6 +378,8 @@ export class Interactions {
     let bd = within;
     for (const f of this.fixtures) {
       if (f.done && f.kind !== 'terminal') continue;
+      // A seal that failed on its own (a raid event) has nothing left to swipe.
+      if (f.kind === 'lock' && !f.door?.locked) continue;
       const d = Math.hypot(f.x - px, f.y - py);
       if (d < bd) {
         bd = d;
@@ -394,6 +404,9 @@ export class Interactions {
       const def = siteOf(f.site!.kind, f.site!.id)!;
       label = `{hold:interact} ${def.verb}${def.noise >= 250 ? '. It will be heard' : ''}`;
       time = def.time;
+    } else if (f.kind === 'lock' && f.door?.jammed) {
+      label = '{hold:interact} FORCE THE SHUTTER. It will be heard';
+      time = FORCE_TIME;
     } else if (f.kind === 'lock') {
       const card = this.keycard();
       if (!card) return 'SECURITY DOOR · SEALED. Needs a vault keycard';
@@ -410,10 +423,17 @@ export class Interactions {
       }
       this.progress += dt / time;
       this.drawBar(f.x, f.y + 6, Math.min(1, this.progress));
+      // Halfway, the shutter gives a little, and screams about it.
+      if (f.kind === 'lock' && f.door?.jammed && this.progress > 0.5 && !this.groaned) {
+        this.groaned = true;
+        this.audio.sfx('door', f.x, f.y);
+        this.ev.onNoise(f.x, f.y, FORCE_NOISE * 0.6);
+      }
       if (this.progress >= 1) this.completeFixture(f);
     } else {
       this.searching = null;
       this.progress = 0;
+      this.groaned = false;
     }
     return label;
   }
@@ -447,6 +467,15 @@ export class Interactions {
       this.ev.onLight(f.x, f.y - 10, 90, 0xffc070, 0.8);
       raid.notice(def.done, 'ok', site.kind === 'item' ? site.id : undefined);
       this.drawLiftLamps();
+    } else if (f.kind === 'lock' && f.door?.jammed) {
+      this.groaned = false;
+      this.audio.sfx('breaker', f.x, f.y);
+      this.audio.sfx('door', f.x, f.y);
+      haptics.rumble(0.8, 0.6, 450);
+      this.ev.onNoise(f.x, f.y, FORCE_NOISE);
+      raid.notice('The shutter gives. That was heard', 'warn');
+      raid.moment({ kind: 'forced' });
+      this.ev.onUnlock?.(f.door);
     } else if (f.kind === 'lock' && f.door) {
       const card = this.keycard();
       if (!card) {

@@ -1,6 +1,12 @@
 # Space Junkers: polish passes and shipping audit
 
-This document covers four passes. The **immersion pass** (newest, first) gave the characters
+The **narrative coherence and onboarding pass** (newest, first) made the practical world plain
+in the first half hour (who the operator is, the arrangement with Fedya, why the crew raids, why
+it flies further) while leaving the past as evidence. The **raid identity pass** made the systems that were already there talk to
+each other: guns that differ in how far they're heard, hostiles who hear distance and differ in
+temper, a loud shortcut in most facilities, worlds that build and behave differently, events
+that make stories, and a report and a crew that tell them back. The **world, narrative, combat
+and extraction depth pass** is further down. Before those, four passes: the **immersion pass** gave the characters
 back the Space Junkers look, added a playable first morning aboard, made Tikhaya hard but
 learnable, made the emergency kit impossible to miss, and filled the world with life,
 storytelling and threads. The **character pass** replaced the AI-painted characters with
@@ -8,6 +14,157 @@ hand-animated layered sprites and polished controller UX, the raid HUD, death re
 lighting and set dressing. The **final master pass** added controller support, recorded sound
 and music, new enemy art, room signage and a lighting pass. The **final polish pass** did
 animation, weapon feel, synthesized audio, lighting, transitions and set dressing.
+
+## Narrative coherence and onboarding pass
+
+A content pass, not a system, and no new lore. The lore was already strong; too much of it was
+background a new player had to reconstruct. Rule used throughout (now the lore bible's "north
+star"): the present is said plainly and early, then the fragments raise questions about the past.
+
+### Audit before any change
+
+Kept as it was: the lore bible, the threads and records, the three-step first morning, the pump
+contract, the radio coach (already plain), the moments system, the operator bios, the voices.
+Gaps found:
+
+- The crawl named the Commonwealth without saying what it was, never said Central stopped
+  answering, never mentioned the Belt or that crews *live off* the old sites, and ended on
+  "you are the one who goes down" with no reason.
+- Fedya's arrangement with the operator was only implied ("you still owe me the fare").
+- Nothing said why the crew can't just buy the regulator: the reason for the whole loop.
+- Nothing said why Tikhaya comes first.
+- Nothing in the first morning hinted that something doesn't add up; the first hook was the
+  Zarya-7 log, and only for someone who read it.
+- Destinations were a level select: no reason to go, no crew opinion; locked hints said "earn
+  his trust" without saying how.
+- "The Collapse" (Kombinat's description, a pocket watch): a term the lore never uses.
+- Money never read as fuel outside the report.
+- Reactions to raid moments were apt but said little about who was speaking.
+
+### Onboarding map: what the first half hour says, and where
+
+| When | What the player learns | Where |
+|---|---|---|
+| Opening (8 lines) | The Commonwealth ran the system from Central; 41 years ago the clocks stopped and Central stopped answering; the colonies left for the Belt; what they built is still there, some of it running; the Belt buys anything that works and crews bring it up; the Lastochka is one; you came from the Belt owing the fare; the last operator didn't come back; today the pump is failing and nobody sells the part. | `INTRO` |
+| Walking the ship | Each crew member's first words carry their slice: Fedya (fuel, parts, food, the loan), Molot (who's down there), Doc (medicine; nobody grades bravery), Shura (the stations still run; useful, and a bit weird), Lis (other crews; what sells). Overheard: "why don't we just buy a regulator?" / "From who? With what?" / "That's what the operator is for." | crew `intro`, `CHATTER` |
+| Cockpit radio | The arrangement ("you go, you come back, you get a share, you eat at my table, you work off the fare. It isn't charity. It isn't prison either"); why raid ("nobody makes them any more; if somebody did, we couldn't pay"); why Tikhaya (nearest moon, cheapest fuel, where every crew starts). | `STEP_LINES.job` |
+| Airlock | Fedya: fuel's paid. Shura: Zarya-7 went quiet but its lights are still on, and nobody has paid for power in forty years: *notice things*. The first question, not an answer. | `STEP_LINES.airlock` |
+| Zarya-7 | The station master's log ("never missed a shift"; batteries going missing, "not us, we counted"). | existing `ZARYA_LOG` |
+| Home | Hand-in: "That's the whole life... something breaks, nobody sells it, somebody goes down and takes it." Money reads as jumps home at the trader. The nav console says why each world is worth the fuel. | `fedya_first.done`, trade, nav |
+
+Optional depth for anyone who asks: "What exactly do I owe you?", "Why not just buy what the
+ship needs?", "Why fly further out?" (Fedya); "Who else is down there?" (Molot); "What was the
+Leaving?" (Doc); "Why do sealed doors open?" (Shura: the plain fact, then "why on the minute is
+the part I don't like"); "Who else does what we do?" (Lis, true to her real prices).
+
+### Also changed
+
+| Where | Change |
+|---|---|
+| Nav console | Each world: WHY GO (Tikhaya keeps the ship running; Merzlota pays for going further; Krasnaya is kit good enough to come back; Kombinat the valuable salvage; Sirin "Shura wants to know what is on the other end of channel nine") and a short crew exchange. Locked hints say whose jobs open them. |
+| Airlock | One crew line per raid after the first: money first ("That jump was the last of the fuel money. Come back heavy"), otherwise about the destination. |
+| Trade | Credits read as jumps home; Fedya: "Good. That buys another jump" when a sale does. |
+| Overheard | Also: "that's enough" / "we need the money" / "we need them more"; what a jump cost; other crews; the creditor; landing somewhere for good. |
+| Raid moments | Reactions show the speaker: Molot goes back to Krasnaya and Depot 4, Doc to Kharon, Fedya counts the orbit he's paying for. |
+| Canon | "The Collapse" removed. Lore bible: the north star. |
+
+Deliberately not explained anywhere: why the clocks stopped, what nine is, what Sirin is, why
+the lights stay on, who is right.
+
+### Tested
+
+- 282 unit tests (39 files), type check, production build. `narrative.test.ts` holds the
+  contract: the opening covers the Commonwealth, Central, the Belt, the crews, the operator and
+  the pump, and names nothing of nine, Sirin or the signal; lines stay short; Fedya states the
+  arrangement, the reason and why Tikhaya; Shura's airlock line raises a question; each crew
+  intro carries its slice; every world has a reason and crew talk; one term for the end of the
+  world; the airlock line's money logic.
+- Browser (headless Chromium, dev build): NEW GAME → operator → the final crawl typed out in full and
+  fitting at 1280×720; the nav console with Merzlota's WHY GO and exchange; the airlock line, and Fedya's
+  money line when broke; trade at 480 KR ("1 JUMP"), a sale to 988 KR ("3 JUMPS", Fedya's
+  line). No console errors.
+
+### Not verified
+
+- How the writing reads to someone new: the real test of this pass.
+- The first-morning scenes clicked through line by line in the browser (their text changed;
+  the scene panel that shows them didn't).
+
+## Raid identity pass
+
+Goal: a raid should leave a story the operator wants to tell. Not by scripting one, but by
+making the existing systems (noise, AI, level, loot, clock, crew) interact strongly enough
+that situations happen.
+
+### Audit before any change
+
+Most of the brief was already in the game from earlier passes: the lore bible and three-layer
+dialogue, contracts bound to sites with plain `intel`, zones, vaults and keycards, the lift as
+a second exit, noise "attention" that brings squads sooner, four sparse raid events, crew
+reactions, death debriefs. Those were kept as they were. The gaps, read from the code:
+
+- **Every shot looked the same to the AI.** All guns were over the old 250 px "alert"
+  threshold, so every listener in range ran straight at the shooter (error: 14% of distance).
+  Nobody was ever "suspicious but unsure".
+- **Loudness was flat.** Pistol 380, sawn-off 520, rifle 560: a shotgun was barely an
+  announcement.
+- **Factions differed only in numbers.** One decision tree, different stats.
+- **Searches were random scatter** around the last known point, not rooms.
+- **No route had a trade-off.** Loops existed; nothing made one way loud-and-fast and the
+  other long-and-guarded.
+- **Worlds differed in look, loot and enemy mix, not in how they played.**
+- **Events were atmosphere**; none produced a "vault moment" or put someone behind you.
+- **Nothing told the raid back.** The report listed items; the crew reacted to hp, rarity and
+  kills.
+
+### What changed
+
+| Area | Change |
+|---|---|
+| Weapons | Loudness is part of what a gun is: pistols 330–340 (below the channel's notice, so they don't bring squads sooner), SMGs 370–420, rifles 520–580, shotguns 660–680, marksman 740–780. Each gun has a plain USE line on its tooltip ("DOORWAYS. DEVASTATING CLOSE, USELESS FAR, VERY LOUD"); NOISE reads as what it means ("QUIET · THIS ROOM AND NEXT DOOR"). Damage, rate and handling untouched. |
+| Hearing | How far a sound was heard decides the response: close and loud, a run with the gun up; mid-range, a careful look; at the edge of hearing, "somewhere that way", and depending on temper they stop, face it and listen instead. The guess gets worse with distance and through walls. A quiet noise gets a spoken "who's there?". |
+| Temper | `Temper` per faction (curiosity, patience, sweep, push, panic, overwatch). Scavengers freeze at distant shots, give up in ~5 s, scatter when one drops. Raiders go toward noise, search wide and long, push when you break contact. The garrison checks a noise in pairs, one covering from halfway, and holds corners. Corporate security sweeps methodically and covers. Gvozd waits. |
+| Search | Room-aware: a spot or two in the room the noise came from, then the nearest rooms around it. Giving up is audible (a mutter). |
+| Shortcut | Most facilities (~56%) have a **jammed shutter**: an extra link (never part of the spanning tree) from a shallow room to a much deeper one, never the landing, pad or vault. Depths and zones are measured with it shut. Forcing it takes 3.5 s, screams at halfway and bangs at the end (as loud as a marksman shot), and counts toward attention. It saves a median of 58 tiles of walking (min 18). Rust leaves, an amber lamp with a little light, JAMMED on the map. Shura explains it if asked. Never for a learning operator. |
+| Worlds | `SiteRules` per destination: Merzlota cramped and darker; Krasnaya open halls, more cover, 60% of restricted/deep guards posted; Kombinat lit, 45% posted; Sirin dark. Tikhaya has no rules, so its facilities and the first job's station are byte-for-byte as before (tested). |
+| Events | Two new: **patrol** (a squad walks back through rooms you've already explored; Shura hears boots on the band) and **seal** (a vault's reserve cell dies and the seal with it: the vault opens on its own, loudly, and hostiles near it go to look; only planned where a sealed vault exists). Weights per world: Krasnaya patrols, Kombinat alarms and seals, Merzlota blackouts, Sirin channel nine and never gunfire. Still 0–2 per raid, never in the first 90 s or last 4 min. |
+| Story | `core/story.ts`: the raid records moments (shutter forced, seal failed, patrol, blackout, someone else's fight, alarm, channel nine, a deliberately dropped item worth 400+ KR, extracting with hostiles close, with under 90 s on the window, under 25% health). The report shows up to five lines, in order, how it ended always included. |
+| Crew | Each moment belongs to one crew member: Molot (shutter, being chased out), Shura (seal, channel nine, blackout: Layer C, unexplained), Fedya (last minute, the patrol), Doc (getting out on nothing), Lis (what you left on the floor). The most recent moment is what they bring up. Molot's advice now teaches loudness in plain terms. |
+| Fixes found on the way | The tactical map had no labels for security and lab rooms. |
+
+### Tested
+
+| Check | Result |
+|---|---|
+| Unit tests | 272 passing (38 files). New: hearing by distance, far-off listening vs going, worse guesses with distance, garrison overwatch vs raiders both going, scavengers giving up sooner and scattering more, room-aware search; shutter frequency, shortcut gain, long way always open, never on landing/pad/vault, none for learners; cramped vs open rooms, darker Merzlota, posted Krasnaya, Tikhaya unchanged; per-world event mixes, no seal without a vault; the story's order and cut; weapon loudness ordering and tooltips. The AI tests use real randomness; the new ones were run 60× in a row without a failure. |
+| Type check, production build | Pass (the chunk-size warning is old). |
+| Browser (headless Chromium, dev build, scripted) | Tikhaya seed 1259 through the real UI: title → continue → airlock → deploy. Walked (teleported) through four rooms; at the shutter the prompt read "FORCE THE SHUTTER. It will be heard"; holding E forced it, the feed said so, the nearest hostile (420 px) came to search. Fired three pistol rounds 7 tiles from a scavenger: it fought, and shouted a second into a chase. Fast-forwarded the clock to the seal (vault doors opened, hostiles near it went alert/investigating) and the patrol (14 → 20 hostiles, Shura's line). Dropped a 900 KR grenade from the bag (counted) and an overflow item (correctly not counted). Extracted at 18/100 hp with 62 s left: the report told five lines. Aboard, each of the five crew said a different, fitting line. Also Krasnaya (8 of 15 guards posted, a posted soldier not drawn out by shots from outside his room), Merzlota (cramped landing, a blackout event) and Kombinat. No console errors in any run. |
+| Performance | Headless software GL, Kombinat, 10 hostiles: simulation 0.08 ms/frame (no rendering), a facility-wide noise 0.012 ms. |
+
+The harness made the operator untouchable, teleported between rooms, set the raid clock
+forward to reach events and set health for the ending. Found and fixed during these runs: the
+shutter prompt promised "everyone on this level will hear it" when walls cut its reach to one
+room (it's now louder and the text says only what's true); overflow drops counted as a choice;
+the recap's cap crowded out the middle of the story; the shutter was invisible in the dark.
+
+### Not verified
+
+- **Feel, by hand.** Headless software GL runs far below real time; nothing about pacing,
+  whether the new hearing makes stealth readable, or whether "one more room" lands, was judged
+  by playing. This is the first thing to check with a person at the controls.
+- **Balance of the new tempers.** Raiders now push harder and search longer; the garrison is
+  more static. Numbers were set by reasoning and unit behaviour, not playtesting.
+- **Controller.** Nothing about input changed; the new prompt uses the same hold glyph as the
+  others. Not re-run on a virtual pad this pass.
+- **The new crew lines and texts by ear/eye in context**, beyond the playtest's captures.
+
+### Rejected to avoid scope creep
+
+Fixed per-name facility layouts (strong for mastery, but the lore says every signal is a
+freshly opened site, and the brief asks for stable language rather than fixed maps), a
+stealth meter, visible awareness icons over heads (the "who's there?" and the gun coming up
+already say it), enemy vocal barks beyond the existing ones, new enemy types, weapon mods,
+persistent per-world intel, new contracts (the contract layer already does what the brief asks).
 
 ## Immersion pass
 

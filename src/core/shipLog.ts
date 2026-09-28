@@ -28,5 +28,5 @@ export function shipLog(p: Profile): string {
   }
   const home = DESTINATION.tikhaya;
   if (jumpCost(p, home.id, home.cost).onTab) return 'Fuel is short. Fedya will fly you to Tikhaya on his tab, and remind you.';
-  return 'No job in hand. Ask the crew what they need, or go down for salvage.';
+  return 'No job in hand. The ship always needs fuel money: go down for salvage, or ask the crew what they need.';
 }

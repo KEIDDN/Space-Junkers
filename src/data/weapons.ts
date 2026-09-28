@@ -67,8 +67,14 @@ export interface WeaponDef {
   shake: number;
   gunKick: number;
 
-  /** How far enemies can hear this weapon, px. */
+  /**
+   * How far enemies can hear this weapon, px. This is the gun's second cost after ammo:
+   * pistols are local business (the room, next door, below the channel's notice), rifles
+   * carry, shotguns and marksman rifles announce you to the whole level.
+   */
   noiseRadius: number;
+  /** What it's for, in a few plain words (the tooltip's USE line). */
+  role: string;
   /** Multiplier on player movement speed while carrying it. */
   moveSpeedMul: number;
 
@@ -92,7 +98,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 1.2, moveSpread: 2.5, bloomPerShot: 2.2, bloomMax: 7, bloomRecovery: 18,
     bulletSpeed: 900, range: 460, knockback: 70,
     cameraKick: 2.5, shake: 0.14, gunKick: 3,
-    noiseRadius: 380, moveSpeedMul: 1,
+    noiseRadius: 330, moveSpeedMul: 1,
+    role: 'SIDEARM. QUICK TO DRAW, QUIET, FORGIVING',
     tracerColor: 0xffe6a0, casingColor: BRASS, flashScale: 1,
     sound: { sample: 'pm9', thump: 150, crack: 5200, decay: 0.09, tail: 0.35, gain: 0.8 },
   },
@@ -103,7 +110,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 3, moveSpread: 3, bloomPerShot: 2.5, bloomMax: 8, bloomRecovery: 12,
     bulletSpeed: 700, range: 440, knockback: 55,
     cameraKick: 2.8, shake: 0.15, gunKick: 3,
-    noiseRadius: 380, moveSpeedMul: 1,
+    noiseRadius: 340, moveSpeedMul: 1,
+    role: 'LAST RESORT. QUIET, SLOW, MAY JAM',
     tracerColor: 0xff9a60, casingColor: BRASS, flashScale: 1,
     sound: { sample: 'sp5', thump: 140, crack: 4200, decay: 0.1, tail: 0.35, gain: 0.75 },
   },
@@ -116,7 +124,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 3.2, moveSpread: 1.5, bloomPerShot: 1.1, bloomMax: 10, bloomRecovery: 16,
     bulletSpeed: 820, range: 360, knockback: 35,
     cameraKick: 1.3, shake: 0.06, gunKick: 2,
-    noiseRadius: 400, moveSpeedMul: 1,
+    noiseRadius: 370, moveSpeedMul: 1,
+    role: 'ROOM CLEARING. FAST, QUIET FOR WHAT IT DOES',
     tracerColor: 0xffd890, casingColor: BRASS, flashScale: 1,
     sound: { sample: 'kedr', thump: 145, crack: 4800, decay: 0.06, tail: 0.25, gain: 0.55 },
   },
@@ -128,6 +137,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     bulletSpeed: 850, range: 420, knockback: 45,
     cameraKick: 1.6, shake: 0.08, gunKick: 2,
     noiseRadius: 420, moveSpeedMul: 0.97,
+    role: 'CORRIDORS. SPRAYS WELL ON THE MOVE, EATS ROUNDS',
     tracerColor: 0xffd890, casingColor: BRASS, flashScale: 1,
     sound: { sample: 'ppd41', thump: 130, crack: 4200, decay: 0.07, tail: 0.3, gain: 0.6 },
   },
@@ -140,7 +150,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 10, moveSpread: 1.5, bloomPerShot: 0, bloomMax: 0, bloomRecovery: 10,
     bulletSpeed: 700, range: 220, knockback: 70,
     cameraKick: 7.5, shake: 0.45, gunKick: 6,
-    noiseRadius: 520, moveSpeedMul: 1,
+    noiseRadius: 680, moveSpeedMul: 1,
+    role: 'ARM\'S LENGTH ONLY. TWO SHOTS, THEN EVERYONE KNOWS',
     tracerColor: 0xffc070, casingColor: SHELL, flashScale: 2,
     sound: { sample: 'obrez', thump: 80, crack: 2400, decay: 0.22, tail: 0.75, gain: 1.15 },
   },
@@ -151,7 +162,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 7.5, moveSpread: 2, bloomPerShot: 0, bloomMax: 0, bloomRecovery: 10,
     bulletSpeed: 760, range: 270, knockback: 60,
     cameraKick: 7, shake: 0.42, gunKick: 6,
-    noiseRadius: 520, moveSpeedMul: 0.93,
+    noiseRadius: 660, moveSpeedMul: 0.93,
+    role: 'DOORWAYS. DEVASTATING CLOSE, USELESS FAR, VERY LOUD',
     tracerColor: 0xffc070, casingColor: SHELL, flashScale: 2,
     sound: { sample: 'toz12', thump: 85, crack: 2600, decay: 0.2, tail: 0.7, gain: 1.1 },
   },
@@ -165,6 +177,7 @@ export const WEAPONS: Record<string, WeaponDef> = {
     bulletSpeed: 1200, range: 700, knockback: 85,
     cameraKick: 3.6, shake: 0.18, gunKick: 3,
     noiseRadius: 560, moveSpeedMul: 0.93,
+    role: 'STEADY WORK AT RANGE. EVERY SHOT COUNTS',
     tracerColor: 0xfff0b0, casingColor: BRASS, flashScale: 1,
     sound: { sample: 'skv', thump: 100, crack: 3500, decay: 0.13, tail: 0.65, gain: 0.95 },
   },
@@ -175,7 +188,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 1.0, moveSpread: 4, bloomPerShot: 1.3, bloomMax: 8, bloomRecovery: 12,
     bulletSpeed: 1150, range: 680, knockback: 80,
     cameraKick: 3.2, shake: 0.17, gunKick: 3,
-    noiseRadius: 560, moveSpeedMul: 0.92,
+    noiseRadius: 580, moveSpeedMul: 0.92,
+    role: 'ALL-ROUNDER. RELIABLE AT MOST RANGES',
     tracerColor: 0xfff0b0, casingColor: BRASS, flashScale: 1,
     sound: { sample: 'akr74', thump: 105, crack: 3600, decay: 0.12, tail: 0.6, gain: 0.95 },
   },
@@ -186,7 +200,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 0.7, moveSpread: 3, bloomPerShot: 0.9, bloomMax: 6, bloomRecovery: 15,
     bulletSpeed: 1250, range: 720, knockback: 80,
     cameraKick: 2.6, shake: 0.13, gunKick: 2,
-    noiseRadius: 540, moveSpeedMul: 0.95,
+    noiseRadius: 520, moveSpeedMul: 0.95,
+    role: 'ALL-ROUNDER. ACCURATE, QUIETER THAN IT LOOKS',
     tracerColor: 0xc8f0ff, casingColor: STEEL, flashScale: 1,
     sound: { sample: 'vektor', thump: 115, crack: 4100, decay: 0.1, tail: 0.55, gain: 0.9 },
   },
@@ -199,7 +214,8 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 0.12, moveSpread: 8, bloomPerShot: 0, bloomMax: 0, bloomRecovery: 6,
     bulletSpeed: 1900, range: 1150, knockback: 170,
     cameraKick: 9.5, shake: 0.5, gunKick: 7,
-    noiseRadius: 720, moveSpeedMul: 0.88,
+    noiseRadius: 780, moveSpeedMul: 0.88,
+    role: 'ONE SHOT, ONE BODY. MISS AND THEY ALL HEAR IT',
     tracerColor: 0xffffff, casingColor: BRASS, flashScale: 2,
     sound: { sample: 'mosin', thump: 68, crack: 2900, decay: 0.26, tail: 1.2, gain: 1.25 },
   },
@@ -210,11 +226,23 @@ export const WEAPONS: Record<string, WeaponDef> = {
     spread: 0.15, moveSpread: 7, bloomPerShot: 4, bloomMax: 6, bloomRecovery: 6,
     bulletSpeed: 1900, range: 1100, knockback: 160,
     cameraKick: 9, shake: 0.5, gunKick: 7,
-    noiseRadius: 700, moveSpeedMul: 0.85,
+    noiseRadius: 740, moveSpeedMul: 0.85,
+    role: 'LONG SIGHTLINES. HEAVY, SLOW TO SWING, DEAFENING',
     tracerColor: 0xffffff, casingColor: BRASS, flashScale: 2,
     sound: { sample: 'svk', thump: 70, crack: 3000, decay: 0.24, tail: 1.1, gain: 1.2 },
   },
 };
+
+/** Past this (px) a sound is the facility's business, not just the room's (see game/attention.ts). */
+export const CARRIES = 350;
+
+/** How far a gun carries, in words the operator can act on. */
+export function loudness(noiseRadius: number): string {
+  if (noiseRadius < CARRIES) return 'QUIET · THIS ROOM AND NEXT DOOR';
+  if (noiseRadius < 500) return 'MODERATE · A FEW ROOMS';
+  if (noiseRadius < 650) return 'LOUD · MOST OF THE LEVEL';
+  return 'DEAFENING · EVERYONE';
+}
 
 /** How this gun's reload is performed. */
 export function reloadStyleOf(def: WeaponDef): ReloadStyle {

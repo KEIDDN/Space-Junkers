@@ -8,6 +8,7 @@ import { ContractLog } from './ContractLog';
 const ROOM_NAMES: Record<string, string> = {
   entry: 'LANDING', exfil: 'SHUTTLE PAD', vault: 'VAULT', storage: 'STORAGE', barracks: 'BARRACKS', office: 'OFFICE',
   servers: 'SERVERS', workshop: 'WORKSHOP', medbay: 'MEDBAY', mess: 'MESS HALL', reactor: 'REACTOR', armory: 'ARMOURY',
+  security: 'SECURITY', lab: 'LAB',
 };
 
 const C = {
@@ -18,6 +19,7 @@ const C = {
   wall: '#4fb872',
   door: '#9ef0b0',
   locked: '#e0443a',
+  jammed: '#c8894a',
   label: 'rgba(160,240,180,0.55)',
   box: '#f2a33a',
   searched: '#6a5a3a',
@@ -72,6 +74,7 @@ export function TacticalMap({ snapshot, name, timeLeft }: { snapshot: () => Tact
           <span><i style={{ background: C.pad }} /> EXFIL</span>
           <span><i style={{ background: C.lift }} /> LIFT</span>
           <span><i style={{ background: C.locked }} /> SEALED</span>
+          <span><i style={{ background: C.jammed }} /> JAMMED</span>
           <span><i style={{ background: '#ffa030' }} /> THE JOB</span>
           <span className="grow" />
           <span className="dim"><ByDevice kbm={<>[M] CLOSE</>} pad={<><Key a="back" /> CLOSE</>} /></span>
@@ -140,7 +143,7 @@ function drawMap(cv: HTMLCanvasElement, wrap: HTMLDivElement, m: TacticalSnapsho
   // Doors.
   for (const d of m.doors) {
     if (!d.tiles.some((q) => seen(q.tx, q.ty) || seen(q.tx + 1, q.ty) || seen(q.tx - 1, q.ty) || seen(q.tx, q.ty + 1) || seen(q.tx, q.ty - 1))) continue;
-    g.fillStyle = d.locked ? C.locked : C.door;
+    g.fillStyle = d.jammed ? C.jammed : d.locked ? C.locked : C.door;
     for (const q of d.tiles) g.fillRect(q.tx * cell + cell * 0.2, q.ty * cell + cell * 0.2, cell * 0.6, cell * 0.6);
   }
 

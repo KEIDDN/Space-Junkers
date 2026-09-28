@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { Moment } from '../core/story';
 import {
   bindQuickSlot, createItem, emptyLoadout, loadoutAdd, loadoutCount, loadoutItems, loadoutTake, loadoutUpdate, newUid,
   pruneQuick, type Grid, type ItemInstance, type Loadout,
@@ -29,7 +30,8 @@ export interface FeedEntry {
 
 /** Requests from the UI that the simulation carries out on its next tick. */
 export type RaidCommand =
-  | { type: 'drop'; item: ItemInstance }
+  /** `chosen`: taken out of the inventory on purpose (not overflow that never fit). */
+  | { type: 'drop'; item: ItemInstance; chosen?: boolean }
   | { type: 'use'; uid: string };
 
 const commands: RaidCommand[] = [];
@@ -41,6 +43,8 @@ export interface RaidLog {
   visited: string[];
   /** Contract jobs done at their sites (TASKS ids). */
   tasks: string[];
+  /** What happened down there, in order (the report's story, the crew's reactions). */
+  moments: Moment[];
 }
 
 export interface OpenContainer {
@@ -106,7 +110,7 @@ export const useRaid = create<RaidState>(() => ({
   open: null,
   inventoryOpen: false,
   kills: 0,
-  log: { kills: [], searched: 0, visited: [], tasks: [] },
+  log: { kills: [], searched: 0, visited: [], tasks: [], moments: [] },
   progressed: [],
   startedAt: 0,
   endedAt: 0,
@@ -190,7 +194,7 @@ export const raid = {
       mode, seed, destination, status: 'active', loadout: pruneQuick(loadout),
       brought: loadoutItems(loadout).map((i) => i.uid),
       containers: {}, open: null, inventoryOpen: false, kills: 0,
-      log: { kills: [], searched: 0, visited: [], tasks: [] }, progressed: [],
+      log: { kills: [], searched: 0, visited: [], tasks: [], moments: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
       extractCountdown: null, extractInZone: false, extractKind: null, flashlight: true,
       terminal: null, mapOpen: false, mia: false, ending: null, lore: [], death: null,
@@ -222,6 +226,11 @@ export const raid = {
     const s = useRaid.getState();
     if (s.log.tasks.includes(id)) return;
     useRaid.setState({ log: { ...s.log, tasks: [...s.log.tasks, id] } });
+  },
+
+  /** Something worth telling someone about happened (see core/story.ts). */
+  moment(m: Moment): void {
+    useRaid.setState((s) => ({ log: { ...s.log, moments: [...s.log.moments, m] } }));
   },
 
   visit(role: string): void {
@@ -405,7 +414,7 @@ export const raid = {
   drop(uid: string): boolean {
     const it = raid.remove(uid);
     if (!it) return false;
-    commands.push({ type: 'drop', item: it });
+    commands.push({ type: 'drop', item: it, chosen: true });
     return true;
   },
 
