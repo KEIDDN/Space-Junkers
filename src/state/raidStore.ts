@@ -11,6 +11,9 @@ import {
 } from '../core/transfer';
 
 export type RaidStatus = 'active' | 'extracted' | 'dead';
+
+/** How long each way out takes, in seconds (the HUD draws the countdown against it). */
+export const EXTRACT_SECONDS = { pad: 12, lift: 7 } as const;
 export type RaidMode = 'range' | 'facility';
 
 export type FeedTone = 'ok' | 'warn' | 'bad' | 'loot' | 'radio';

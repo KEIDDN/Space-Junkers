@@ -8,13 +8,13 @@ import { Rng } from '../engine/rng';
 import { CONTAINERS, rollContainer } from '../data/loot';
 import { ITEMS, type ItemCategory } from '../data/items';
 import { loadoutItems, type Grid } from '../core/inventory';
-import { raid, useRaid } from '../state/raidStore';
+import { EXTRACT_SECONDS, raid, useRaid } from '../state/raidStore';
 import type { DoorDef, ExitDef, TileMap } from './world/tilemap';
 
 const REACH = 40; // px from player to lootable
 const CLOSE_DIST = 64; // walking this far from an open container closes it
-const EXTRACT_TIME = 12; // seconds holding the pad
-const LIFT_TIME = 7; // seconds riding the lift up
+const EXTRACT_TIME = EXTRACT_SECONDS.pad; // seconds holding the pad
+const LIFT_TIME = EXTRACT_SECONDS.lift; // seconds riding the lift up
 const ALARM_INTERVAL = 4;
 const ALARM_RADIUS = 720;
 const BREAKER_TIME = 2.4;

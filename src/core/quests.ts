@@ -240,13 +240,36 @@ export function giverName(q: QuestDef): string {
   return CREW[q.giver].callsign;
 }
 
+export interface LiveObjective {
+  text: string;
+  have: number;
+  need: number;
+  /** A short reminder of what still has to happen for it to count (or null). */
+  note: string | null;
+  /** Can be progressed in this raid (right world, raid objective). */
+  here: boolean;
+}
+
+export interface LiveContract {
+  id: string;
+  title: string;
+  giver: CrewId;
+  reward: QuestDef['reward'];
+  objectives: LiveObjective[];
+}
+
 /**
- * Raid objectives of active contracts with progress including what's happened so far in
- * the current raid (for the in-raid tracker). Extraction goals show saved progress only.
+ * Every active contract as it stands right now, mid-raid: saved progress plus what this
+ * raid has done so far (kills, searches, rooms), and what is in the bag that would count
+ * once it's out. The same data the ship shows, nothing invented.
+ * @param found items carried right now that were found in this raid
  */
-export function liveTracker(p: Profile, log: { kills: RaidReport['kills']; searched: number; visited: string[] }, destination: string):
-  { title: string; text: string; have: number; need: number }[] {
-  const out: { title: string; text: string; have: number; need: number }[] = [];
+export function liveContracts(
+  p: Profile, log: { kills: RaidReport['kills']; searched: number; visited: string[] }, destination: string,
+  found: ItemInstance[] = [],
+): LiveContract[] {
+  const out: LiveContract[] = [];
+  const carried = (id: string) => found.filter((it) => it.id === id).reduce((n, it) => n + it.qty, 0);
   for (const [id, st] of Object.entries(p.quests)) {
     if (st.status !== 'active') continue;
     const q = QUEST[id];
@@ -254,11 +277,35 @@ export function liveTracker(p: Profile, log: { kills: RaidReport['kills']; searc
     const live = applyRaid({ ...p, quests: { [id]: st } }, {
       destination, extracted: false, kills: log.kills, searched: log.searched, visited: log.visited, found: [],
     }).profile.quests[id];
-    q.objectives.forEach((o, i) => {
-      if (!isRaidObjective(o)) return;
-      if ('destination' in o && o.destination && o.destination !== destination) return;
-      out.push({ title: q.title, text: objectiveText(o), have: live.progress[i], need: needOf(o) });
+    const objectives = q.objectives.map((o, i): LiveObjective => {
+      const need = needOf(o);
+      const here = isRaidObjective(o) && !('destination' in o && o.destination && o.destination !== destination);
+      if (!isRaidObjective(o)) {
+        const bag = o.kind === 'handIn' ? carried(o.item) : found.filter((it) => matches(o, it.id)).reduce((n, it) => n + it.qty, 0);
+        const have = Math.min(need, countAboard(p, o) + bag);
+        return { text: objectiveText(o), have, need, here: false, note: have < need ? 'BRING IT ABOARD, HAND IN ON THE SHIP' : bag > 0 ? 'GET IT HOME' : null };
+      }
+      const have = Math.min(need, live.progress[i] ?? 0);
+      let note: string | null = null;
+      if (o.kind === 'extractWith' && here) {
+        const bag = carried(o.item);
+        if (have < need && bag > 0) note = `${Math.min(bag, need - have)} IN YOUR BAG · EXTRACT TO COUNT`;
+      } else if (o.kind === 'extract' && here && have < need) note = 'COUNTS WHEN YOU GET OUT';
+      else if (!here && 'destination' in o && o.destination) note = `ON ${o.destination.toUpperCase()}`;
+      return { text: objectiveText(o), have, need, note, here };
     });
+    out.push({ id, title: q.title, giver: q.giver, reward: q.reward, objectives });
   }
   return out;
+}
+
+/**
+ * Raid objectives of active contracts with progress including what's happened so far in
+ * the current raid (for the always-on tracker). Only what can move on this world.
+ */
+export function liveTracker(p: Profile, log: { kills: RaidReport['kills']; searched: number; visited: string[] }, destination: string, found: ItemInstance[] = []):
+  { title: string; text: string; have: number; need: number; note: string | null }[] {
+  return liveContracts(p, log, destination, found).flatMap((c) => c.objectives
+    .filter((o) => o.here)
+    .map((o) => ({ title: c.title, text: o.text, have: o.have, need: o.need, note: o.note })));
 }

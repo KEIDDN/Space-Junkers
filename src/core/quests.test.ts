@@ -6,7 +6,7 @@ import { ITEMS } from '../data/items';
 import { QUEST, QUESTS } from '../data/quests';
 import { addToGrid, countInGrid, createItem } from './inventory';
 import { newProfile, type Profile } from './profile';
-import { accept, applyRaid, questStatus, turnIn, type RaidReport } from './quests';
+import { accept, applyRaid, countAboard, liveContracts, questStatus, turnIn, type RaidReport } from './quests';
 
 const report = (r: Partial<RaidReport> = {}): RaidReport => ({
   destination: 'tikhaya', extracted: true, kills: [], searched: 0, visited: [], found: [], ...r,
@@ -98,5 +98,60 @@ describe('quest flow', () => {
     p = give(give(p, 'fuel'), 'copper_ore', 2);
     const r = turnIn(p, 'fedya_foreman');
     expect(r.ok && r.profile.destinations.includes('merzlota')).toBe(true);
+  });
+});
+
+describe('in-raid job sheet (liveContracts)', () => {
+  const log = (r: Partial<{ kills: RaidReport['kills']; searched: number; visited: string[] }> = {}) =>
+    ({ kills: [], searched: 0, visited: [], ...r });
+
+  it('shows each active contract with its giver, objectives and reward, and nothing else', () => {
+    const p = accept(newProfile(), 'fedya_first');
+    const live = liveContracts(p, log(), 'tikhaya');
+    expect(live).toHaveLength(1);
+    expect(live[0]).toMatchObject({ id: 'fedya_first', title: 'First Salvage', giver: 'trader' });
+    expect(live[0].reward.credits).toBe(900);
+    expect(live[0].objectives[0]).toMatchObject({ have: 0, need: 1, here: true, note: 'COUNTS WHEN YOU GET OUT' });
+    expect(liveContracts(newProfile(), log(), 'tikhaya')).toHaveLength(0);
+  });
+
+  it('counts this raid live: kills and searches move the numbers before extraction', () => {
+    let p = accept(newProfile(), 'fedya_first');
+    p = { ...p, quests: { ...p.quests, molot_zero: { status: 'active', progress: QUEST.molot_zero.objectives.map(() => 0) } } };
+    const kills = [{ enemy: 'scav', headshot: false }, { enemy: 'scav', headshot: true }];
+    const live = liveContracts(p, log({ kills, searched: 3 }), 'tikhaya');
+    const zero = live.find((c) => c.id === 'molot_zero')!;
+    const expected = applyRaid(p, report({ kills, searched: 3, extracted: false })).profile.quests.molot_zero.progress;
+    expect(zero.objectives.map((o) => o.have)).toEqual(expected.map((n, i) => Math.min(n, zero.objectives[i].need)));
+  });
+
+  it('marks an objective complete once the need is met', () => {
+    const p = accept(newProfile(), 'molot_zero');
+    const need = QUEST.molot_zero.objectives[0];
+    const n = need.kind === 'kill' ? need.count : 1;
+    const kills = Array.from({ length: n + 2 }, () => ({ enemy: need.kind === 'kill' && need.enemy ? need.enemy : 'scav', headshot: true }));
+    const o = liveContracts(p, log({ kills }), 'tikhaya')[0].objectives[0];
+    expect(o.have).toBe(o.need);
+  });
+
+  it('found items in the bag are named as "extract to count", not counted early', () => {
+    let p = give(newProfile(), 'scrap', 0);
+    p = { ...p, quests: { fedya_crystals: { status: 'active', progress: [0] } } };
+    const cryo = createItem('cryo');
+    const o = liveContracts(p, log(), 'merzlota', [cryo])[0].objectives[0];
+    expect(o.have).toBe(0);
+    expect(o.note).toContain('1 IN YOUR BAG');
+    const away = liveContracts(p, log(), 'tikhaya', [cryo])[0].objectives[0];
+    expect(away.here).toBe(false);
+    expect(away.note).toBe('ON MERZLOTA');
+  });
+
+  it('hand-ins count what is aboard plus what is in the bag', () => {
+    let p = give(newProfile(), 'scrap', 1);
+    p = { ...p, quests: { fedya_parts: { status: 'active', progress: [0, 0] } } };
+    const before = countAboard(p, QUEST.fedya_parts.objectives[0]);
+    const live = liveContracts(p, log(), 'tikhaya', [createItem('scrap')])[0].objectives[0];
+    expect(live.have).toBe(Math.min(3, before + 1));
+    expect(live.here).toBe(false);
   });
 });

@@ -502,6 +502,7 @@ export class Game {
     p.searching = this.interactions.handsBusy ? Math.max(0, p.searching) + dt : -1;
     if (menuOpen && this.input.wasPressed('KeyE')) raid.closeOverlay();
     const zone = this.map.exitAt(p.x, p.y);
+    if (!this.ending) this.extractCues(view.countdown, view.inZone, zone?.kind === 'lift');
     if (!this.ending) raid.patch({
       prompt: view.prompt,
       extractCountdown: view.countdown === null ? null : Math.ceil(view.countdown * 10) / 10,
@@ -608,11 +609,43 @@ export class Game {
       haul: haulValue(r.loadout, r.brought),
       left: this.window - this.elapsed,
       onExit: !!this.map.exitAt(p.x, p.y),
+      extractPaused: r.extractCountdown !== null && !r.extractInZone,
     });
     if (line) {
       this.audio.ui('squelch');
       raid.notice(`${line.who}: ${line.text}`, 'radio');
     }
+  }
+
+  private extractWas = { active: false, inZone: false, sec: 0 };
+
+  /**
+   * Extraction has to read at a glance and be felt: stepping off the pad says so at once,
+   * stepping back on says so too, and the last five seconds tick. (The alarm, the beacons
+   * and the klaxon that speeds up are the interaction's; this is the operator's side.)
+   */
+  private extractCues(countdown: number | null, inZone: boolean, lift: boolean): void {
+    const was = this.extractWas;
+    const active = countdown !== null;
+    if (active && was.active && !lift) {
+      if (was.inZone && !inZone) {
+        raid.notice('OFF THE PAD · EXTRACTION PAUSED', 'bad');
+        this.audio.ui('error');
+        haptics.rumble(0.4, 0.2, 180);
+      } else if (!was.inZone && inZone) {
+        raid.notice('BACK ON THE PAD · EXTRACTION RESUMED', 'ok');
+        this.audio.ui('tab');
+      }
+    }
+    // A countdown only ever stops early on the lift, which doesn't wait: stepping off
+    // cancels it (the interaction says so in words; this is the sound of it).
+    if (!active && was.active) {
+      this.audio.ui('error');
+      haptics.rumble(0.4, 0.2, 180);
+    }
+    const sec = active ? Math.ceil(countdown) : 0;
+    if (active && inZone && sec !== was.sec && sec > 0 && sec <= 5) this.audio.ui('tick');
+    this.extractWas = { active, inZone, sec };
   }
 
   private heartTimer = 0;

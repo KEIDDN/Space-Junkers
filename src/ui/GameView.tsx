@@ -17,6 +17,7 @@ import { closeInventoryPopup } from './inventory/dragStore';
 import { Results } from './Results';
 import { Key } from './Glyph';
 import { PostFx } from './PostFx';
+import { ContractLog } from './ContractLog';
 
 /** Bank or lose the loadout. Runs once per raid, from whichever path ends it first. */
 export function settleRaid(status: 'extracted' | 'dead'): void {
@@ -65,6 +66,7 @@ function PauseMenu({ facility, onResume, onAbandon }: { facility: boolean; onRes
         )}
           </div>
           <div className="pause-col controls-col">
+            {facility && <ContractLog compact />}
             <div className="dim small">CONTROLS</div>
             <ControlsList />
           </div>

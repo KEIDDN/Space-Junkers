@@ -3,7 +3,7 @@ import { RadioCoach, type CoachFacts } from './coach';
 
 const calm: CoachFacts = {
   elapsed: 0, unseenNear: Infinity, suspected: false, fighting: false, kills: 0, searched: 0,
-  hp: 1, bleeding: false, haul: 0, left: 1200, onExit: false,
+  hp: 1, bleeding: false, haul: 0, left: 1200, onExit: false, extractPaused: false,
 };
 
 function runFor(c: RadioCoach, f: CoachFacts, seconds: number): string[] {
@@ -24,6 +24,18 @@ describe('radio coach', () => {
     expect(runFor(c, f, 5)).toEqual([]);
     expect(runFor(c, f, 10)).toEqual(['hear', 'suspect']);
     expect(runFor(c, f, 30)).toEqual([]);
+  });
+
+  it('teaches the key at the moment it matters (functional lines carry a glyph token)', () => {
+    const c = new RadioCoach();
+    runFor(c, { ...calm, elapsed: 3 }, 1);
+    expect(runFor(c, { ...calm, elapsed: 20, kills: 1 }, 10)).toEqual(['kill']);
+    const all = [
+      ...runFor(c, { ...calm, elapsed: 30, kills: 1, searched: 1 }, 10),
+      ...runFor(c, { ...calm, elapsed: 40, kills: 1, searched: 1, bleeding: true }, 10),
+      ...runFor(c, { ...calm, elapsed: 40, onExit: true, extractPaused: true }, 20),
+    ];
+    expect(all).toEqual(['search', 'hurt', 'hold', 'pad']);
   });
 
   it('stays silent while nothing is happening', () => {

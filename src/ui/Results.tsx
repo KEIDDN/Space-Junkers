@@ -9,6 +9,7 @@ import { useProfile } from '../state/profileStore';
 import { useRaid } from '../state/raidStore';
 import { facilityName } from '../data/themes';
 import { issueReserve } from '../core/reserve';
+import { LORE_BY_ID } from '../data/lore';
 import { AtlasSprite } from './AtlasSprite';
 import { Key } from './Glyph';
 
@@ -35,19 +36,26 @@ function useCountUp(target: number, delayMs: number, durationMs = 900): number {
   return v;
 }
 
-/** After-action report: what came home, or what was left on the floor. */
+/**
+ * After-action report: what came home, or what was left on the floor, and (so nobody has to
+ * wonder "did I lose that?") what was kept either way.
+ */
 export function Results({ onContinue }: { onContinue: () => void }) {
-  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed, mia, destination } = useRaid();
+  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed, mia, destination, lore } = useRaid();
   const profile = useProfile();
   const extracted = status === 'extracted';
   const secs = Math.max(0, Math.round((endedAt - startedAt) / 1000));
   const time = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 
   const found = foundItems(loadout, brought);
+  const foundSet = new Set(found.map((i) => i.uid));
+  const records = lore.map((id) => LORE_BY_ID[id]).filter(Boolean);
   const rows = (extracted ? found : loadoutItems(loadout))
     .filter((i) => !i.crew || !extracted)
     .sort((a, b) => itemValueDeep(b) - itemValueDeep(a));
   const haul = haulValue(loadout, brought);
+  // What was brought in and carried back out again (the operator's own kit).
+  const kitValue = Math.max(0, loadoutValue(loadout) - haul);
   // What the ship's reserve will hand back aboard, so a lost kit is never a mystery.
   const reserve = extracted ? [] : issueReserve(profile.loadout, profile.stash).items;
   const lost = loadoutValue(loadout);
@@ -78,6 +86,7 @@ export function Results({ onContinue }: { onContinue: () => void }) {
                 <span className="loot-icon"><AtlasSprite name={d.icon} fit={{ w: 44, h: 26 }} /></span>
                 <span style={{ color: RARITY_COLOR[d.rarity] }}>{d.name}</span>
                 {it.qty > 1 && <span className="dim">×{it.qty}</span>}
+                {!extracted && <span className={`loot-tag ${foundSet.has(it.uid) ? 'found' : ''}`}>{foundSet.has(it.uid) ? 'FOUND' : 'YOUR KIT'}</span>}
                 <span className="grow" />
                 <span>{itemValueDeep(it).toLocaleString()} KR</span>
               </div>
@@ -88,6 +97,18 @@ export function Results({ onContinue }: { onContinue: () => void }) {
           {extracted
             ? <>HAUL: <span className="warn">{total.toLocaleString()} KR</span> <span className="dim small">· carried home to the ship</span></>
             : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{total.toLocaleString()} KR</span></>}
+        </div>
+        {extracted && kitValue > 0 && (
+          <div className="small dim">Your own kit came home with you too ({kitValue.toLocaleString()} KR).</div>
+        )}
+        <div className="results-kept small">
+          <div className="results-sub">{extracted ? 'ALSO THIS RAID' : 'WHAT YOU KEEP'}</div>
+          {!extracted && <div>■ Everything in the ship's stash, and your {profile.credits.toLocaleString()} KR. Nothing aboard was at risk.</div>}
+          <div>■ Hostiles neutralised: {kills}{!extracted && kills > 0 ? ' (counted toward contracts)' : ''}</div>
+          {records.length > 0
+            ? <div>■ Records read, kept in the service record: {records.map((r) => r.title).join(' · ')}</div>
+            : <div className="dim">□ No records read this time.</div>}
+          {!extracted && progressed.length === 0 && <div className="dim">□ No contract moved forward. Extraction goals only count when you get out.</div>}
         </div>
         {reserve.length > 0 && (
           <div className="results-reserve small">
