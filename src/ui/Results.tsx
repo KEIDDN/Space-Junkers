@@ -4,7 +4,7 @@ import { itemValueDeep, loadoutItems, loadoutValue } from '../core/inventory';
 import { foundItems, haulValue } from '../core/raidResult';
 import { audio } from '../engine/audio';
 import { QUEST } from '../data/quests';
-import { questStatus } from '../core/quests';
+import { objectiveProgress, objectiveText, questStatus } from '../core/quests';
 import { useProfile } from '../state/profileStore';
 import { useRaid } from '../state/raidStore';
 import { facilityName } from '../data/themes';
@@ -122,6 +122,12 @@ export function Results({ onContinue }: { onContinue: () => void }) {
             {progressed.map((id) => (
               <div key={id} className={questStatus(profile, id) === 'ready' ? 'ok' : 'warn'}>
                 {questStatus(profile, id) === 'ready' ? '■ READY TO HAND IN · ' : '□ '}{QUEST[id].title}
+                <span className="dim small">
+                  {QUEST[id].objectives.map((o, i) => {
+                    const { have, need } = objectiveProgress(profile, QUEST[id], i);
+                    return ` · ${objectiveText(o)} ${have}/${need}`;
+                  }).join('')}
+                </span>
               </div>
             ))}
           </div>

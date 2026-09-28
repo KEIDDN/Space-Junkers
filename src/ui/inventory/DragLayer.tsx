@@ -5,6 +5,7 @@ import { QUICK_SLOTS, itemValueDeep, itemWeight, loadoutCount, loadoutItems, qui
 import { locate, parseSplitQty, splitRange, splitStackAuto } from '../../core/transfer';
 import { audio } from '../../engine/audio';
 import { ByDevice, Key } from '../Glyph';
+import { useDevice } from '../../state/deviceStore';
 import { QUICK_PAD } from './GridView';
 import { grabOffset } from './drag';
 import { useDrag } from './dragStore';
@@ -144,7 +145,8 @@ function menuActions(ops: InventoryOps, uid: string): MenuAction[] {
   if (quickUsable(d.id) && loadoutCount(ops.ws.loadout, d.id) > 0) {
     for (let i = 0; i < QUICK_SLOTS; i++) {
       const bound = ops.ws.loadout.quick[i] === d.id;
-      out.push({ label: bound ? `UNBIND QUICK [${i + 3}·${QUICK_PAD[i]}]` : `QUICK USE [${i + 3}·${QUICK_PAD[i]}]`, run: () => ops.bindQuick(i, bound ? null : d.id) });
+      const key = useDevice.getState().device === 'pad' ? QUICK_PAD[i] : String(i + 3);
+      out.push({ label: bound ? `UNBIND QUICK [${key}]` : `QUICK USE [${key}]`, run: () => ops.bindQuick(i, bound ? null : d.id) });
     }
   }
   const fix = ops.repairPrice?.(item);
@@ -162,8 +164,14 @@ function ContextMenu() {
     const close = (e: PointerEvent) => {
       if (!(e.target as HTMLElement).closest('.inv-menu')) useDrag.setState({ menu: null });
     };
-    window.addEventListener('pointerdown', close);
-    return () => window.removeEventListener('pointerdown', close);
+    // Listen from the next task on: React runs this effect while the right-click that
+    // opened the menu is still bubbling, and that press must not count as "clicked outside"
+    // (it used to close the menu the instant it opened, so mouse actions never showed).
+    const id = window.setTimeout(() => window.addEventListener('pointerdown', close), 0);
+    return () => {
+      window.clearTimeout(id);
+      window.removeEventListener('pointerdown', close);
+    };
   }, [menu]);
   if (!menu) return null;
   const actions = menuActions(ops, menu.uid);
