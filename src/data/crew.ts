@@ -1,6 +1,8 @@
 /**
- * The crew of the Lastochka. Each has a station on the ship, a trade, a voice and a
- * reason to be out here. Dialogue lines are short on purpose: they're people, not manuals.
+ * The crew of the Lastochka. Each has a station on the ship, a trade, a voice, a reason to
+ * be out here, and opinions about the others. Lines are short on purpose: they're people,
+ * not manuals. Nobody explains their own personality. (Who they are and why they're together:
+ * docs/LORE_BIBLE.md.)
  */
 
 export type CrewId = 'trader' | 'merc' | 'medic' | 'hacker' | 'smuggler';
@@ -33,9 +35,20 @@ export interface CrewDef {
   wounded?: string[];
   bigFind?: string[];
   hardFight?: string[];
-  /** Things to ask about: world, past, the Collapse. `lore`: only once you've read that record. */
-  topics: { q: string; a: string[]; minTrust?: number; lore?: string }[];
+  /** Extra greetings once a contract (id) has been handed in: the ship remembers. */
+  greetingsAfter?: Record<string, string[]>;
+  /**
+   * Things to ask about. `lore`: only once you've read that record. `after`: only once that
+   * contract is handed in. `kind` says what the answer is for (see docs/LORE_BIBLE.md).
+   */
+  topics: { q: string; a: string[]; minTrust?: number; lore?: string; after?: string; kind?: LineClass }[];
 }
+
+/**
+ * What a line is for. FUNCTIONAL: needed to play, said plainly. CHARACTER: who this person
+ * is. LORE: about the world, allowed to be mysterious. ATMOSPHERE: flavour.
+ */
+export type LineClass = 'functional' | 'character' | 'lore' | 'atmosphere';
 
 export const TRUST_LEVELS = [
   { name: 'STRANGER', points: 0 },
@@ -55,115 +68,143 @@ export function trustLevel(points: number): number {
 
 export const CREW: Record<CrewId, CrewDef> = {
   trader: {
-    id: 'trader', name: 'Fyodor Kuznetsov', callsign: 'DYADYA FEDYA', role: 'Quartermaster & Trader',
+    id: 'trader', name: 'Fyodor Kuznetsov', callsign: 'DYADYA FEDYA', role: 'Captain & Trader',
     sprite: 'trader', portrait: 'portrait_trader', voice: 150, color: '#d7a45f', idleAnim: 'sit',
-    blurb: 'Owns the Lastochka, on paper. Buys anything, sells everything, remembers every kopek.',
+    blurb: 'Owns the Lastochka, on paper, and owes money on her. Buys anything, sells everything, remembers every kopek.',
     intro: [
-      'So you\'re the new one. Good. The last one owed me money.',
-      'This is my ship. Fifty years old, held together with tape and prayer. Mostly tape.',
-      'You go down, you bring things up, I turn things into kosmorubli. Simple. The Commonwealth ran on less.',
+      'So you\'re the new one. Good. The last one owed me money too.',
+      'This is my ship. Fifty years old. Held together with tape and a man on the Belt who wants his loan back.',
+      'You go down, you bring things up, I turn things into kosmorubli, and she keeps flying. That\'s the whole arrangement.',
     ],
     greetings: [
-      'Ah, {name}. Buying or selling? Both is also acceptable.',
-      'Market\'s moving today. Ask me what sells.',
-      'Wipe your boots. That deck was scrubbed in 2291.',
-      'Come, come. Old Fedya has deals. Some of them are even good.',
+      'Buying or selling? Both is also acceptable.',
+      'Ask me what sells today. I\'ll tell you. Mostly the truth.',
+      'Wipe your boots. That deck was scrubbed the year before the Blackout.',
+      'Sit, sit. Not there, that one\'s broken. Not that one either.',
+      'I did the sums again this morning. Don\'t ask.',
     ],
+    greetingsAfter: {
+      fedya_first: ['Listen. Hear that? Neither do I. Best sound on the ship.', 'The pump is holding. I keep going down to check on it. Like a baby.'],
+      fedya_tomatoes: ['The tomatoes are doing better than me. Go and look, they like company.'],
+    },
     welcomeBack: [
       'You came back heavy. I like heavy.',
       'Alive and carrying. The two best qualities in a person.',
       'Let me see, let me see. Don\'t be shy.',
+      'Back. Good. I only started the speech for your replacement.',
     ],
     bigFind: [
-      'Wait. Wait. Put that on the table. Slowly. Do you know what that is? I do. Sit down, we should talk.',
+      'Wait. Put that on the table. Slowly. Do you know what that is? I do. Sit down, we should talk.',
       'Now that is a reason to go down there. Don\'t tell Lis you have it.',
     ],
     afterDeath: [
-      'Eh. The facility keeps what it takes. Take a tea, start again.',
-      'You lost the kit. You didn\'t lose yourself. One of those is replaceable.',
+      'Eh. The facility keeps what it takes. Take a tea. Start again.',
+      'You lost the kit. You didn\'t lose yourself. One of those is replaceable, and I sell it.',
+      'Molot says you pushed too deep. Molot says that about everyone. Sometimes he\'s right.',
     ],
     topics: [
-      { q: 'Why do the stations still run?', lore: 'tk_grid', a: ['Reserve power. The Commonwealth built for a hundred years and got forty.', 'What I don\'t understand is what gets the power first when there\'s almost none. It\'s never the heating.'] },
-      { q: 'What is this ship?', a: ['The Lastochka. Swallow. A Commonwealth ore tender, decommissioned twice.', 'I bought her at an auction nobody else showed up to. The reactor was still warm.'] },
-      { q: 'What happened to the Commonwealth?', a: ['The Collapse. One day the orders stopped coming. The next, the pay.', 'The garrisons waited. Then they stopped waiting. The factories just... kept the lights on.'] },
-      { q: 'Why do people still guard those places?', a: ['Some are soldiers who never got told to go home. Some are scavengers who think it\'s theirs now.', 'Everybody guards something. I guard this ship.'], minTrust: 1 },
-      { q: 'What do you want out of all this?', a: ['A little house on Tikhaya. A garden. Tomatoes.', 'Don\'t laugh. Tomatoes are expensive out here.'], minTrust: 3 },
+      { q: 'Why do the stations still run?', lore: 'tk_grid', kind: 'lore', a: ['Reserve power. The Commonwealth built for a hundred years and got sixty.', 'What I don\'t understand is what gets the power first when there\'s almost none. It\'s never the heating.'] },
+      { q: 'What is this ship?', kind: 'character', a: ['The Lastochka. Swallow. A Commonwealth ore tender, decommissioned twice. Recommissioned once, by me.', 'I bought her at an auction nobody else came to. The reactor was still warm. So was the previous owner, but that\'s another story.'] },
+      { q: 'What happened to the Commonwealth?', kind: 'lore', a: ['The Blackout. One night every clock stopped. Then the orders stopped. Then the pay.', 'The garrisons waited. Then they stopped waiting. The factories just... kept the lights on.'] },
+      { q: 'And Earth?', kind: 'lore', a: ['Earth is where the orders came from. Then it\'s where the orders didn\'t come from.', 'Shura thinks something switched us off. I think they forgot us. Which is worse, I haven\'t decided.'] },
+      { q: 'Why is there still anything left down there?', kind: 'lore', a: ['Thousands of stations. Fuel costs what it costs. And the deep parts were sealed, by order, forty years ago.', 'When a station\'s reserve finally dies, its seals die with it. Doors that held for forty years open. That\'s a fresh signal. Everyone runs for those.'] },
+      { q: 'Why do people still guard those places?', minTrust: 1, kind: 'character', a: ['Some are soldiers who never got told to go home. Some are families who think it\'s theirs now. Maybe it is.', 'Everybody guards something. I guard this ship. From Lis, mainly.'] },
+      { q: 'Molot doesn\'t like the risks you take.', minTrust: 1, kind: 'character', a: ['Molot doesn\'t like anything. It\'s why he\'s alive.', 'I don\'t send anyone anywhere. I say where the money is. You decide. That\'s different.', '... It\'s a little different.'] },
+      { q: 'What do you want out of all this?', minTrust: 3, kind: 'character', a: ['A little house on Tikhaya. A garden. Tomatoes.', 'Don\'t laugh. Tomatoes are expensive out here.'] },
     ],
   },
   merc: {
-    id: 'merc', name: 'Emeka Adeyemi', callsign: 'MOLOT', role: 'Mercenary & Armorer',
+    id: 'merc', name: 'Emeka Adeyemi', callsign: 'MOLOT', role: 'Security & Armorer',
     sprite: 'merc', portrait: 'portrait_merc', voice: 92, color: '#c2573f', idleAnim: 'idle',
-    blurb: 'Ex-Commonwealth Foreign Legion. Says little, carries a lot, and means every word.',
+    blurb: 'Old soldier of the Seventh Orbital. Walked away from Krasnaya in year three. Says little and counts everything.',
     intro: [
       'You\'re the operator.',
-      'I keep the guns clean and the crew breathing. You do what I say down there, you come back.',
-      'Need iron, you come to me. Need advice, also me. Need a hug, the Doctor.',
+      'I keep the guns clean and the crew breathing. Down there, you do what I told you up here, and you come back.',
+      'Need iron, me. Need advice, also me. Need a hug, the Doctor.',
     ],
     greetings: [
       'Operator.',
-      'Check your mags before you check your mail.',
-      'Rifle, armor, ammunition. In that order.',
+      'Check your magazines before you check anything else.',
+      'Rifle, armour, ammunition. In that order.',
       'Talk.',
+      'You slept. Good. Most don\'t, the first week.',
     ],
+    greetingsAfter: {
+      molot_gvozd: ['Tikhaya\'s quieter. Don\'t get used to it.'],
+      molot_garrison: ['I dreamt about the depot. First time it wasn\'t loud.'],
+    },
     welcomeBack: [
-      'Back in one piece. Good work.',
+      'Back in one piece. Good.',
       'You smell like cordite. That\'s the right smell.',
+      'Sit. Tell me what you\'d do differently. There\'s always something.',
     ],
     hardFight: [
-      'I heard it on the radio. Count the rounds you have left, then tell me how many you think you have. The difference is how close it was.',
+      'Count the rounds you have left. Now tell me how many you thought you had. The difference is how close it was.',
       'That was a fight, not a salvage run. Good that you won it. Better if you hadn\'t needed to.',
+      'Every shot you fire down there, someone hears. Remember that next time you\'re winning.',
     ],
     afterDeath: [
       'You got dropped. It happens to everybody once. Don\'t let it happen twice in the same doorway.',
       'Walk me through it. Where did the shot come from? ... Right. Next time, you check that corner.',
+      'You had enough and you stayed. I know. Everybody stays once.',
     ],
     topics: [
-      { q: 'Any advice for down there?', a: ['Listen before you look. If you hear them first, you choose the fight.', 'Flashlight is a beacon. Use it when you need eyes, not when you\'re scared.'] },
-      { q: 'What about armor?', a: ['Class matters more than weight. Pistol rounds won\'t go through a Zhuk plate. Rifle rounds will go through your shirt.', 'AP rounds are expensive. So is dying.'] },
-      { q: 'Where did you serve?', a: ['Legion. Seventh Orbital. We held the Krasnaya depots for eleven months after the Collapse.', 'Nobody relieved us. So we relieved ourselves.'], minTrust: 1 },
-      { q: 'Why "Molot"?', a: ['My sergeant couldn\'t say Emeka. He could say hammer.', 'He can\'t say anything now. Krasnaya.'], minTrust: 3 },
+      { q: 'Any advice for down there?', kind: 'functional', a: ['Listen before you look. If you hear them first, you choose the fight.', 'Walking is quiet, running isn\'t, shooting is the loudest thing you own. Every shot tells the whole level where you are.', 'Flashlight is a beacon. Use it when you need eyes, not when you\'re scared.'] },
+      { q: 'What about armour?', kind: 'functional', a: ['Class matters more than weight. Pistol rounds won\'t go through a Zhuk plate. Rifle rounds will go through your shirt.', 'Buckshot is murder across a table and a rumour across a hall. Armour-piercing rounds are expensive. So is dying.'] },
+      { q: 'When do I leave?', kind: 'functional', a: ['When you think "one more room". That\'s the signal.', 'The deeper rooms pay better because fewer people come back from them. That\'s not a coincidence. That\'s the price.'] },
+      { q: 'Where did you serve?', minTrust: 1, kind: 'character', a: ['Seventh Orbital. We held the Krasnaya depots after the Blackout. Eleven months after the pay stopped.', 'Nobody relieved us. So I relieved myself. Walked out through the red dust. Fedya picked me up at the spaceport and never asked.'] },
+      { q: 'You and Fedya argue a lot.', minTrust: 1, kind: 'character', a: ['Fedya counts money. I count people. Sometimes the numbers disagree.', 'He\'s not a bad man. He\'s a man with a loan.'] },
+      { q: 'Why "Molot"?', minTrust: 3, kind: 'character', a: ['My sergeant couldn\'t say Emeka. He could say hammer.', 'He can\'t say anything now. Krasnaya.'] },
     ],
   },
   medic: {
     id: 'medic', name: 'Dr. Vera Sokolova', callsign: 'DOC', role: 'Ship\'s Medic',
     sprite: 'medic', portrait: 'portrait_medic', voice: 250, color: '#e8e2d6', idleAnim: 'interact',
-    blurb: 'Field surgeon from a hospital that no longer exists. Patches holes, asks for samples.',
+    blurb: 'Surgeon from Kharon General, which closed in the Leaving. Patches holes, counts seconds, keeps samples.',
     intro: [
-      'Sit. No, not there, that\'s the sterile side.',
-      'I\'m Sokolova. I fix what the facilities break. I also study what the facilities grow.',
-      'Bring me medical supplies and anything... alive-looking. I pay well for both.',
+      'Sit. No, not there, that\'s the clean side.',
+      'Sokolova. I fix what the facilities break. I also look at what the facilities grow.',
+      'Bring me medicine. And anything that looks alive and shouldn\'t. I pay for both.',
     ],
     greetings: [
       'You\'re not bleeding on my floor. That\'s a good start.',
-      'Stocked up on bandages? Humour me and say yes.',
-      'Hands where I can see them. I need to check your pupils.',
+      'Bandages. Tell me you have bandages. Humour me.',
+      'Look at me. ... Pupils fine. Go on.',
       'Did you eat? You didn\'t eat.',
+      'Fedya\'s blood pressure is your fault, by the way. I\'ve decided.',
     ],
+    greetingsAfter: {
+      doc_evac: ['I wrote their names in my own book as well. The four. It seemed right.'],
+    },
     welcomeBack: [
       'Scrapes and bruises. You got lucky.',
       'Let me see that arm. ... Fine. Go away. Come back later.',
+      'You came back. I don\'t say that lightly. I count.',
     ],
     wounded: [
-      'Sit. No, don\'t talk. You\'re bleeding through that dressing and you walked here. Heroic. Stupid.',
+      'Sit. Don\'t talk. You\'re bleeding through that dressing and you walked here. Heroic. Stupid.',
       'You came back with more holes than you left with. Let me count them.',
+      'Next time you\'re this hurt down there, you leave. Nobody\'s grading you on bravery. I\'m grading you on pulse.',
     ],
     afterDeath: [
+      'Your signal dropped. I counted the seconds. Don\'t make me count so often.',
       'We pulled your tracker out of the feed. I\'m glad it was only the tracker.',
-      'Every time the signal drops, I count the seconds. Don\'t make me count so often.',
+      'You ignored the bleeding. I could tell from the telemetry. Bandage first. Always first.',
     ],
     topics: [
-      { q: 'Any medical advice?', a: ['Bleeding kills slower than bullets, but it kills. Bandage first, then heal.', 'Painkillers work over time. Take them before the fight, not during.'] },
-      { q: 'What are the samples for?', a: ['The things growing in the lower levels shouldn\'t exist. Fungus that eats steel. Eggs with no parent species.', 'Somebody in the Commonwealth brought them here. I want to know from where.'], minTrust: 1 },
-      { q: 'Where did you work before?', a: ['Kharon General. Nine hundred beds. When the supply ships stopped, I chose who got the last of the antibiotics.', 'I don\'t want to choose like that again. So I stockpile.'], minTrust: 3 },
+      { q: 'Any medical advice?', kind: 'functional', a: ['Bleeding kills slower than bullets, but it kills. Bandage first, then heal.', 'Painkillers work over time. Take them before the fight, not during. And if you\'re under half, that\'s the ship telling you to come home.'] },
+      { q: 'What are the samples for?', minTrust: 1, kind: 'lore', a: ['The things growing in the lower levels shouldn\'t exist. Fungus that eats steel. Things in sealed fridges with no parent species.', 'Somebody in the Commonwealth brought them here. I want to know from where.'] },
+      { q: 'Does it matter what happened to Earth?', kind: 'character', a: ['Not to anyone I\'ve ever stitched.'] },
+      { q: 'Where did you work before?', minTrust: 3, kind: 'character', a: ['Kharon General. Nine hundred beds. When the supply ships stopped, I chose who got the last of the antibiotics.', 'I don\'t want to choose like that again. So I stockpile. So you go downstairs.'] },
     ],
   },
   hacker: {
-    id: 'hacker', name: 'Shura Belova', callsign: 'SHURA', role: 'Systems & Intel',
+    id: 'hacker', name: 'Shura Belova', callsign: 'SHURA', role: 'Systems & Signals',
     sprite: 'hacker', portrait: 'portrait_hacker', voice: 320, color: '#46d4d8', idleAnim: 'sit',
-    blurb: 'Talks to machines better than people. Wants every scrap of data the Commonwealth left behind.',
+    blurb: 'Born after the Blackout on a relay station. Talks to machines better than people. Wants every record the Commonwealth left.',
     intro: [
       'oh. hi. you\'re the new operator? cool cool cool.',
-      'I do the ship systems, the scanners, the locks. basically everything that beeps.',
+      'I do the ship systems. the scanners, the locks. basically everything that beeps. and your radio.',
       'bring me drives. chips. anything with memory. I want to know what happened out there. like, really happened.',
     ],
     greetings: [
@@ -171,20 +212,25 @@ export const CREW: Record<CrewId, CrewDef> = {
       'don\'t touch that cable. or that one. actually just don\'t touch.',
       'the facility networks are still talking to each other. isn\'t that creepy? I love it.',
       'I rewrote the nav firmware again. it\'s fine. probably.',
+      'Molot says I talk too much on the radio. I say he talks too little. we\'re working on it. we\'re not.',
     ],
+    greetingsAfter: {
+      shura_relay: ['forty years of weather reports. it rained on Tikhaya on the day of the Blackout. nobody wrote that down anywhere else.'],
+    },
     welcomeBack: [
       'you\'re back! did you find a drive? any drive?',
       'signal was clean the whole time. nice.',
+      'your heart rate on the way out was very funny. sorry. not funny. interesting.',
     ],
     afterDeath: [
-      'your biomonitor flatlined and I kind of panicked. glad the tracker was wrong. wait, it wasn\'t wrong, you died. glad you\'re... back. anyway.',
-      'I saved the last thirty seconds of your helmet cam. you don\'t want to watch it.',
+      'your biomonitor flatlined and I kind of panicked. glad you\'re... back. anyway.',
+      'I saved the last thirty seconds of your helmet cam. you don\'t want to watch it. Molot watched it. he made notes.',
     ],
     topics: [
-      { q: 'What is channel nine?', lore: 'tk_radio9', a: ['Every Commonwealth node had a receiver on nine. Military, civilian, a tractor plant: all of them. Nobody could tell you why.', 'Since the Blackout it carries something. Not a voice. A pattern that repeats every eleven minutes. I\'ve been recording it.'] },
-      { q: 'What are you looking for?', a: ['the Blackout logs. the moment the Commonwealth network went dark, every node recorded something.', 'nobody\'s put them together. I\'m going to.'] },
-      { q: 'What\'s a vault keycard for?', a: ['deep facilities have a vault. security-sealed. red door, you can\'t miss it.', 'cards wear out after a few swipes. I can sell you one. at cost. ish.'] },
-      { q: 'What do you think happened?', a: ['I think something on Sirin talked back.', 'every node that went dark was listening to the same channel. the same one. that\'s not a coincidence, that\'s a message.'], minTrust: 2 },
+      { q: 'What is channel nine?', lore: 'tk_radio9', kind: 'lore', a: ['every Commonwealth node had a receiver on nine. military, civilian, a tractor plant: all of them. nobody could tell you why.', 'since the Blackout it carries something. not a voice. a pattern that repeats every eleven minutes. I\'ve been recording it.'] },
+      { q: 'What are you looking for?', kind: 'character', a: ['the Blackout logs. the moment the network went dark, every node recorded something.', 'nobody\'s put them together. I\'m going to. I was born into the dark. I\'d like to know who turned it off.'] },
+      { q: 'What\'s a vault keycard for?', kind: 'functional', a: ['deep facilities have a vault. security-sealed. red door, you can\'t miss it.', 'cards wear out after three swipes. I can sell you one. at cost. ish.'] },
+      { q: 'What do you think happened?', minTrust: 2, kind: 'lore', a: ['I think something on the ninth channel talked, and something here listened.', 'every node that went dark was listening to the same channel. that\'s not a coincidence, that\'s a message.', 'Doc says it doesn\'t matter. Doc wasn\'t born in it.'] },
     ],
   },
   smuggler: {
@@ -202,13 +248,15 @@ export const CREW: Record<CrewId, CrewDef> = {
       'Quiet today.',
       'Show me.',
       'Walls have ears. Mine.',
+      'Fedya counted his cards again. He\'s short one. He\'s always short one.',
     ],
-    welcomeBack: ['You\'re still breathing. Profitable.', 'Anything shiny?'],
+    welcomeBack: ['You\'re still breathing. Profitable.', 'Anything shiny?', 'Hm. You walk differently when you\'re carrying something good.'],
     afterDeath: ['Unlucky.', 'The dead don\'t pay. You\'re not dead. Pay attention.'],
     topics: [
-      { q: 'Who are you?', a: ['Someone who delivers.', 'Next question.'] },
-      { q: 'Who buys what you sell?', a: ['People who don\'t exist, on stations that aren\'t on maps.', 'The corporations out past Kombinat want Commonwealth tech. They pay in anything.'], minTrust: 1 },
-      { q: 'How long have you been on this ship?', a: ['Longer than Fedya.', 'Don\'t tell him.'], minTrust: 3 },
+      { q: 'Who are you?', kind: 'character', a: ['Someone who delivers.', 'Next question.'] },
+      { q: 'What happened to Earth?', kind: 'lore', a: ['Depends who\'s paying.', 'For you, free: I met a man once who said he\'d been there. He wanted forty kosmorubli for the rest.', 'I didn\'t pay. I regret it about once a year.'] },
+      { q: 'Who buys what you sell?', minTrust: 1, kind: 'lore', a: ['People who don\'t exist, on stations that aren\'t on maps.', 'Kombinat Holdings buys stations at auction. Kombinat Holdings buys from me too. Don\'t tell Kombinat Holdings.'] },
+      { q: 'How long have you been on this ship?', minTrust: 3, kind: 'character', a: ['Longer than Fedya.', 'Don\'t tell him.'] },
     ],
   },
 };

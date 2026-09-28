@@ -38,6 +38,8 @@ export interface RaidLog {
   kills: { enemy: string; headshot: boolean }[];
   searched: number;
   visited: string[];
+  /** Contract jobs done at their sites (TASKS ids). */
+  tasks: string[];
 }
 
 export interface OpenContainer {
@@ -101,7 +103,7 @@ export const useRaid = create<RaidState>(() => ({
   open: null,
   inventoryOpen: false,
   kills: 0,
-  log: { kills: [], searched: 0, visited: [] },
+  log: { kills: [], searched: 0, visited: [], tasks: [] },
   progressed: [],
   startedAt: 0,
   endedAt: 0,
@@ -184,7 +186,7 @@ export const raid = {
       mode, seed, destination, status: 'active', loadout: pruneQuick(loadout),
       brought: loadoutItems(loadout).map((i) => i.uid),
       containers: {}, open: null, inventoryOpen: false, kills: 0,
-      log: { kills: [], searched: 0, visited: [] }, progressed: [],
+      log: { kills: [], searched: 0, visited: [], tasks: [] }, progressed: [],
       startedAt: performance.now(), endedAt: 0, feed: [], prompt: null,
       extractCountdown: null, extractInZone: false, extractKind: null, flashlight: true,
       terminal: null, mapOpen: false, mia: false, ending: null, lore: [],
@@ -209,6 +211,13 @@ export const raid = {
 
   searched(): void {
     useRaid.setState((s) => ({ log: { ...s.log, searched: s.log.searched + 1 } }));
+  },
+
+  /** A contract job done with your hands (counts at once, even if you die after). */
+  task(id: string): void {
+    const s = useRaid.getState();
+    if (s.log.tasks.includes(id)) return;
+    useRaid.setState({ log: { ...s.log, tasks: [...s.log.tasks, id] } });
   },
 
   visit(role: string): void {

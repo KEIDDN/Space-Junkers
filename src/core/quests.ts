@@ -1,9 +1,12 @@
 import { CREW, type CrewId } from '../data/crew';
 import { ITEMS, itemDef } from '../data/items';
+import { DESTINATION } from '../data/destinations';
+import { ENEMIES } from '../data/enemies';
+import { MARKS, RETRIEVALS, TASKS } from '../data/objectives';
 import { QUEST, QUESTS, type Objective, type QuestDef } from '../data/quests';
 import { crewLevel } from './economy';
 import {
-  addToGrid, createItem, takeFromGrid, type Grid, type ItemInstance, type Loadout,
+  addToGrid, createItem, itemValueDeep, takeFromGrid, type Grid, type ItemInstance, type Loadout,
 } from './inventory';
 import type { Profile } from './profile';
 
@@ -20,6 +23,21 @@ export interface RaidReport {
   visited: string[];
   /** Items carried out that the player didn't bring in (only meaningful when extracted). */
   found: ItemInstance[];
+  /** Jobs done at their sites (TASKS ids). */
+  tasks?: string[];
+  /** Records read. */
+  read?: number;
+  /** Value of what was found and carried out (only meaningful when extracted). */
+  haul?: number;
+}
+
+/** What a raid log looks like mid-raid (the tracker's view of it). */
+export interface LiveLog {
+  kills: RaidReport['kills'];
+  searched: number;
+  visited: string[];
+  tasks?: string[];
+  read?: number;
 }
 
 export type QuestStatus = 'locked' | 'available' | 'active' | 'ready' | 'turnedIn';
@@ -29,7 +47,25 @@ function isRaidObjective(o: Objective): boolean {
 }
 
 export function needOf(o: Objective): number {
-  return o.kind === 'visit' ? 1 : o.count;
+  switch (o.kind) {
+    case 'visit':
+    case 'task':
+    case 'retrieve':
+    case 'haul':
+      return 1;
+    default:
+      return o.count;
+  }
+}
+
+/** Counts only once the operator is out alive. */
+export function needsExtraction(o: Objective): boolean {
+  return o.kind === 'extract' || o.kind === 'extractWith' || o.kind === 'retrieve' || o.kind === 'haul';
+}
+
+/** The item an objective wants carried out, if any. */
+function carriedItem(o: Objective): string | null {
+  return o.kind === 'extractWith' || o.kind === 'retrieve' ? o.item : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +194,17 @@ export function applyRaid(p: Profile, r: RaidReport): { profile: Profile; progre
           add = r.extracted ? 1 : 0;
           break;
         case 'extractWith':
+        case 'retrieve':
           add = r.extracted ? r.found.filter((it) => it.id === o.item).reduce((n, it) => n + it.qty, 0) : 0;
+          break;
+        case 'task':
+          add = r.tasks?.includes(o.task) ? 1 : 0;
+          break;
+        case 'read':
+          add = r.read ?? 0;
+          break;
+        case 'haul':
+          add = r.extracted && (r.haul ?? 0) >= o.value ? 1 : 0;
           break;
         default:
           return;
@@ -184,6 +230,8 @@ export function turnIn(p: Profile, id: string): TurnInResult {
   if (!q || questStatus(p, id) !== 'ready') return { ok: false, error: 'Not done yet.' };
   let next = p;
   for (const o of q.objectives) if (!isRaidObjective(o)) next = takeAboard(next, o, needOf(o));
+  // Contract goods go to whoever asked for them (if the operator still has them aboard).
+  for (const o of q.objectives) if (o.kind === 'retrieve') next = takeAboard(next, { kind: 'handIn', item: o.item, count: 1 }, 1);
   const r = q.reward;
   let credits = next.credits + (r.credits ?? 0);
   let stash = next.stash;
@@ -215,10 +263,12 @@ export function turnIn(p: Profile, id: string): TurnInResult {
 
 /** Human-readable objective line. */
 export function objectiveText(o: Objective): string {
-  const where = 'destination' in o && o.destination ? ` on ${o.destination[0].toUpperCase()}${o.destination.slice(1)}` : '';
+  const where = 'destination' in o && o.destination ? ` on ${placeName(o.destination)}` : '';
   switch (o.kind) {
     case 'kill': {
-      const who = o.enemy ? `${o.enemy}s` : 'hostiles';
+      const e = o.enemy ? ENEMIES[o.enemy] : undefined;
+      if (e?.named) return `Kill ${e.name}${where}`;
+      const who = e ? `${e.name.toLowerCase()}s` : 'hostiles';
       return `Kill ${o.count} ${who}${o.headshot ? ' with headshots' : ''}${where}`;
     }
     case 'search':
@@ -229,11 +279,24 @@ export function objectiveText(o: Objective): string {
       return `Extract ${o.count > 1 ? `${o.count} times` : 'alive'}${where}`;
     case 'extractWith':
       return `Extract with ${o.count} × ${ITEMS[o.item].name} found in raid${where}`;
+    case 'retrieve':
+      return `Bring back the ${ITEMS[o.item].name}${where}`;
+    case 'task':
+      return `${TASKS[o.task]?.text ?? o.task}${where}`;
+    case 'haul':
+      return `Come home from one raid with ${o.value.toLocaleString()} KR of salvage${where}`;
+    case 'read':
+      return `Read ${o.count} records down there${where}`;
     case 'handIn':
       return `Hand in ${o.count} × ${ITEMS[o.item].name}`;
     case 'handInCategory':
       return `Hand in ${o.count} × any ${o.category}`;
   }
+}
+
+function placeName(id: string): string {
+  const n = DESTINATION[id]?.name ?? id.toUpperCase();
+  return n[0] + n.slice(1).toLowerCase();
 }
 
 export function giverName(q: QuestDef): string {
@@ -255,6 +318,8 @@ export interface LiveContract {
   title: string;
   giver: CrewId;
   reward: QuestDef['reward'];
+  /** Where and how, plainly. */
+  intel?: string;
   objectives: LiveObjective[];
 }
 
@@ -264,10 +329,7 @@ export interface LiveContract {
  * once it's out. The same data the ship shows, nothing invented.
  * @param found items carried right now that were found in this raid
  */
-export function liveContracts(
-  p: Profile, log: { kills: RaidReport['kills']; searched: number; visited: string[] }, destination: string,
-  found: ItemInstance[] = [],
-): LiveContract[] {
+export function liveContracts(p: Profile, log: LiveLog, destination: string, found: ItemInstance[] = []): LiveContract[] {
   const out: LiveContract[] = [];
   const carried = (id: string) => found.filter((it) => it.id === id).reduce((n, it) => n + it.qty, 0);
   for (const [id, st] of Object.entries(p.quests)) {
@@ -276,6 +338,7 @@ export function liveContracts(
     if (!q) continue;
     const live = applyRaid({ ...p, quests: { [id]: st } }, {
       destination, extracted: false, kills: log.kills, searched: log.searched, visited: log.visited, found: [],
+      tasks: log.tasks, read: log.read,
     }).profile.quests[id];
     const objectives = q.objectives.map((o, i): LiveObjective => {
       const need = needOf(o);
@@ -287,14 +350,18 @@ export function liveContracts(
       }
       const have = Math.min(need, live.progress[i] ?? 0);
       let note: string | null = null;
-      if (o.kind === 'extractWith' && here) {
-        const bag = carried(o.item);
-        if (have < need && bag > 0) note = `${Math.min(bag, need - have)} IN YOUR BAG · EXTRACT TO COUNT`;
+      const want = carriedItem(o);
+      if (want && here) {
+        const bag = carried(want);
+        if (have < need && bag > 0) note = o.kind === 'retrieve' ? 'IN YOUR BAG · GET IT HOME' : `${Math.min(bag, need - have)} IN YOUR BAG · EXTRACT TO COUNT`;
+      } else if (o.kind === 'haul' && here && have < need) {
+        const value = found.reduce((n, it) => n + itemValueDeep(it), 0);
+        note = value >= o.value ? 'ENOUGH ON YOU · EXTRACT TO COUNT' : `${value.toLocaleString()} OF ${o.value.toLocaleString()} KR ON YOU`;
       } else if (o.kind === 'extract' && here && have < need) note = 'COUNTS WHEN YOU GET OUT';
       else if (!here && 'destination' in o && o.destination) note = `ON ${o.destination.toUpperCase()}`;
       return { text: objectiveText(o), have, need, note, here };
     });
-    out.push({ id, title: q.title, giver: q.giver, reward: q.reward, objectives });
+    out.push({ id, title: q.title, giver: q.giver, reward: q.reward, intel: q.intel, objectives });
   }
   return out;
 }
@@ -303,9 +370,66 @@ export function liveContracts(
  * Raid objectives of active contracts with progress including what's happened so far in
  * the current raid (for the always-on tracker). Only what can move on this world.
  */
-export function liveTracker(p: Profile, log: { kills: RaidReport['kills']; searched: number; visited: string[] }, destination: string, found: ItemInstance[] = []):
+export function liveTracker(p: Profile, log: LiveLog, destination: string, found: ItemInstance[] = []):
   { title: string; text: string; have: number; need: number; note: string | null }[] {
   return liveContracts(p, log, destination, found).flatMap((c) => c.objectives
     .filter((o) => o.here)
     .map((o) => ({ title: c.title, text: o.text, have: o.have, need: o.need, note: o.note })));
+}
+
+// ---------------------------------------------------------------------------
+// What the facility has to hold for the open contracts.
+
+/** Contract sites a raid on this destination must contain. */
+export interface RaidPlan {
+  /** Contract goods to fit to a wall (item ids, see RETRIEVALS). */
+  items: string[];
+  /** Jobs with a site (TASKS ids). */
+  tasks: string[];
+  /** Named hostiles who hold a room (enemy ids, see MARKS). */
+  marks: string[];
+}
+
+/**
+ * Every unfinished site objective of an active contract that can be done on this world. A
+ * facility with no open contract for it is generated exactly as before.
+ */
+export function raidPlan(p: Profile, destination: string): RaidPlan {
+  const plan: RaidPlan = { items: [], tasks: [], marks: [] };
+  for (const [id, st] of Object.entries(p.quests)) {
+    if (st.status !== 'active') continue;
+    const q = QUEST[id];
+    if (!q) continue;
+    q.objectives.forEach((o, i) => {
+      if (!('destination' in o) || o.destination !== destination) return;
+      if ((st.progress[i] ?? 0) >= needOf(o)) return;
+      if (o.kind === 'retrieve' && RETRIEVALS[o.item] && !plan.items.includes(o.item)) plan.items.push(o.item);
+      else if (o.kind === 'task' && TASKS[o.task] && !plan.tasks.includes(o.task)) plan.tasks.push(o.task);
+      else if (o.kind === 'kill' && o.enemy && MARKS[o.enemy] && !plan.marks.includes(o.enemy)) plan.marks.push(o.enemy);
+    });
+  }
+  return plan;
+}
+
+/**
+ * Saved contract progress, made to fit the contracts as they are now (a contract whose
+ * objectives changed between builds keeps what still lines up and starts the rest at zero).
+ */
+export function repairQuests(quests: Profile['quests']): Profile['quests'] {
+  const out: Profile['quests'] = {};
+  for (const [id, st] of Object.entries(quests ?? {})) {
+    if (!st || typeof st !== 'object') continue;
+    const q = QUEST[id];
+    const status = st.status === 'turnedIn' || st.status === 'complete' ? st.status : 'active';
+    if (!q) {
+      out[id] = { status, progress: [] };
+      continue;
+    }
+    const raw = Array.isArray(st.progress) ? st.progress : [];
+    out[id] = {
+      status,
+      progress: q.objectives.map((o, i) => Math.max(0, Math.min(needOf(o), Number.isFinite(raw[i]) ? Math.floor(raw[i]) : 0))),
+    };
+  }
+  return out;
 }

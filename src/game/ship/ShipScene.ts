@@ -20,7 +20,7 @@ import { Doors } from '../world/doors';
 import { emitterLevels, emittersFrom, type Emitter } from '../world/emitters';
 import { CrewActor } from './CrewActor';
 import { STEP_AT, prologueStep } from '../../data/prologue';
-import { CHATTER, type Exchange } from '../../data/chatter';
+import { chatterFor, type Exchange } from '../../data/chatter';
 import type { Sfx } from '../../engine/audio';
 
 /** What each crew member sounds like at work. */
@@ -380,10 +380,7 @@ export class ShipScene {
       const st = this.layout.crew.find((s) => s.crew === id);
       return !!st && Math.hypot(st.x - this.px, st.y - this.py) < 230;
     };
-    const options = CHATTER.filter((ex) => !ShipScene.said.has(ex.id)
-      && (!ex.afterExtraction || p.stats.extractions > 0)
-      && (!ex.lore || p.lore.includes(ex.lore))
-      && ex.lines.some((l) => heard(l.who)));
+    const options = chatterFor(p, ShipScene.said).filter((ex) => ex.lines.some((l) => heard(l.who)));
     if (!options.length) return;
     const ex = options[Math.floor(Math.random() * options.length)];
     ShipScene.said.add(ex.id);

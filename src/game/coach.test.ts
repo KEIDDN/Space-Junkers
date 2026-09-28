@@ -41,4 +41,12 @@ describe('radio coach', () => {
   it('stays silent while nothing is happening', () => {
     expect(runFor(new RadioCoach(), { ...calm, elapsed: 1 }, 1)).toEqual([]);
   });
+
+  it('talks the first job through: the site when it is close, and the choice once the part is in the bag', () => {
+    const c = new RadioCoach();
+    runFor(c, { ...calm, elapsed: 3 }, 1);
+    expect(runFor(c, { ...calm, elapsed: 20, nearSite: true, fighting: true }, 10)).toEqual(['fight']);
+    expect(runFor(c, { ...calm, elapsed: 30, nearSite: true }, 10)).toEqual(['site']);
+    expect(runFor(c, { ...calm, elapsed: 40, hasPart: true }, 10)).toEqual(['part']);
+  });
 });

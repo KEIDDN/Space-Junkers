@@ -197,6 +197,14 @@ function drawMap(cv: HTMLCanvasElement, wrap: HTMLDivElement, m: TacticalSnapsho
     }
   }
 
+  // Contract sites, once you've laid eyes on them: the job, marked on your own map.
+  for (const site of m.sites) {
+    if (!seen(site.tx, site.ty + 1) && !seen(site.tx, site.ty)) continue;
+    g.fillStyle = site.done ? C.pad : '#ffa030';
+    g.fillRect(site.tx * cell + 1, site.ty * cell + 1, cell - 2, cell - 2);
+    g.fillText(site.done ? 'DONE' : site.kind === 'item' ? 'THE PART' : 'THE JOB', (site.tx + 0.5) * cell, (site.ty + 1.6) * cell);
+  }
+
   // You.
   const px = m.player.x * cell;
   const py = m.player.y * cell;

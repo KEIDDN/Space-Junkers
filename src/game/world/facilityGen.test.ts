@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { TILE } from '../../engine/config';
 import { THEMES } from '../../data/themes';
-import { generateFacility } from './facilityGen';
+import { generateFacility, zoneOf } from './facilityGen';
+import { MARKS, RETRIEVALS, TASKS, siteOf } from '../../data/objectives';
 import { Tile, type TileMap } from './tilemap';
 
 /** Flood fill over walkable tiles. Doors count as passable; locked ones only with `keycard`. */
@@ -150,5 +151,75 @@ describe('generateFacility', () => {
         }
       }
     }
+  });
+
+  it('has a spatial grammar: entry, then working rooms, then restricted, then deep', () => {
+    const rank = { entry: 0, working: 1, restricted: 2, deep: 3, exit: 4 } as const;
+    for (let seed = 1; seed <= 60; seed++) {
+      const map = generateFacility(seed);
+      for (const r of map.rooms) expect(r.zone, `seed ${seed}`).toBe(zoneOf(r, Math.max(...map.rooms.map((q) => q.depth))));
+      const standard = map.rooms.filter((r) => r.role === 'standard' || r.role === 'loot').sort((a, b) => a.depth - b.depth);
+      for (let i = 1; i < standard.length; i++) {
+        expect(rank[standard[i].zone!], `seed ${seed}`).toBeGreaterThanOrEqual(rank[standard[i - 1].zone!]);
+      }
+      expect(map.rooms.find((r) => r.role === 'start')!.zone).toBe('entry');
+    }
+  });
+
+  it('leans room purposes toward their zone: security and labs deep, canteens near the door', () => {
+    let deepSecure = 0;
+    let deepTotal = 0;
+    let entryMess = 0;
+    let entryTotal = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      for (const r of generateFacility(seed, { theme: THEMES.kombinat }).rooms) {
+        if (r.role !== 'standard' && r.role !== 'loot') continue;
+        if (r.zone === 'deep' || r.zone === 'restricted') {
+          deepTotal++;
+          if (r.kind === 'security' || r.kind === 'lab' || r.kind === 'servers') deepSecure++;
+        } else {
+          entryTotal++;
+          if (r.kind === 'mess' || r.kind === 'office' || r.kind === 'storage') entryMess++;
+        }
+      }
+    }
+    expect(deepSecure / deepTotal).toBeGreaterThan(entryMess / entryTotal - 0.2);
+    expect(deepSecure / deepTotal).toBeGreaterThan(0.55);
+  });
+
+  it('fits every contract site where it belongs, reachable, and holds a named hostile in his room', () => {
+    const plan = { items: Object.keys(RETRIEVALS).slice(0, 2), tasks: ['relay'], marks: ['boss'] };
+    for (let seed = 1; seed <= 80; seed++) {
+      const map = generateFacility(seed, { theme: THEMES.tikhaya, plan });
+      const p = map.spawns.find((q) => q.kind === 'player')!;
+      const reach = reachable(map, p.x, p.y);
+      const want = plan.items.length + plan.tasks.length;
+      expect(map.sites.length, `seed ${seed}`).toBe(want);
+      for (const site of map.sites) {
+        expect(map.get(site.tx, site.ty), `seed ${seed} site solid`).toBe(Tile.Prop);
+        const adj = [[1, 0], [-1, 0], [0, 1]].some(([dx, dy]) => reach.has((site.ty + dy) * map.width + site.tx + dx));
+        expect(adj, `seed ${seed} site reachable`).toBe(true);
+        const room = map.rooms.find((r) => site.tx >= r.x && site.tx < r.x + r.w && site.ty >= r.y && site.ty < r.y + r.h)!;
+        const def = siteOf(site.kind, site.id)!;
+        expect(def.rooms, `seed ${seed} ${site.id}`).toContain(room.kind);
+        expect(room.role === 'standard' || room.role === 'loot').toBe(true);
+      }
+      const boss = map.spawns.filter((q) => q.kind === 'boss');
+      expect(boss, `seed ${seed}`).toHaveLength(1);
+      expect(boss[0].post).toBe(true);
+      const home = map.rooms.find((r) => boss[0].x / TILE >= r.x && boss[0].x / TILE < r.x + r.w && boss[0].y / TILE >= r.y && boss[0].y / TILE < r.y + r.h)!;
+      const inHome = map.spawns.filter((q) => q.kind !== 'player' && q.x / TILE >= home.x && q.x / TILE < home.x + home.w && q.y / TILE >= home.y && q.y / TILE < home.y + home.h);
+      expect(inHome.length, `seed ${seed} guards`).toBeGreaterThanOrEqual(Math.min(1 + MARKS.boss.guards, 2));
+      expect(inHome.every((q) => q.post)).toBe(true);
+    }
+  });
+
+  it('without open contracts, a seed makes the facility it always made', () => {
+    const plain = generateFacility(4242, { theme: THEMES.tikhaya });
+    const empty = generateFacility(4242, { theme: THEMES.tikhaya, plan: { items: [], tasks: [], marks: [] } });
+    expect(Array.from(empty.tiles)).toEqual(Array.from(plain.tiles));
+    expect(empty.spawns).toEqual(plain.spawns);
+    expect(plain.sites).toHaveLength(0);
+    expect(Object.keys(TASKS).length).toBeGreaterThan(0);
   });
 });

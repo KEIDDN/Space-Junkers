@@ -42,6 +42,7 @@ export function ContractCard({ p, def, status, onClick, compact, preview }: {
           </div>
         );
       })}
+      {def.intel && (preview || status === 'active') && <div className="contract-intel small">{def.intel}</div>}
       <div className="contract-reward dim">REWARD · {rewardText(def.reward)}</div>
     </div>
   );

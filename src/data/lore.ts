@@ -158,7 +158,7 @@ const THEMED: Record<string, LoreEntry[]> = {
     },
     {
       id: 'kb_lab12', thread: 'blackout', chapter: 3, title: 'LAB SECTOR 12 · INCIDENT', from: 'DR. A. MIRONOVA',
-      lines: ['The egg samples are warmer than the incubator. The incubator is off.', 'Growth resumed at 03:14 station time, the exact second of the old Blackout timestamp.', 'Every sample. Simultaneously.', 'Requesting transfer. Requesting it loudly.'],
+      lines: ['The egg samples are warmer than the incubator. The incubator is off.', 'Growth resumed at 00:00:00.000. The clocks have read that since the Blackout. For one second this morning, they were right.', 'Every sample. Simultaneously.', 'Requesting transfer. Requesting it loudly.'],
     },
     {
       id: 'kb_review', title: 'SECURITY PERFORMANCE REVIEW', from: 'HR SYSTEM',
@@ -172,7 +172,7 @@ const THEMED: Record<string, LoreEntry[]> = {
   sirin: [
     {
       id: 'sr_watch', thread: 'nine', chapter: 4, title: 'LISTENING WATCH', from: 'OPERATOR ON DUTY',
-      lines: ['Channel nine carrier present. Same as yesterday. Same as every day for eleven years.', 'Today it paused. Like it was waiting for an answer.', 'Nobody answer it.', 'I think somebody answered it.'],
+      lines: ['Channel nine carrier present. Same as yesterday. Same as every day for forty years.', 'Today it paused. Like it was waiting for an answer.', 'Nobody answer it.', 'I think somebody answered it.'],
     },
     {
       id: 'sr_contact', thread: 'fall', chapter: 4, title: 'CONTACT LAB', from: 'PROJECT LEAD (CLEARANCE 5)',

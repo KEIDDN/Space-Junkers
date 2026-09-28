@@ -29,6 +29,7 @@ import { Player, STEADY_SPREAD } from './entities/Player';
 import { PadAim, type AimTarget } from './padAim';
 import { RadioCoach } from './coach';
 import { haulValue } from '../core/raidResult';
+import { raidPlan } from '../core/quests';
 import { AmbientFx } from './fx/ambient';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
@@ -269,6 +270,8 @@ export class Game {
     this.map = facility
       ? generateFacility(this.opts.seed, {
         danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme, lootBonus: dest?.lootBonus ?? 0, gentle: learning,
+        // The open contracts decide what's fitted to the walls down here, and who's waiting.
+        plan: dest ? raidPlan(useProfile.getState(), dest.id) : undefined,
       })
       : mapFromAscii(TEST_RANGE);
     this.elapsed = 0;
@@ -354,7 +357,7 @@ export class Game {
 
     this.enemies = this.map.spawns
       .filter((s) => s.kind in ENEMIES)
-      .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null, this.ai, s.weapon));
+      .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null, this.ai, s.weapon, s.post));
     for (const e of this.enemies) {
       this.actorLayer.addChild(e.view.container);
       e.allies = this.enemies;
@@ -610,6 +613,8 @@ export class Game {
       left: this.window - this.elapsed,
       onExit: !!this.map.exitAt(p.x, p.y),
       extractPaused: r.extractCountdown !== null && !r.extractInZone,
+      nearSite: this.interactions.siteStates().some((q) => !q.done && Math.hypot((q.tx + 0.5) * 32 - p.x, (q.ty + 1) * 32 - p.y) < 150),
+      hasPart: loadoutItems(r.loadout).some((i) => ITEMS[i.id]?.quest && !r.brought.includes(i.uid)),
     });
     if (line) {
       this.audio.ui('squelch');
@@ -836,6 +841,7 @@ export class Game {
       })),
       rooms: map.rooms.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h, role: r.role, kind: r.kind ?? '' })),
       containers: this.interactions.containerStates(),
+      sites: this.interactions.siteStates(),
       player: { x: this.player.x / 32, y: this.player.y / 32, aim: this.player.aim },
       scanner,
     };

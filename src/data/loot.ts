@@ -104,8 +104,8 @@ function poolCategory(d: ItemDef): ItemCategory {
 const POOLS: Pools = (() => {
   const out: Pools = {};
   for (const d of Object.values(ITEMS)) {
-    // Keycards are placed deliberately, never rolled.
-    if (d.kind === 'key') continue;
+    // Keycards and contract goods are placed deliberately, never rolled.
+    if (d.kind === 'key' || d.quest) continue;
     const cat = poolCategory(d);
     out[cat] ??= { common: [], uncommon: [], rare: [], epic: [], legendary: [] };
     out[cat][d.rarity].push(d.id);

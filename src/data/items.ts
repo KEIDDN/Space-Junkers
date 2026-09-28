@@ -38,6 +38,11 @@ interface BaseItem {
   /** Atlas frame. */
   icon: string;
   description: string;
+  /**
+   * Taken from one place for one contract: never sold aboard, never rolled in a container,
+   * and no trader will buy it (see data/objectives.ts).
+   */
+  quest?: boolean;
 }
 
 export interface LootDef extends BaseItem { kind: 'loot' }
@@ -264,7 +269,7 @@ const CATALOG: ItemDef[] = [
   loot('painting', 'Portrait in Oil', 'Portrait', 'valuables', 'epic', 1300, 2, [2, 2], 'A Commonwealth admiral. Probably stolen twice already.'),
   loot('chalice', 'Golden Chalice', 'Chalice', 'valuables', 'epic', 1500, 1.2, [1, 2], 'Officers\' mess silverware, but gold.'),
   loot('idol', 'Golden Idol', 'Idol', 'valuables', 'epic', 2000, 2, [1, 2], 'Solid gold. Unsettling smile.'),
-  loot('crown', 'Tsarina\'s Crown', 'Crown', 'valuables', 'legendary', 7500, 1.5, [2, 1], 'Nobody knows how it got out here. Nobody should know you have it.'),
+  loot('crown', 'Governor\'s Crown', 'Crown', 'valuables', 'legendary', 7500, 1.5, [2, 1], 'Made for the first governor of Otets. Everyone says it was melted down in the Leaving. Nobody should know you have it.'),
 
   // --- Documents -------------------------------------------------------------------------
   loot('orders', 'Sealed Orders', 'Orders', 'documents', 'uncommon', 180, 0.1, [1, 1], 'Stamped СЕКРЕТНО. Probably boring. Probably.'),
@@ -319,6 +324,13 @@ const CATALOG: ItemDef[] = [
   // --- Throwables ---------------------------------------------------------------------------------
   { id: 'frag', name: 'RGN-7 Frag Grenade', short: 'RGN-7', kind: 'grenade', category: 'gear', rarity: 'uncommon', value: 900, weight: 0.4, w: 1, h: 1, stack: 1, icon: 'item_frag', description: 'Fragmentation grenade. Two-second fuse. Everyone hears it.', effect: 'frag' },
   { id: 'smoke', name: 'RDG-3 Smoke Grenade', short: 'RDG-3', kind: 'grenade', category: 'gear', rarity: 'common', value: 400, weight: 0.4, w: 1, h: 1, stack: 1, icon: 'item_smoke', description: 'Thick grey smoke for twenty seconds. Nobody sees through it.', effect: 'smoke' },
+
+  // --- Contract goods: each one comes off a particular wall in a particular kind of place ---------
+  { ...loot('regulator', 'Pump Regulator', 'Regulator', 'technology', 'rare', 380, 2.5, [2, 1], 'The part the Lastochka\'s coolant pump has been dying for. Every service station on Tikhaya ran the same pump.'), icon: 'item_motor', quest: true },
+  { ...loot('kamenev_tin', 'Kamenev\'s Tin', 'Tin', 'documents', 'uncommon', 40, 0.6, [2, 1], 'A biscuit tin from locker 41. Letters to a brother on Merzlota, never posted. A photograph of two boys on a tractor.'), icon: 'item_jewelbox', quest: true },
+  { ...loot('flight_recorder', 'Vesna Flight Recorder', 'Recorder', 'technology', 'rare', 600, 3, [1, 1], 'Orange, dented, still ticking on its own battery. Whatever happened to the Vesna is on it.'), icon: 'item_radio', quest: true },
+  { ...loot('grow_lamp', 'Grow Lamp', 'GrowLamp', 'technology', 'uncommon', 210, 1.2, [1, 2], 'A greenhouse lamp with its bulb intact. Rarer than gold on this side of the Belt.'), icon: 'item_cell', quest: true },
+  { ...loot('sample_case', 'Sealed Sample Case', 'Samples', 'alien', 'epic', 900, 3, [2, 2], 'Kombinat biohazard seal, unbroken. It is heavier on one side, and the heavy side moves.'), icon: 'item_specimen', quest: true },
 
   // --- Keys ------------------------------------------------------------------------------------------
   { id: 'keycard', name: 'Vault Keycard', short: 'Keycard', kind: 'key', category: 'technology', rarity: 'rare', value: 1400, weight: 0.05, w: 1, h: 1, stack: 1, icon: 'item_keycard', description: 'Red security clearance. Opens a facility vault. It wears out after 3 uses.', opens: 'vault', uses: 3 },

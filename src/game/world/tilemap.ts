@@ -1,4 +1,5 @@
 import { TILE } from '../../engine/config';
+import type { Zone } from '../../data/objectives';
 
 export const Tile = {
   Void: 0,
@@ -19,6 +20,21 @@ export interface Spawn {
   patrol?: { x: number; y: number }[];
   /** A weapon item this one carries instead of a random pick from their kit. */
   weapon?: string;
+  /** Holds this room: won't be drawn far from it by shouts or a chase. */
+  post?: boolean;
+}
+
+/** A contract site: a part to take off a wall, or a job to do with your hands. */
+export interface SitePlacement {
+  kind: 'item' | 'task';
+  /** Item id (RETRIEVALS) or task id (TASKS). */
+  id: string;
+  /** The fitting's tile (solid). */
+  tx: number;
+  ty: number;
+  /** Where it's worked from (world px). */
+  x: number;
+  y: number;
 }
 
 export interface PropPlacement {
@@ -115,6 +131,8 @@ export interface Room {
   depth: number;
   /** What the room was for (storage, barracks...). */
   kind?: string;
+  /** How deep into the facility it sits: entry, working, restricted, deep, exit. */
+  zone?: Zone;
 }
 
 /**
@@ -135,6 +153,7 @@ export class TileMap {
   readonly rooms: Room[] = [];
   readonly terminals: TerminalPlacement[] = [];
   readonly exits: ExitDef[] = [];
+  readonly sites: SitePlacement[] = [];
   /** Ambient light level 0..1 (1 = fully lit, no darkness system). */
   ambient = 1;
   seed = 0;

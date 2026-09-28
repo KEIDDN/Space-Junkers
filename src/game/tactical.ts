@@ -23,6 +23,8 @@ export interface TacticalSnapshot {
   }[];
   rooms: { x: number; y: number; w: number; h: number; role: RoomRole; kind: string }[];
   containers: { tx: number; ty: number; searched: boolean; empty: boolean }[];
+  /** Contract sites: a part to take, a job to do (shown once seen). */
+  sites: { tx: number; ty: number; kind: 'item' | 'task'; done: boolean }[];
   /** Player position in tiles, and aim in radians. */
   player: { x: number; y: number; aim: number };
   /** The scanner upgrade reveals exits and the vault. */

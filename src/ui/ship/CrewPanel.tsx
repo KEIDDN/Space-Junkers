@@ -93,8 +93,10 @@ export function CrewPanel({ crew }: { crew: CrewId }) {
     }
     if (!state?.met) return [...def.intro.map((l) => l.replaceAll('{name}', name)), ...(after ? [after] : [])];
     if (after) return [after];
-    const lines = [pick(def.greetings)];
-    return lines;
+    // What's happened aboard since shows in how they say hello.
+    const later = Object.entries(def.greetingsAfter ?? {})
+      .filter(([q]) => profile.quests[q]?.status === 'turnedIn').flatMap(([, l]) => l);
+    return [pick(later.length && Math.random() < 0.5 ? later : def.greetings)];
     // Only on open.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [crew]);
@@ -214,7 +216,7 @@ export function CrewPanel({ crew }: { crew: CrewId }) {
           )}
           {mode.kind === 'topics' && (
             <div className="dialog-options" onClick={(e) => e.stopPropagation()}>
-              {def.topics.filter((t) => !t.lore || profile.lore.includes(t.lore)).map((t) => {
+              {def.topics.filter((t) => (!t.lore || profile.lore.includes(t.lore)) && (!t.after || profile.quests[t.after]?.status === 'turnedIn')).map((t) => {
                 const locked = (t.minTrust ?? 0) > level;
                 return (
                   <button key={t.q} className={`opt ${locked ? 'locked' : ''}`} disabled={locked} onClick={() => say(t.a)}>

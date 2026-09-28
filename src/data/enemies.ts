@@ -36,6 +36,8 @@ export interface EnemyDef {
   burst: [number, number];
   /** Health fraction below which it tries to break line of sight. */
   retreatBelow: number;
+  /** Somebody in particular (a contract target): referred to by name, never rolled into a mix. */
+  named?: boolean;
 }
 
 export const ENEMIES: Record<string, EnemyDef> = {
@@ -70,6 +72,18 @@ export const ENEMIES: Record<string, EnemyDef> = {
     armor: 'vest_granit', helmet: 'zaslon', armorChance: 0.7, ammo: [20, 45], pockets: [1, 2], grenades: 2,
     reactionTime: 0.32, aimError: 1.6, sightRange: 400, fov: 80, hearing: 1.25,
     preferredRange: 220, burst: [3, 5], retreatBelow: 0.2,
+  },
+  /**
+   * Gvozd, "the Nail": the scavengers' boss on Tikhaya. Sits in the back of whatever plant he
+   * has taken, on the good stuff, with two of his own. Doesn't go looking; waits. Heavier than
+   * anyone he commands, slow to rattle, and very dangerous at the range he prefers.
+   */
+  boss: {
+    id: 'boss', name: 'Gvozd', anim: 'raider', named: true,
+    hp: 150, walkSpeed: 34, runSpeed: 78, weapons: ['toz12'],
+    armor: 'vest_ps2', helmet: 'k6helmet', armorChance: 1, ammo: [12, 24], pockets: [2, 3], grenades: 1,
+    reactionTime: 0.42, aimError: 2.6, sightRange: 330, fov: 75, hearing: 1.25,
+    preferredRange: 90, burst: [1, 2], retreatBelow: 0.15,
   },
 };
 
