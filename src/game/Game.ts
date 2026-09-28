@@ -25,6 +25,7 @@ import { Enemy } from './ai/Enemy';
 import { Grenades, fragDamage } from './combat/grenades';
 import { Projectiles, damageAt, type Bullet, type Hittable } from './combat/projectiles';
 import { attentionLevel, freshAttention, landingAt, noted, type Attention } from './attention';
+import { planEvents, type RaidEvent } from './events';
 import { ROOM_SIGNS } from './render/signs';
 import type { DeathFacts } from '../core/debrief';
 import type { GameContext } from './context';
@@ -137,6 +138,10 @@ export class Game {
   /** How much of the facility (and the channel) has noticed the operator. */
   private attention: Attention = freshAttention();
   private attentionSaid = 0;
+  /** What happens this raid that the operator doesn't cause (see events.ts). */
+  private events: RaidEvent[] = [];
+  /** Somebody else's shots, still to be fired (a raid event). */
+  private farShots: { t: number; x: number; y: number; sound: (typeof WEAPONS)[string]['sound']; then?: () => void }[] = [];
   paused = false;
 
   constructor(private opts: GameOptions) {}
@@ -287,6 +292,8 @@ export class Game {
     this.alarmSquad = false;
     this.attention = freshAttention();
     this.attentionSaid = 0;
+    this.events = facility ? planEvents(this.opts.seed, this.window, learning) : [];
+    this.farShots = [];
     this.explored = new Uint8Array(this.map.width * this.map.height);
     this.surveyTimer = 0;
     this.terminalAt = null;
@@ -752,6 +759,8 @@ export class Game {
     }
     // Other crews keep landing; a loud operator brings them sooner, and toward the noise.
     const prev = this.squads > 0 ? SQUAD_TIMES[this.squads - 1] : 0;
+    while (this.events.length && this.elapsed >= this.events[0].at) this.runEvent(this.events.shift()!);
+    this.fireFarShots(dt);
     if (this.squads < SQUAD_TIMES.length && this.elapsed >= landingAt(SQUAD_TIMES[this.squads], prev, this.attention)) {
       this.squads++;
       const toward = attentionLevel(this.attention) > 0 ? { x: this.attention.lastX, y: this.attention.lastY } : null;
@@ -823,6 +832,68 @@ export class Game {
       if (rush) e.alertTo(rush.x + (Math.random() - 0.5) * 60, rush.y + (Math.random() - 0.5) * 60, 0.5 + i * 0.6);
     }
     return true;
+  }
+
+  /** Something happens that the operator didn't cause. */
+  private runEvent(ev: RaidEvent): void {
+    const p = this.player;
+    const far = (x: number, y: number) => Math.hypot(x - p.x, y - p.y) > 32 * 16;
+    switch (ev.kind) {
+      case 'gunfire': {
+        // Somebody else's fight, on another level: one of the facility's hostiles doesn't
+        // make it, and everyone near there goes to look. Nobody tells you; you hear it.
+        const victim = this.enemies.find((e) => e.alive && far(e.x, e.y) && e.view.container.alpha < 0.5);
+        if (!victim) return;
+        const sound = WEAPONS[['akr74', 'ppd41', 'toz12', 'kedr'][Math.floor(Math.random() * 4)]].sound;
+        let t = 0;
+        for (let i = 0; i < 7; i++) {
+          t += 0.12 + Math.random() * 0.5;
+          this.farShots.push({ t, x: victim.x + (Math.random() - 0.5) * 120, y: victim.y + (Math.random() - 0.5) * 120, sound });
+        }
+        this.farShots.push({
+          t: t + 0.2, x: victim.x, y: victim.y, sound: victim.weapon.def.sound,
+          then: () => {
+            if (!victim.alive) return;
+            victim.takeDamage(999, 9, false, 1, 0, 40, victim.x + 60, victim.y);
+            this.addBody(victim);
+            for (const e of this.enemies) if (e !== victim) e.witnessDeath(victim.x, victim.y, victim.x + 60, victim.y);
+          },
+        });
+        this.ctx.emitNoise(victim.x, victim.y, 620, 'enemy');
+        return;
+      }
+      case 'blackout':
+        this.lighting?.outage(22);
+        this.audio.ui('error');
+        raid.notice('SHURA: the reserve just dipped. the whole place is dark. it\'ll come back. probably.', 'radio');
+        return;
+      case 'alarm': {
+        // An alarm trips somewhere deep and stops: everyone near it goes to look.
+        const rooms = this.map.rooms.filter((r) => r.role !== 'vault' && far((r.x + r.w / 2) * 32, (r.y + r.h / 2) * 32));
+        if (!rooms.length) return;
+        const r = rooms[Math.floor(Math.random() * rooms.length)];
+        const x = (r.x + r.w / 2) * 32;
+        const y = (r.y + r.h / 2) * 32;
+        this.audio.sfx('alarm', x, y);
+        this.ctx.emitNoise(x, y, 720, 'enemy');
+        raid.notice('Somewhere deep in the station an alarm starts, and stops.', 'warn');
+        return;
+      }
+      case 'nine':
+        this.audio.nineNow();
+        raid.notice('CHANNEL NINE: static. five tones. static.', 'radio');
+        return;
+    }
+  }
+
+  private fireFarShots(dt: number): void {
+    for (const s of this.farShots) {
+      s.t -= dt;
+      if (s.t > 0) continue;
+      this.audio.gunshot(s.sound, s.x, s.y);
+      s.then?.();
+    }
+    this.farShots = this.farShots.filter((s) => s.t > 0);
   }
 
   /** The operator made a loud noise: it's remembered, and now and then someone says so. */

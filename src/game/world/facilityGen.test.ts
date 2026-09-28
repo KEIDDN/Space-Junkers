@@ -222,4 +222,13 @@ describe('generateFacility', () => {
     expect(plain.sites).toHaveLength(0);
     expect(Object.keys(TASKS).length).toBeGreaterThan(0);
   });
+
+  it('tells small stories with objects: every scene turns up somewhere, each with its note', () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 150; seed++) {
+      for (const t of generateFacility(seed, { theme: THEMES.tikhaya }).terminals) if (t.note) seen.add(t.note);
+    }
+    for (const key of ['meal', 'child', 'stand', 'camp', 'clock', 'vesna', 'cards', 'repair', 'evac']) expect(seen.has(key), key).toBe(true);
+  });
 });
+

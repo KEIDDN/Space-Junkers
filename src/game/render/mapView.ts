@@ -2,7 +2,7 @@ import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { tex } from '../../engine/assets';
 import { TILE } from '../../engine/config';
 import { Tile, type TileMap } from '../world/tilemap';
-import { ROOM_NOTICES, ROOM_SIGNS, SIGN_STYLES, signTexture } from './signs';
+import { ROOM_NOTICES, ROOM_SIGNS, SIGN_STYLES, ZONE_NOTICES, signTexture } from './signs';
 
 /** Weighted floor plates (each covers 2×2 tiles): mostly plain deck, some plates and grates. */
 export type FloorStyle = [string, number][];
@@ -135,7 +135,9 @@ export function buildMapView(
     const placed: { x: number; w: number }[] = [];
     const plates = [
       { sign: r.kind ? ROOM_SIGNS[r.kind] : undefined, at: 0.3 },
-      { sign: r.kind && hash(r.x, r.y) % 4 !== 0 ? ROOM_NOTICES[r.kind] : undefined, at: 0.74 },
+      // Past the working rooms, the second plate says who's allowed in: the rooms tell you
+      // how deep you are before anything else does.
+      { sign: r.zone && ZONE_NOTICES[r.zone] ? ZONE_NOTICES[r.zone] : r.kind && hash(r.x, r.y) % 4 !== 0 ? ROOM_NOTICES[r.kind] : undefined, at: 0.74 },
     ];
     for (const { sign, at } of plates) {
       if (!sign) continue;

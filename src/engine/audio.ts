@@ -578,6 +578,12 @@ export class AudioService {
     this.noiseBurst(g, t + 3.6, 0.6, 2600, 0.2);
   }
 
+  /** Channel nine, now, through whatever speaker is nearest (a raid event). */
+  nineNow(): void {
+    if (!this.ctx || !this.amb) return;
+    this.channelNine(this.amb.bus, this.ctx.currentTime);
+  }
+
   /** Somebody else's firefight, far away through a lot of concrete. */
   private distantFight(out: AudioNode, t: number): void {
     const ctx = this.ctx!;

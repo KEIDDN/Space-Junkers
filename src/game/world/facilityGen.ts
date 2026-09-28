@@ -401,6 +401,67 @@ function placeVignettes(map: TileMap, rng: Rng, rooms: Room[]): void {
       },
     },
     {
+      // Two chairs, a table, a card game nobody finished. One chair on its side. A stain.
+      key: 'cards', fits: (r) => ['mess', 'barracks', 'security', 'storage'].includes(r.kind ?? '') && r.role !== 'vault',
+      place: (r) => {
+        for (const table of rng.shuffle(map.props.filter((p) => p.sprite === 'ship_table' && inside(r, Math.floor(p.x / TILE), Math.floor((p.y - 4) / TILE))))) {
+          const ty = Math.floor((table.y - 4) / TILE);
+          const tx = Math.floor(table.x / TILE);
+          const stand = [[tx, ty + 1], [tx - 1, ty + 1], [tx - 1, ty], [tx + 1, ty + 1]].find(([x, y]) => map.get(x, y) === Tile.Floor && inside(r, x, y) && !used.has(k(x, y)));
+          if (!stand) continue;
+          const [sx, sy] = stand;
+          take(sx, sy);
+          map.props.push({ sprite: 'deco_cards', x: Math.round(table.x - 4), y: table.y + 1, lift: 23 });
+          map.props.push({ sprite: 'deco_vodka', x: Math.round(table.x + 12), y: table.y + 1, lift: 23 });
+          map.props.push({ sprite: 'deco_chair_down', x: px(sx) + 16, y: px(sy) + 24, layer: 'floor', flip: rng.chance(0.5) });
+          map.props.push({ sprite: 'fx_blood_1', x: px(sx) + rng.int(8, 24), y: px(sy) + 28, layer: 'floor', tint: 0x5a2a22 });
+          map.props.push({ sprite: 'deco_cigs', x: px(sx) + 24, y: px(sy) + 30 });
+          note('cards', px(sx) + 16, px(sy) + 18);
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      // A repair left half done: parts laid out in order on the bench, a note taped to it.
+      key: 'repair', fits: (r) => ['workshop', 'reactor'].includes(r.kind ?? ''),
+      place: (r) => {
+        for (const bench of rng.shuffle(map.props.filter((p) => (p.sprite === 'ship_workbench' || p.sprite === 'ship_machine') && inside(r, Math.floor(p.x / TILE), Math.floor((p.y - 4) / TILE))))) {
+          const by = Math.floor((bench.y - 4) / TILE);
+          const bx = Math.floor(bench.x / TILE);
+          const stand = [[bx, by + 1], [bx - 1, by + 1], [bx + 1, by + 1]].find(([x, y]) => map.get(x, y) === Tile.Floor && inside(r, x, y) && !used.has(k(x, y)));
+          if (!stand) continue;
+          const [sx, sy] = stand;
+          take(sx, sy);
+          const top = SURFACES[bench.sprite] ?? 30;
+          map.props.push({ sprite: 'deco_gear', x: Math.round(bench.x - 10), y: bench.y + 1, lift: top - 1 });
+          map.props.push({ sprite: 'deco_wrench', x: Math.round(bench.x + 2), y: bench.y + 1, lift: top - 1 });
+          map.props.push({ sprite: 'deco_note', x: Math.round(bench.x + 12), y: bench.y + 1, lift: top - 2 });
+          map.props.push({ sprite: 'deco_gear', x: px(sx) + 10, y: px(sy) + 26, layer: 'floor' });
+          map.props.push({ sprite: 'deco_mug', x: px(sx) + 24, y: px(sy) + 30 });
+          note('repair', px(sx) + 16, px(sy) + 18);
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      // They were told to take nothing. A packed suitcase by the door, never picked up.
+      key: 'evac', fits: (r) => ['barracks', 'office', 'medbay', 'mess', 'entry'].includes(r.kind ?? '') && r.role !== 'vault',
+      place: (r) => {
+        const spots = rng.shuffle(free(r, true));
+        const spot = spots[0];
+        if (!spot) return false;
+        const [x, y] = spot;
+        take(x, y);
+        map.props.push({ sprite: 'deco_suitcase', x: px(x) + 14, y: px(y) + 26 });
+        map.props.push({ sprite: 'deco_photo', x: px(x) + 26, y: px(y) + 30, layer: 'floor' });
+        map.props.push({ sprite: 'deco_orders', x: px(x) + 6, y: px(y) + 30, layer: 'floor' });
+        note('evac', px(x) + 16, px(y) + 16);
+        return true;
+      },
+    },
+    {
       // The last crew through, and what they learned.
       key: 'vesna', fits: (r) => r.depth >= 3 && (r.role === 'standard' || r.role === 'loot'),
       place: (r) => {
