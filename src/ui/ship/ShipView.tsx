@@ -20,6 +20,7 @@ import { NavPanel } from './NavPanel';
 import { RecordPanel } from './RecordPanel';
 import { ByDevice, Key, Prompt } from '../Glyph';
 import { PostFx } from '../PostFx';
+import { shipLog } from '../../core/shipLog';
 
 /** The wake-up call plays once per session, not every time the ship is rebuilt. */
 const wakeHeard = { done: false };
@@ -56,6 +57,8 @@ function ShipHud() {
   const notices = useProfile((s) => s.notices);
   const clear = useProfile((s) => s.clearNotices);
   const step = useProfile((s) => prologueStep(s.flags));
+  // Once the first morning is over, the log says what the ship is waiting on.
+  const log = useProfile((s) => (prologueStep(s.flags) ? null : shipLog(getProfile())));
   const overheard = useShip((s) => s.overheard);
   // The key strip is for a new operator: gone after their first couple of raids.
   const newcomer = useProfile((s) => s.stats.raids < 2);
@@ -73,6 +76,7 @@ function ShipHud() {
         <div className="ship-name">LASTOCHKA <span className="dim">// ЛАСТОЧКА</span></div>
         <div className="dim small">DAY {day} · {course ? `IN ORBIT: ${DESTINATION[course.destination].name}` : 'HOLDING OVER OTETS'}</div>
         {step && <div className="ship-log"><span className="dim">SHIP LOG ▸</span> {STEP_LOG[step]}</div>}
+        {!step && log && <div className="ship-log"><span className="dim">SHIP LOG ▸</span> {log}</div>}
       </div>
       {wake && !panel && <div className="ship-intercom crt-text">{WAKE_LINE}</div>}
       <div className="hud-tr crt-text">

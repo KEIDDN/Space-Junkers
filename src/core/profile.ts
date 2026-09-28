@@ -1,4 +1,5 @@
 import { ITEMS, itemDef } from '../data/items';
+import { repairQuests } from './quests';
 import { WEAPONS } from '../data/weapons';
 import {
   EQUIP_SLOTS, QUICK_SLOTS, POCKETS, addToGrid, canPlace, createItem, emptyGrid, emptyLoadout, footprint,
@@ -263,7 +264,7 @@ export function repair(raw: Profile): { profile: Profile; notes: string[] } {
     day: Math.max(1, Math.floor(num(raw.day, 1))),
     purchases: raw.purchases && typeof raw.purchases === 'object' ? { ...raw.purchases } : {},
     crew: raw.crew && typeof raw.crew === 'object' ? { ...raw.crew } : {},
-    quests: raw.quests && typeof raw.quests === 'object' ? { ...raw.quests } : {},
+    quests: raw.quests && typeof raw.quests === 'object' ? repairQuests(raw.quests) : {},
     raid: raw.raid && typeof raw.raid === 'object' ? raw.raid : null,
     course: raw.course && typeof raw.course === 'object' && typeof raw.course.destination === 'string'
       && Number.isFinite(raw.course.seed) ? { destination: raw.course.destination, seed: raw.course.seed } : null,

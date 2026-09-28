@@ -395,6 +395,7 @@ export class Player implements Hittable {
     const result = w.tryFire(input.down('fire'), input.pressed('fire'), Math.random());
     if (result === 'fired') {
       discharge(this.ctx, this.view, w, this.x, this.y, this.aim, 'player', moveFactor, 0, this.steady ? STEADY_SPREAD : 1);
+      this.shotsFired++;
       this.lastShotAgo = 0;
       const def = w.def;
       this.ctx.camera.kick(-Math.cos(this.aim) * def.cameraKick, -Math.sin(this.aim) * def.cameraKick);
@@ -660,8 +661,9 @@ export class Player implements Hittable {
    * hurts and may start bleeding.
    * @returns true if the armor stopped most of it (for feedback).
    */
-  takeHit(raw: number, pen: number, dirX: number, dirY: number, headshot: boolean): boolean {
+  takeHit(raw: number, pen: number, dirX: number, dirY: number, headshot: boolean, source: string | null = null): boolean {
     if (!this.alive || this.untouchable) return false;
+    if (source) this.lastHitBy = source;
     const slot = headshot ? 'helmet' : 'armor';
     const worn = useRaid.getState().loadout[slot];
     let damage = headshot ? raw * HEADSHOT_MUL : raw;
@@ -695,8 +697,16 @@ export class Player implements Hittable {
     return blocked;
   }
 
+  /** Trigger pulls that fired this raid (for the after-action report). */
+  shotsFired = 0;
+  /** Who hit the operator last (for the after-action report). */
+  lastHitBy: string | null = null;
+  /** How the operator died: a round, or bleeding out after one. */
+  diedBleeding = false;
+
   private die(): void {
     if (!this.alive) return;
+    this.diedBleeding = this.bleeding && this.lastHitAgo > 0.25;
     this.hp = 0;
     this.alive = false;
     this.using = null;

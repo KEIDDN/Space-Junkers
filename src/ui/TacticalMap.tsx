@@ -72,6 +72,7 @@ export function TacticalMap({ snapshot, name, timeLeft }: { snapshot: () => Tact
           <span><i style={{ background: C.pad }} /> EXFIL</span>
           <span><i style={{ background: C.lift }} /> LIFT</span>
           <span><i style={{ background: C.locked }} /> SEALED</span>
+          <span><i style={{ background: '#ffa030' }} /> THE JOB</span>
           <span className="grow" />
           <span className="dim"><ByDevice kbm={<>[M] CLOSE</>} pad={<><Key a="back" /> CLOSE</>} /></span>
         </div>
@@ -195,6 +196,14 @@ function drawMap(cv: HTMLCanvasElement, wrap: HTMLDivElement, m: TacticalSnapsho
       g.fillRect(e.breaker.tx * cell + 1, e.breaker.ty * cell + 1, cell - 2, cell - 2);
       g.fillText('BREAKER', (e.breaker.tx + 0.5) * cell, (e.breaker.ty + 1.6) * cell);
     }
+  }
+
+  // Contract sites, once you've laid eyes on them: the job, marked on your own map.
+  for (const site of m.sites) {
+    if (!seen(site.tx, site.ty + 1) && !seen(site.tx, site.ty)) continue;
+    g.fillStyle = site.done ? C.pad : '#ffa030';
+    g.fillRect(site.tx * cell + 1, site.ty * cell + 1, cell - 2, cell - 2);
+    g.fillText(site.done ? 'DONE' : site.kind === 'item' ? 'THE PART' : 'THE JOB', (site.tx + 0.5) * cell, (site.ty + 1.6) * cell);
   }
 
   // You.

@@ -149,10 +149,11 @@ function ExtractBanner({ countdown, inZone, kind }: { countdown: number; inZone:
 function Tracker() {
   const quests = useProfile((s) => s.quests);
   const log = useRaid((s) => s.log);
+  const read = useRaid((s) => s.lore.length);
   const destination = useRaid((s) => s.destination);
   const loadout = useRaid((s) => s.loadout);
   const brought = useRaid((s) => s.brought);
-  const lines = liveTracker({ ...useProfile.getState(), quests }, log, destination, foundItems(loadout, brought)).slice(0, 3);
+  const lines = liveTracker({ ...useProfile.getState(), quests }, { ...log, read }, destination, foundItems(loadout, brought)).slice(0, 3);
   if (!lines.length) return null;
   return (
     <div className="hud-tracker crt-text">

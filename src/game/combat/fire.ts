@@ -1,11 +1,21 @@
 import { GUN_HEIGHT } from '../../engine/config';
 import { ITEMS, type AmmoDef } from '../../data/items';
-import { reloadStyleOf } from '../../data/weapons';
+import { reloadStyleOf, type WeaponArchetype } from '../../data/weapons';
 import type { GameContext } from '../context';
 import type { ActorView } from '../entities/ActorView';
 import { hasLineOfSight } from '../world/collision';
-import type { Faction } from './projectiles';
+import type { Falloff, Faction } from './projectiles';
 import type { WeaponState } from './weapon';
+
+/**
+ * Range falloff by weapon family. Pellets fade fast past a third of their reach, pistol and
+ * SMG rounds tire past half; rifles and marksman rifles carry their damage all the way.
+ */
+export const FALLOFF: Partial<Record<WeaponArchetype | 'pellet', Falloff>> = {
+  pellet: { from: 0.3, min: 0.3 },
+  pistol: { from: 0.5, min: 0.65 },
+  smg: { from: 0.45, min: 0.6 },
+};
 
 const DEG = Math.PI / 180;
 
@@ -24,6 +34,8 @@ export function discharge(
   extraSpreadDeg = 0,
   /** Holding the aim steady tightens the cone. */
   spreadMul = 1,
+  /** Who's shooting, for the after-action report. */
+  source?: string,
 ): void {
   const def = weapon.def;
   const muzzle = view.muzzleWorld(x, y);
@@ -51,6 +63,7 @@ export function discharge(
     ctx.projectiles.fire(sx, sy, a, {
       speed, range: slug ? def.range * 1.7 : def.range, damage, pen,
       knockback: def.knockback * (slug ? 2 : 1), faction, color: def.tracerColor, pellet: pellets > 1,
+      falloff: pellets > 1 ? FALLOFF.pellet : FALLOFF[def.archetype], source,
     });
   }
 
@@ -72,7 +85,7 @@ export function discharge(
   }
   view.kick(def.gunKick);
   ctx.audio.gunshot(def.sound, x, y);
-  ctx.emitNoise(x, y, def.noiseRadius);
+  ctx.emitNoise(x, y, def.noiseRadius, faction);
 }
 
 /** Triangular distribution in -1..1: most shots near the centre, some at the edge. */

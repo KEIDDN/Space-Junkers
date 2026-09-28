@@ -197,6 +197,12 @@ export const ROOM_NOTICES: Record<string, { ru: string; en: string; style: keyof
   lab: { ru: 'НЕ ТРОГАТЬ', en: 'DO NOT TOUCH', style: 'danger' },
 };
 
+/** Clearance plates: restricted rooms and the deep rooms say so, whatever they were for. */
+export const ZONE_NOTICES: Partial<Record<string, { ru: string; en: string; style: keyof typeof SIGN_STYLES }>> = {
+  restricted: { ru: 'ДОПУСК 2', en: 'CLEARANCE 2', style: 'warn' },
+  deep: { ru: 'ДОПУСК 3', en: 'AUTHORISED ONLY', style: 'danger' },
+};
+
 export const ROOM_SIGNS: Record<string, { ru: string; en: string; style: keyof typeof SIGN_STYLES }> = {
   entry: { ru: 'ШЛЮЗ', en: 'AIRLOCK', style: 'plain' },
   exfil: { ru: 'ПОСАДКА', en: 'LANDING PAD', style: 'warn' },

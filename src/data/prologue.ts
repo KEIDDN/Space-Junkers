@@ -29,8 +29,8 @@ export function prologueStep(flags: Record<string, boolean>): PrologueStep | nul
 /** The ship log: one quiet line under the ship's name. */
 export const STEP_LOG: Record<PrologueStep, string> = {
   kit: 'Your locker, by the bunks. Molot left your kit in it.',
-  job: 'The cockpit. Fedya is on the radio with work.',
-  airlock: 'The airlock. Tikhaya is under you.',
+  job: 'The cockpit. Fedya is on the radio. The pump is knocking again.',
+  airlock: 'The airlock. Zarya-7 is under you. Bring back the pump regulator.',
 };
 
 export interface SceneLine {
@@ -44,24 +44,24 @@ export interface SceneLine {
 export const STEP_LINES: Record<PrologueStep, SceneLine[]> = {
   kit: [
     { who: 'merc', text: 'Your locker. I filled it, you sign for it. Nobody signs for anything any more, so just nod.' },
-    { who: 'merc', text: 'PM-9. Old Makarov pattern, honest. Nine in the magazine, forty-five in your pockets. Count them. Down there nobody sells you more.' },
-    { who: 'merc', text: 'The sack is for bringing things home. Whatever is in it is worth nothing until it is aboard.' },
+    { who: 'merc', text: 'PM-9. Commonwealth issue, honest. Nine in the magazine, forty-five in your pockets. Count them. Down there nobody sells you more.' },
+    { who: 'merc', text: 'The sack is for bringing things home. Whatever\'s in it is worth nothing until it\'s aboard.' },
     { who: 'merc', text: 'Two bandages. Stop the bleeding first, feel sorry for yourself later.' },
     { who: 'merc', text: 'What you carry down, you can lose. What you leave in this locker, you keep. Remember that when you pack.' },
   ],
   job: [
     { who: 'trader', intercom: true, text: 'Awake? Good. Sit, don\'t touch anything. I\'m on the relay from the hold.' },
-    { who: 'trader', intercom: true, text: 'You know the story. Forty years ago the Commonwealth stopped answering. No war, no speech. The orders stopped, then the pay.' },
-    { who: 'trader', intercom: true, text: 'The plants didn\'t stop. Nobody told them to. Depots, mills, stations: still running on reserve power, with nobody at the controls.' },
-    { who: 'trader', intercom: true, text: 'Everything they built is still down there. Batteries, tools, parts, food. And people who think it belongs to them now.' },
-    { who: 'trader', intercom: true, text: 'Service station Zarya-7 on Tikhaya stopped answering the relay three days ago. Maintenance, nothing military. Somebody has been living in it.' },
-    { who: 'trader', intercom: true, text: 'The reactor pump is dying. We need batteries and parts or this ship drifts. Go down, take what you can carry, come back.' },
-    { who: 'trader', intercom: true, text: 'The coming back is the job. I hold orbit twenty minutes, then I leave, with you or without you. I\'d prefer with. You owe me for the fuel.' },
+    { who: 'trader', intercom: true, text: 'You hear that knock? That\'s the coolant pump. The regulator\'s going. Nine days. Maybe seven.' },
+    { who: 'trader', intercom: true, text: 'Zarya-7. Service station, down on Tikhaya. Stopped answering the relay three days ago. It ran the same pump we do.' },
+    { who: 'trader', intercom: true, text: 'Somebody\'s been living in it. Scavengers. Mostly they\'re hungry, not brave. Mostly.' },
+    { who: 'trader', intercom: true, text: 'The pump hall is mid-station: big tanks, loud. Unbolt the regulator and bring it home. Whatever else you find, you sell. That\'s your share.' },
+    { who: 'trader', intercom: true, text: 'I hold orbit twenty minutes, then I leave, with you or without you. I\'d prefer with. You still owe me the fare.' },
   ],
   airlock: [
     { who: 'hacker', intercom: true, text: 'I\'m on your radio the whole way. If I hear something, you hear it.' },
+    { who: 'medic', intercom: true, text: 'And if you\'re under half, you come home. The regulator will keep. You won\'t.' },
     { who: 'merc', text: 'Listen before you look. If they see you first, don\'t be brave, be gone. Come back with less rather than not at all.' },
-    { who: 'merc', text: 'Shuttle pad or the maintenance lift. Then home. Go on.' },
+    { who: 'merc', text: 'The pad, or the maintenance lift if you find its power. Then home. Go on.' },
   ],
 };
 
@@ -70,12 +70,12 @@ export const WAKE_LINE = 'INTERCOM · FEDYA: Operator, awake? Locker first, Molo
 
 /** Typed over black before the first look at the ship. */
 export const INTRO: string[] = [
-  'Forty years ago the Commonwealth stopped answering.',
-  'No war. No announcement. The orders stopped, and then the pay.',
-  'Its plants, depots and stations kept running, with nobody at the controls.',
+  'Forty-one years ago every clock in the Commonwealth stopped on the same second.',
+  'Then the orders stopped. Then the pay. Nobody came to say why.',
+  'Its plants, depots and stations kept running on reserve power, with nobody at the controls.',
+  'Most people left. Some stayed. Some come back, to take things.',
   'Five people live aboard the Lastochka, an ore tender nobody else wanted.',
-  'Somebody has to go down into those places and bring back what keeps her flying.',
-  'You are the one who goes down.',
+  'You came aboard owing them the fare. You are the one who goes down.',
 ];
 
 /** The first job's facility: Zarya-7 on Tikhaya (see facilityName). */

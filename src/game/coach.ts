@@ -33,6 +33,10 @@ export interface CoachFacts {
   onExit: boolean;
   /** The shuttle is called but the operator stepped off the pad: its clock has stopped. */
   extractPaused: boolean;
+  /** Close to a contract site that hasn't been worked. */
+  nearSite?: boolean;
+  /** Carrying the contract goods they came for. */
+  hasPart?: boolean;
 }
 
 export interface RadioLine {
@@ -56,6 +60,8 @@ const BEATS: Beat[] = [
   { id: 'kill', who: 'MOLOT', text: 'Good. Now check the body: hold {hold:interact} over it. They always carry rounds.', when: (f) => f.kills > 0 },
   { id: 'search', who: 'FEDYA', text: 'Take what\'s light and worth something: {inventory} opens your bag. None of it is ours until you\'re back aboard. Die and it stays down there.', when: (f) => f.searched > 0 },
   { id: 'hurt', who: 'DOC', text: 'You\'re hit. Get out of sight and {heal} to treat it, before you bleed out.', when: (f) => f.hp < 0.55 || f.bleeding },
+  { id: 'site', who: 'FEDYA', text: 'That\'s it, on the wall with the lamp on it. Hold {hold:interact} on it. It won\'t come off quietly, so look around first.', when: (f) => !!f.nearSite && !f.fighting },
+  { id: 'part', who: 'FEDYA', text: 'You have it? Then that\'s the job done. Everything after this is greed. Greed is allowed. So is leaving. {map} for the pad.', when: (f) => !!f.hasPart },
   { id: 'hold', who: 'SHURA', text: 'The shuttle only comes down while you\'re on the pad. Get back on it, the clock\'s stopped.', when: (f) => f.extractPaused },
   { id: 'enough', who: 'FEDYA', text: 'That\'s a week of fuel on your back. The pad\'s on your map, {map}. Nobody ever died of leaving early.', when: (f) => f.haul > 900 && f.elapsed > 90 },
   { id: 'time', who: 'FEDYA', text: 'Half the window\'s gone. Start thinking about the way out.', when: (f) => f.left < 540 && f.left > 0 },

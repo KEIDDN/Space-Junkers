@@ -98,12 +98,24 @@ export class Lighting {
     this.base.tint = rgb(amb * 0.85, amb * 0.92, amb * 1.2);
   }
 
+  /** Seconds left of a facility-wide brown-out (see `outage`). */
+  private outageLeft = 0;
+
+  /**
+   * The reserve dips and every lamp in the facility browns out for a while. Unlike a local
+   * sag this is real: lit rooms stop giving people away, the operator included.
+   */
+  outage(seconds: number): void {
+    this.outageLeft = seconds;
+    for (const s of this.statics) s.sag = Math.max(s.sag, seconds * (0.9 + Math.random() * 0.2));
+  }
+
   /** 0..1 static light at a world position (from lamps, not the player). */
   levelAt(x: number, y: number): number {
     const tx = Math.floor(x / TILE);
     const ty = Math.floor(y / TILE);
     if (tx < 0 || ty < 0 || tx >= this.map.width || ty >= this.map.height) return 0;
-    return this.levels[ty * this.map.width + tx];
+    return this.levels[ty * this.map.width + tx] * (this.outageLeft > 0 ? 0.3 : 1);
   }
 
   /** Is this point lit by the player's own light (flashlight cone or personal glow)? */
@@ -157,6 +169,7 @@ export class Lighting {
     this.px = px;
     this.py = py;
     this.aim = aim;
+    if (this.outageLeft > 0) this.outageLeft -= dt;
     this.world.position.set(-camLeft, -camTop);
 
     for (const s of this.statics) {

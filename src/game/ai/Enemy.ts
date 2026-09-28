@@ -32,6 +32,8 @@ const DEG = Math.PI / 180;
 /** Allies within this range hear a shout (less through walls). */
 const SHOUT_RANGE = 300;
 const SHOUT_RANGE_WALLS = 170;
+/** How far a posted guard will go from their post (tiles). */
+const LEASH_TILES = 7;
 
 /**
  * Enemy soldier. Perceives the world through sight (cone, range, light, line of sight, smoke)
@@ -100,6 +102,8 @@ export class Enemy implements Hittable {
   private fightTime = 99;
   /** "Who's there?": said once per bout of suspicion, before they commit. */
   private queried = false;
+  /** Where they were stationed: after a search they go back to it, not wherever they ended up. */
+  private readonly home: { x: number; y: number };
 
   constructor(
     private ctx: GameContext,
@@ -111,9 +115,12 @@ export class Enemy implements Hittable {
     private tuning: AiTuning = DEFAULT_AI,
     /** Carry this weapon item instead of a random pick from the faction's kit. */
     weapon?: string,
+    /** Holds this spot: comes back to it, and won't be drawn far from it. */
+    private post = false,
   ) {
     this.x = x;
     this.y = y;
+    this.home = { x, y };
     this.hp = def.hp;
     // Each faction has two looks; a squad is never a row of clones. What they wear shows.
     const chance = def.armorChance ?? 1;
@@ -172,13 +179,28 @@ export class Enemy implements Hittable {
       this.lastKnownY = ey;
       return;
     }
+    if (this.leashed(ex, ey)) {
+      this.facing = Math.atan2(ey - this.y, ex - this.x);
+      return;
+    }
     // Loud nearby noises (gunfire) put them on alert, quiet ones make them curious.
     this.investigate(ex, ey, radius > 250 ? 'alert' : 'investigate');
+  }
+
+  /** Posted guards don't leave their room for a shout from across the facility. */
+  private leashed(x: number, y: number): boolean {
+    return this.post && Math.hypot(x - this.home.x, y - this.home.y) > TILE * LEASH_TILES;
   }
 
   /** A squad-mate shouted a position. */
   alertTo(x: number, y: number, delay: number): void {
     if (!this.alive || this.aware) return;
+    if (this.leashed(x, y)) {
+      // They heard. They get ready, where they are.
+      this.edge = 1;
+      this.facing = Math.atan2(y - this.y, x - this.x);
+      return;
+    }
     this.pendingAlert = { x, y, t: delay };
   }
 
@@ -193,7 +215,12 @@ export class Enemy implements Hittable {
     if (!this.aware) {
       this.facing = Math.atan2(killerY - this.y, killerX - this.x);
       this.investigate(killerX + (Math.random() - 0.5) * 80, killerY + (Math.random() - 0.5) * 80, 'alert');
+      return;
     }
+    // The last one standing, already hurt, thinks twice about pushing: they fall back and
+    // make you come to them. (Not a rout: they'll fight from wherever they end up.)
+    const alone = !this.allies.some((a) => a !== this && a.alive && Math.hypot(a.x - this.x, a.y - this.y) < 320);
+    if (alone && !this.retreated && this.hp < this.def.hp * 0.7 && Math.random() < 0.6) this.startRetreat(killerX, killerY);
   }
 
   /** A round snapped past. */
@@ -372,6 +399,9 @@ export class Enemy implements Hittable {
           moveX = step.x;
           moveY = step.y;
           wantFacing = Math.atan2(moveY, moveX);
+        } else if (!this.route) {
+          // Back at their post (no route to walk): stand watch.
+          this.setState('idle');
         } else {
           this.patrolWait -= dt;
           if (this.patrolWait <= 0 && this.route) {
@@ -459,7 +489,10 @@ export class Enemy implements Hittable {
           // Lost sight: someone flanks if a teammate is already on it; otherwise chase.
           if (this.unseen > 0.6) {
             if (this.tryGrenade(target)) break;
-            if (!this.tryFlank()) {
+            if (this.leashed(this.lastKnownX, this.lastKnownY)) {
+              // Holding the room: back to the post, gun on the door.
+              if (!this.takeCover(this.lastKnownX, this.lastKnownY)) this.returnToPost();
+            } else if (!this.tryFlank()) {
               this.setState('chase');
               this.repath(this.lastKnownX, this.lastKnownY);
             }
@@ -510,10 +543,7 @@ export class Enemy implements Hittable {
           if (this.weapon.ammo < this.weapon.def.magSize) this.weapon.startReload();
           this.coverHold -= dt;
           if (sees && !this.weapon.reloading && this.coverHold < 0.8) this.setState('combat');
-          else if (this.coverHold <= 0 && !this.weapon.reloading) {
-            this.setState('chase');
-            this.repath(this.lastKnownX, this.lastKnownY);
-          }
+          else if (this.coverHold <= 0 && !this.weapon.reloading) this.pursue();
         }
         break;
       }
@@ -531,10 +561,7 @@ export class Enemy implements Hittable {
         } else if (this.stateTime > 1) {
           // Holding behind cover; if the target shows up, fight.
           if (sees) this.setState('combat');
-          else if (this.stateTime > 4) {
-            this.setState('chase');
-            this.repath(this.lastKnownX, this.lastKnownY);
-          }
+          else if (this.stateTime > 4) this.pursue();
         }
         break;
       }
@@ -634,7 +661,7 @@ export class Enemy implements Hittable {
     const startle = 1 + this.tuning.startle * Math.max(0, 1 - this.fightTime / STARTLE_TIME);
     const err = this.def.aimError * this.tuning.aim * startle * (1 + this.suppression * 1.6);
     const aim = toTarget + (Math.random() - 0.5) * 2 * err * DEG;
-    discharge(this.ctx, this.view, w, this.x, this.y, aim, 'enemy', 0);
+    discharge(this.ctx, this.view, w, this.x, this.y, aim, 'enemy', 0, 0, 1, `${this.def.named ? this.def.name : `a ${this.def.name.toLowerCase()}`}'s ${w.def.name}`);
     this.lastShotAgo = 0;
     if (w.def.cycled && w.ammo > 0) this.cycleTimer = Math.min(0.28, 0.45 / w.def.fireRate);
     this.burstLeft--;
@@ -752,9 +779,27 @@ export class Enemy implements Hittable {
     if (this.route && this.route.length > 1) {
       this.setState('patrol');
       this.repath(this.route[this.patrolIndex].x, this.route[this.patrolIndex].y);
-    } else {
-      this.setState('idle');
+    } else this.returnToPost();
+  }
+
+  /** Go after the last known position, unless it's past a posted guard's leash. */
+  private pursue(): void {
+    if (this.leashed(this.lastKnownX, this.lastKnownY)) {
+      this.returnToPost();
+      return;
     }
+    this.setState('chase');
+    this.repath(this.lastKnownX, this.lastKnownY);
+  }
+
+  /** Walk back to where they were stationed (or just stand, if they're there). */
+  private returnToPost(): void {
+    if (Math.hypot(this.home.x - this.x, this.home.y - this.y) < TILE) {
+      this.setState('idle');
+      return;
+    }
+    this.setState('patrol');
+    this.repath(this.home.x, this.home.y);
   }
 
   private repath(x: number, y: number): void {

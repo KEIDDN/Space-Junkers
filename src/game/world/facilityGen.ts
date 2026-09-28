@@ -1,6 +1,7 @@
 import { TILE } from '../../engine/config';
 import { Rng } from '../../engine/rng';
-import { THEMES, type Theme } from '../../data/themes';
+import { THEMES, type RoomKind, type Theme } from '../../data/themes';
+import { MARKS, siteOf, type Zone } from '../../data/objectives';
 import { Tile, TileMap, type Room, type Spawn } from './tilemap';
 
 /**
@@ -33,7 +34,48 @@ export interface FacilityOptions {
    * are quiet, the next ring holds one lone scavenger at most, and it gets harder from there.
    */
   gentle?: boolean;
+  /**
+   * What the open contracts need down here (see `raidPlan` in core/quests.ts): parts fitted
+   * to walls, jobs with a site, somebody holding a room. Without it the facility is exactly
+   * what the seed makes.
+   */
+  plan?: { items: string[]; tasks: string[]; marks: string[] };
 }
+
+/**
+ * The spatial grammar of a facility, from the airlock in: an entry zone (quiet, supplies,
+ * orientation), the working rooms (people worked here; so do their guards), a restricted ring
+ * (security, arms, servers, labs: better finds, worse company, fewer lights), and the deep
+ * rooms (rare things, contract targets, the dark). The pad sits deepest of all, so getting out
+ * means going through.
+ */
+export function zoneOf(room: Pick<Room, 'role' | 'depth'>, maxDepth: number): Zone {
+  if (room.role === 'start') return 'entry';
+  if (room.role === 'extraction') return 'exit';
+  if (room.role === 'vault') return 'deep';
+  if (room.depth <= 1) return 'entry';
+  const f = room.depth / Math.max(1, maxDepth);
+  return f < 0.5 ? 'working' : f < 0.8 ? 'restricted' : 'deep';
+}
+
+/** Which purposes each zone leans toward (× the world's own weights). */
+const ZONE_BIAS: Record<'entry' | 'working' | 'restricted' | 'deep', Partial<Record<RoomKind, number>>> = {
+  entry: { storage: 2, mess: 2, barracks: 1.5, office: 1, workshop: 1, medbay: 1, servers: 0.4, reactor: 0.3, security: 0.3, armory: 0.2, lab: 0.2 },
+  working: { workshop: 2, storage: 1.5, mess: 1.2, office: 1.2, barracks: 1, reactor: 1, medbay: 1, servers: 0.8, security: 0.7, armory: 0.6, lab: 0.6 },
+  restricted: { security: 2.2, armory: 1.8, servers: 1.6, lab: 1.6, reactor: 1.5, medbay: 1.2, office: 1, barracks: 0.8, workshop: 0.8, storage: 0.7, mess: 0.4 },
+  deep: { lab: 2, servers: 1.8, armory: 1.8, reactor: 1.6, security: 1.2, storage: 1, medbay: 1, office: 0.6, workshop: 0.6, barracks: 0.6, mess: 0.3 },
+};
+
+function biasedKinds(theme: Theme, zone: Zone): Record<string, number> {
+  const base = theme.rooms as Record<string, number>;
+  if (zone === 'exit') return base;
+  const bias = ZONE_BIAS[zone] as Record<string, number>;
+  const out: Record<string, number> = {};
+  for (const [k, w] of Object.entries(base)) out[k] = w * (bias[k] ?? 1);
+  return out;
+}
+
+const ZONE_RANK: Record<Zone, number> = { entry: 0, working: 1, restricted: 2, deep: 3, exit: 4 };
 
 const CELL_W = 16;
 const CELL_H = 13;
@@ -183,10 +225,11 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   cells[vaultIdx].room.role = 'vault';
   for (const i of deadEnds.slice(1)) cells[i].room.role = 'loot';
 
-  // --- Purposes
+  // --- Zones and purposes: what a room was for leans on how deep it is.
+  for (const c of cells) c.room.zone = zoneOf(c.room, maxDepth);
   for (const c of cells) {
     const role = c.room.role;
-    c.room.kind = role === 'start' ? 'entry' : role === 'extraction' ? 'exfil' : role === 'vault' ? 'vault' : rng.weighted(theme.rooms as Record<string, number>);
+    c.room.kind = role === 'start' ? 'entry' : role === 'extraction' ? 'exfil' : role === 'vault' ? 'vault' : rng.weighted(biasedKinds(theme, c.room.zone!));
   }
 
   // --- The vault is sealed: a red security door on every way in.
@@ -216,7 +259,9 @@ export function generateFacility(seed: number, opts: FacilityOptions = {}): Tile
   const breakerRooms = cells.map((_, i) => i).filter((i) => i !== lift && i !== vaultIdx && i !== startIdx && !cells[lift]?.links.includes(i));
   const plan: RoomPlan = {
     lift, breaker: lift >= 0 && breakerRooms.length ? rng.pick(breakerRooms) : -1, guards, vaultLocked, breakerAt: null, lootBonus: opts.lootBonus ?? 0,
+    sites: new Map(), marks: new Map(),
   };
+  if (opts.plan) planSites(cells, plan, opts.plan, new Rng(seed ^ 0x0b1ec7));
 
   // --- Furnish
   const mix = opts.enemies ?? { scavenger: 1 };
@@ -352,6 +397,67 @@ function placeVignettes(map: TileMap, rng: Rng, rooms: Room[]): void {
         take(x, r.y);
         map.props.push({ sprite: 'deco_clock', x: px(x) + 16, y: px(r.y) - 10, layer: 'wall' });
         note('clock', px(x) + 16, px(r.y) + 14);
+        return true;
+      },
+    },
+    {
+      // Two chairs, a table, a card game nobody finished. One chair on its side. A stain.
+      key: 'cards', fits: (r) => ['mess', 'barracks', 'security', 'storage'].includes(r.kind ?? '') && r.role !== 'vault',
+      place: (r) => {
+        for (const table of rng.shuffle(map.props.filter((p) => p.sprite === 'ship_table' && inside(r, Math.floor(p.x / TILE), Math.floor((p.y - 4) / TILE))))) {
+          const ty = Math.floor((table.y - 4) / TILE);
+          const tx = Math.floor(table.x / TILE);
+          const stand = [[tx, ty + 1], [tx - 1, ty + 1], [tx - 1, ty], [tx + 1, ty + 1]].find(([x, y]) => map.get(x, y) === Tile.Floor && inside(r, x, y) && !used.has(k(x, y)));
+          if (!stand) continue;
+          const [sx, sy] = stand;
+          take(sx, sy);
+          map.props.push({ sprite: 'deco_cards', x: Math.round(table.x - 4), y: table.y + 1, lift: 23 });
+          map.props.push({ sprite: 'deco_vodka', x: Math.round(table.x + 12), y: table.y + 1, lift: 23 });
+          map.props.push({ sprite: 'deco_chair_down', x: px(sx) + 16, y: px(sy) + 24, layer: 'floor', flip: rng.chance(0.5) });
+          map.props.push({ sprite: 'fx_blood_1', x: px(sx) + rng.int(8, 24), y: px(sy) + 28, layer: 'floor', tint: 0x5a2a22 });
+          map.props.push({ sprite: 'deco_cigs', x: px(sx) + 24, y: px(sy) + 30 });
+          note('cards', px(sx) + 16, px(sy) + 18);
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      // A repair left half done: parts laid out in order on the bench, a note taped to it.
+      key: 'repair', fits: (r) => ['workshop', 'reactor'].includes(r.kind ?? ''),
+      place: (r) => {
+        for (const bench of rng.shuffle(map.props.filter((p) => (p.sprite === 'ship_workbench' || p.sprite === 'ship_machine') && inside(r, Math.floor(p.x / TILE), Math.floor((p.y - 4) / TILE))))) {
+          const by = Math.floor((bench.y - 4) / TILE);
+          const bx = Math.floor(bench.x / TILE);
+          const stand = [[bx, by + 1], [bx - 1, by + 1], [bx + 1, by + 1]].find(([x, y]) => map.get(x, y) === Tile.Floor && inside(r, x, y) && !used.has(k(x, y)));
+          if (!stand) continue;
+          const [sx, sy] = stand;
+          take(sx, sy);
+          const top = SURFACES[bench.sprite] ?? 30;
+          map.props.push({ sprite: 'deco_gear', x: Math.round(bench.x - 10), y: bench.y + 1, lift: top - 1 });
+          map.props.push({ sprite: 'deco_wrench', x: Math.round(bench.x + 2), y: bench.y + 1, lift: top - 1 });
+          map.props.push({ sprite: 'deco_note', x: Math.round(bench.x + 12), y: bench.y + 1, lift: top - 2 });
+          map.props.push({ sprite: 'deco_gear', x: px(sx) + 10, y: px(sy) + 26, layer: 'floor' });
+          map.props.push({ sprite: 'deco_mug', x: px(sx) + 24, y: px(sy) + 30 });
+          note('repair', px(sx) + 16, px(sy) + 18);
+          return true;
+        }
+        return false;
+      },
+    },
+    {
+      // They were told to take nothing. A packed suitcase by the door, never picked up.
+      key: 'evac', fits: (r) => ['barracks', 'office', 'medbay', 'mess', 'entry'].includes(r.kind ?? '') && r.role !== 'vault',
+      place: (r) => {
+        const spots = rng.shuffle(free(r, true));
+        const spot = spots[0];
+        if (!spot) return false;
+        const [x, y] = spot;
+        take(x, y);
+        map.props.push({ sprite: 'deco_suitcase', x: px(x) + 14, y: px(y) + 26 });
+        map.props.push({ sprite: 'deco_photo', x: px(x) + 26, y: px(y) + 30, layer: 'floor' });
+        map.props.push({ sprite: 'deco_orders', x: px(x) + 6, y: px(y) + 30, layer: 'floor' });
+        note('evac', px(x) + 16, px(y) + 16);
         return true;
       },
     },
@@ -630,6 +736,48 @@ interface RoomPlan {
   /** Where the breaker ended up. */
   breakerAt: { tx: number; ty: number } | null;
   lootBonus: number;
+  /** Contract sites per room index. */
+  sites: Map<number, { kind: 'item' | 'task'; id: string }[]>;
+  /** A named hostile holding the room, per room index. */
+  marks: Map<number, string>;
+}
+
+/**
+ * Put each contract site in a room that fits: the right depth first, then the right purpose.
+ * When no room of the right purpose is at the right depth, the best-placed room becomes one
+ * (a pump hall is a pump hall). Its own random stream: the rest of the facility is as the
+ * seed made it.
+ */
+function planSites(cells: Cell[], plan: RoomPlan, want: NonNullable<FacilityOptions['plan']>, rng: Rng): void {
+  const used = new Set<number>([plan.lift, plan.breaker]);
+  const pick = (rooms: RoomKind[], zone: Zone): number => {
+    const options = cells.map((c, i) => ({ c, i }))
+      .filter(({ c, i }) => (c.room.role === 'standard' || c.room.role === 'loot') && !used.has(i) && c.room.w >= 4)
+      .map(({ c, i }) => {
+        const off = Math.abs(ZONE_RANK[c.room.zone ?? 'working'] - ZONE_RANK[zone]);
+        const fits = rooms.includes(c.room.kind as RoomKind) ? 0 : 1;
+        return { i, score: off * 2 + fits + rng.next() * 0.5 };
+      })
+      .sort((a, b) => a.score - b.score);
+    if (!options.length) return -1;
+    const i = options[0].i;
+    used.add(i);
+    if (!rooms.includes(cells[i].room.kind as RoomKind)) cells[i].room.kind = rooms[0];
+    return i;
+  };
+  for (const id of want.marks) {
+    const m = MARKS[id];
+    if (!m) continue;
+    const i = pick(m.rooms, m.zone);
+    if (i >= 0) plan.marks.set(i, id);
+  }
+  const sites = [...want.items.map((id) => ({ kind: 'item' as const, id })), ...want.tasks.map((id) => ({ kind: 'task' as const, id }))];
+  for (const site of sites) {
+    const def = siteOf(site.kind, site.id);
+    if (!def) continue;
+    const i = pick(def.rooms, def.zone);
+    if (i >= 0) plan.sites.set(i, [...(plan.sites.get(i) ?? []), site]);
+  }
 }
 
 function furnishRoom(
@@ -676,6 +824,8 @@ function furnishRoom(
     reserved.add(key(sx, sy));
   }
 
+  const standsOnBackWallAt = (x: number) => map.get(x, r.y - 1) === Tile.Wall;
+
   /** Tiles that must stay reachable from the room floor: openings, containers, terminals, the breaker. */
   const mustTouch: { tx: number; ty: number }[] = [...cell.openings];
 
@@ -709,7 +859,32 @@ function furnishRoom(
     return true;
   };
 
-  const risk = Math.min(1, r.depth / Math.max(1, maxDepth) + (r.role === 'vault' ? 0.5 : 0)) + plan.lootBonus;
+  // --- Contract sites: fitted to the back wall, worked from the floor in front.
+  for (const site of plan.sites.get(index) ?? []) {
+    const def = siteOf(site.kind, site.id)!;
+    const srng = new Rng((map.seed ^ 0x5173) + index);
+    // The back wall if there's room on it; any wall of the room if not. A contract target
+    // is never quietly left out.
+    const back = srng.shuffle(Array.from({ length: r.w }, (_, i) => r.x + i)).filter((x) => standsOnBackWallAt(x)).map((x) => [x, r.y] as [number, number]);
+    const sides: [number, number][] = [];
+    for (let y = r.y + 1; y < r.y + r.h; y++) {
+      for (let x = r.x; x < r.x + r.w; x++) {
+        if (map.get(x - 1, y) === Tile.Wall || map.get(x + 1, y) === Tile.Wall || map.get(x, y + 1) === Tile.Wall) sides.push([x, y]);
+      }
+    }
+    for (const [x, y] of [...back, ...srng.shuffle(sides)]) {
+      if (tryBlock([[x, y]], () => {
+        map.props.push({ sprite: def.sprite, x: px(x) + TILE / 2, y: px(y + 1) - 2 });
+        // Worked from whichever side is open (below, if it can be).
+        const from = map.get(x, y + 1) === Tile.Floor ? [x, y + 1] : map.get(x - 1, y) === Tile.Floor ? [x - 1, y] : map.get(x + 1, y) === Tile.Floor ? [x + 1, y] : [x, y - 1];
+        map.sites.push({ kind: site.kind, id: site.id, tx: x, ty: y, x: px(from[0]) + TILE / 2, y: px(from[1]) + (from[1] > y ? 4 : TILE / 2) });
+        // A work lamp left on over it: the one thing in the room somebody still cared about.
+        map.lights.push({ x: px(x) + TILE / 2, y: px(y + 1) + 2, color: 0xffc070, radius: 64, intensity: 0.4, flicker: false });
+      }, true)) break;
+    }
+  }
+
+  const risk = Math.min(1, r.depth / Math.max(1, maxDepth) + (r.role === 'vault' ? 0.5 : 0) + (r.zone === 'deep' ? 0.1 : 0)) + plan.lootBonus;
   const rich = plan.lootBonus || undefined;
   const backWallX = () => rng.shuffle(Array.from({ length: r.w }, (_, i) => r.x + i));
   const standsOnBackWall = (x: number) => map.get(x, r.y - 1) === Tile.Wall;
@@ -743,6 +918,8 @@ function furnishRoom(
       default: return Array.from({ length: n }, pick);
     }
   })();
+  // Whoever holds this room sits on the good stuff.
+  if (plan.marks.has(index)) containerTypes.unshift('case_green', 'box_red');
   for (const type of containerTypes) placeContainer(type, BACK_WALL.has(type));
 
   /** Leave a thing or two on top of a piece of furniture. */
@@ -859,7 +1036,9 @@ function furnishRoom(
   }
 
   // --- Lights, in fixtures on the back wall.
-  const lit = r.role === 'standard' ? rng.chance(0.62) : r.role === 'loot' ? rng.chance(0.5) : true;
+  // Deeper is darker: the mains reach the working rooms, not the far end.
+  const litChance = r.zone === 'deep' ? 0.35 : r.zone === 'restricted' ? 0.55 : r.zone === 'entry' ? 0.8 : 0.7;
+  const lit = r.role === 'standard' ? rng.chance(litChance) : r.role === 'loot' ? rng.chance(litChance - 0.1) : true;
   if (!lit) {
     // Mains are out: a battery emergency lamp throbs over the back wall, barely enough.
     const spots = backWallX().filter(standsOnBackWall);
@@ -904,10 +1083,18 @@ function furnishRoom(
       case 'loot': return rng.chance(0.7) ? 1 : 2;
       case 'vault': return plan.vaultLocked ? 0 : rng.int(2, 3);
       case 'extraction': return 1;
-      default: return (rng.chance(0.42) ? 1 : 0) + (r.depth >= 3 && rng.chance(0.25) ? 1 : 0);
+      default: {
+        // Working rooms: the odd guard. Restricted: likely one, maybe two. Deep: a pair, often.
+        const one = r.zone === 'deep' ? 0.62 : r.zone === 'restricted' ? 0.55 : 0.38;
+        const two = r.zone === 'deep' ? 0.4 : r.zone === 'restricted' ? 0.22 : 0.08;
+        return (rng.chance(one) ? 1 : 0) + (r.depth >= 3 && rng.chance(two) ? 1 : 0);
+      }
     }
   })() + (plan.guards.get(index) ?? 0);
   let count = r.depth === 1 ? Math.min(1, base) : Math.round(base * danger);
+  // A marked room holds its named hostile and their guards, and nobody else.
+  const mark = plan.marks.get(index);
+  if (mark) count = 0;
   // Learning: quiet around the entry, one lone scavenger in the next ring at most.
   if (gentle && r.depth <= 1) count = 0;
   else if (gentle && r.depth === 2) count = Math.min(1, count);
@@ -932,6 +1119,16 @@ function furnishRoom(
       ];
     }
     map.spawns.push(spawn);
+  }
+
+  if (mark) {
+    const guards = MARKS[mark]?.guards ?? 0;
+    const far = free.filter(([x, y]) => cell.openings.every((o) => Math.abs(o.tx - x) + Math.abs(o.ty - y) > 3));
+    const spots = (far.length > guards ? far : free).slice(0, guards + 1);
+    spots.forEach(([x, y], i) => {
+      const spawn: Spawn = { kind: i === 0 ? mark : rng.weighted(mix), x: x * TILE + TILE / 2, y: y * TILE + TILE / 2, post: true };
+      map.spawns.push(spawn);
+    });
   }
 
   if (breaker) plan.breakerAt = breaker;

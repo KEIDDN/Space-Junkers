@@ -65,6 +65,8 @@ export function sellOffer(crew: CrewId, item: ItemInstance, day: number): number
   if (item.crew) return null;
   const v = VENDORS[crew];
   const d = itemDef(item.id);
+  // Contract goods are owed to someone aboard; nobody will take them off you for cash.
+  if (d.quest) return null;
   const rate = v.buys[d.category] ?? v.buys.any;
   if (!rate) return null;
   let mul = rate;

@@ -205,3 +205,36 @@ describe('enemy AI', () => {
     expect(first / n).toBeGreaterThan((later / n) * 1.3);
   });
 });
+
+describe('stations and posts', () => {
+  const nobody = { x: 0, y: 0, alive: false, conspicuity: 0 };
+
+  it('a guard who went to look at a noise goes back to where they were stationed', () => {
+    const e = new Enemy(ctx(), ENEMIES.scavenger, tile(4), tile(2), null, DEFAULT_AI);
+    e.hear(tile(10), tile(2), 400);
+    run(e, nobody, 4);
+    expect(Math.hypot(e.x - tile(4), e.y - tile(2))).toBeGreaterThan(64);
+    run(e, nobody, 40);
+    expect(Math.hypot(e.x - tile(4), e.y - tile(2))).toBeLessThan(40);
+    expect(e.state).toBe('idle');
+  });
+
+  it('a posted guard holds the room: a shout from across the facility turns them, it does not move them', () => {
+    const posted = new Enemy(ctx(), ENEMIES.scavenger, tile(2), tile(2), null, DEFAULT_AI, undefined, true);
+    posted.alertTo(tile(27), tile(6), 0);
+    posted.hear(tile(27), tile(6), 600);
+    run(posted, nobody, 5);
+    expect(Math.hypot(posted.x - tile(2), posted.y - tile(2))).toBeLessThan(40);
+    const free = new Enemy(ctx(), ENEMIES.scavenger, tile(2), tile(2), null, DEFAULT_AI);
+    free.alertTo(tile(27), tile(6), 0);
+    run(free, nobody, 5);
+    expect(Math.hypot(free.x - tile(2), free.y - tile(2))).toBeGreaterThan(64);
+  });
+
+  it('a posted guard still answers what happens in their own room', () => {
+    const posted = new Enemy(ctx(), ENEMIES.scavenger, tile(2), tile(2), null, DEFAULT_AI, undefined, true);
+    posted.hear(tile(6), tile(3), 400);
+    expect(posted.state === 'alert' || posted.state === 'investigate').toBe(true);
+  });
+});
+

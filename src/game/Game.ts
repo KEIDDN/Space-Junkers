@@ -23,12 +23,17 @@ import { syncHud } from '../state/hudStore';
 import { useSettings } from '../state/settingsStore';
 import { Enemy } from './ai/Enemy';
 import { Grenades, fragDamage } from './combat/grenades';
-import { Projectiles, type Bullet, type Hittable } from './combat/projectiles';
+import { Projectiles, damageAt, type Bullet, type Hittable } from './combat/projectiles';
+import { attentionLevel, freshAttention, landingAt, noted, type Attention } from './attention';
+import { planEvents, type RaidEvent } from './events';
+import { ROOM_SIGNS } from './render/signs';
+import type { DeathFacts } from '../core/debrief';
 import type { GameContext } from './context';
 import { Player, STEADY_SPREAD } from './entities/Player';
 import { PadAim, type AimTarget } from './padAim';
 import { RadioCoach } from './coach';
 import { haulValue } from '../core/raidResult';
+import { raidPlan } from '../core/quests';
 import { AmbientFx } from './fx/ambient';
 import { Effects } from './fx/effects';
 import { Interactions } from './interaction';
@@ -130,6 +135,13 @@ export class Game {
   /** The crew on the radio, for an operator still learning (null otherwise). */
   private coach: RadioCoach | null = null;
   private coachTimer = 0;
+  /** How much of the facility (and the channel) has noticed the operator. */
+  private attention: Attention = freshAttention();
+  private attentionSaid = 0;
+  /** What happens this raid that the operator doesn't cause (see events.ts). */
+  private events: RaidEvent[] = [];
+  /** Somebody else's shots, still to be fired (a raid event). */
+  private farShots: { t: number; x: number; y: number; sound: (typeof WEAPONS)[string]['sound']; then?: () => void }[] = [];
   paused = false;
 
   constructor(private opts: GameOptions) {}
@@ -269,6 +281,8 @@ export class Game {
     this.map = facility
       ? generateFacility(this.opts.seed, {
         danger: dest?.dangerMul ?? 1, enemies: dest?.enemies, theme: this.theme, lootBonus: dest?.lootBonus ?? 0, gentle: learning,
+        // The open contracts decide what's fitted to the walls down here, and who's waiting.
+        plan: dest ? raidPlan(useProfile.getState(), dest.id) : undefined,
       })
       : mapFromAscii(TEST_RANGE);
     this.elapsed = 0;
@@ -276,6 +290,10 @@ export class Game {
     this.warned = 0;
     this.squads = 0;
     this.alarmSquad = false;
+    this.attention = freshAttention();
+    this.attentionSaid = 0;
+    this.events = facility ? planEvents(this.opts.seed, this.window, learning) : [];
+    this.farShots = [];
     this.explored = new Uint8Array(this.map.width * this.map.height);
     this.surveyTimer = 0;
     this.terminalAt = null;
@@ -299,9 +317,10 @@ export class Game {
       audio: this.audio,
       camera: this.camera,
       haptics,
-      emitNoise: (x, y, r) => {
+      emitNoise: (x, y, r, by) => {
         for (const e of this.enemies) e.hear(x, y, r);
         this.cueSound(x, y, r);
+        if (by === 'player') this.operatorNoise(x, y, r);
       },
       hitstop: (s) => {
         this.hitstopTime = Math.max(this.hitstopTime, s);
@@ -324,7 +343,7 @@ export class Game {
     const { ground, props } = buildMapView(this.map, this.look);
     this.doors = this.map.doors.length ? new Doors(this.map, this.audio, this.ctx.emitNoise) : null;
     this.interactions = new Interactions(this.map, this.audio, {
-      onNoise: this.ctx.emitNoise,
+      onNoise: (x, y, r) => this.ctx.emitNoise(x, y, r, 'player'),
       onLight: this.ctx.lightFlash,
       onExtracted: () => this.beginEnding('extracted'),
       onSignal: (x, y) => this.onSignal(x, y),
@@ -354,7 +373,7 @@ export class Game {
 
     this.enemies = this.map.spawns
       .filter((s) => s.kind in ENEMIES)
-      .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null, this.ai, s.weapon));
+      .map((s) => new Enemy(this.ctx, ENEMIES[s.kind], s.x, s.y, s.patrol ?? null, this.ai, s.weapon, s.post));
     for (const e of this.enemies) {
       this.actorLayer.addChild(e.view.container);
       e.allies = this.enemies;
@@ -393,7 +412,7 @@ export class Game {
     // Bank the result now: closing the tab during the last beat must not turn a clean
     // extraction into an M.I.A. (settling twice is a no-op).
     if (kind === 'extracted') this.opts.onEnd?.('extracted');
-    raid.patch({ ending: kind, prompt: null, extractCountdown: null });
+    raid.patch({ ending: kind, prompt: null, extractCountdown: null, death: kind === 'mia' ? this.deathFacts(true) : null });
     raid.closeOverlay();
     this.silenceMusic(kind === 'extracted' ? 1.5 : 4);
     if (kind === 'extracted') {
@@ -418,7 +437,7 @@ export class Game {
         this.audio.setMuffled(true);
         haptics.rumble(1, 0.5, 1300);
         this.silenceMusic(4);
-        if (this.opts.mode === 'facility') raid.patch({ ending: 'dead' });
+        if (this.opts.mode === 'facility') raid.patch({ ending: 'dead', death: this.deathFacts(false) });
       }
       this.deadTime += dt;
       dt *= 0.35 + 0.65 * Math.min(1, this.deadTime / 2);
@@ -610,6 +629,8 @@ export class Game {
       left: this.window - this.elapsed,
       onExit: !!this.map.exitAt(p.x, p.y),
       extractPaused: r.extractCountdown !== null && !r.extractInZone,
+      nearSite: this.interactions.siteStates().some((q) => !q.done && Math.hypot((q.tx + 0.5) * 32 - p.x, (q.ty + 1) * 32 - p.y) < 150),
+      hasPart: loadoutItems(r.loadout).some((i) => ITEMS[i.id]?.quest && !r.brought.includes(i.uid)),
     });
     if (line) {
       this.audio.ui('squelch');
@@ -736,9 +757,16 @@ export class Game {
       this.beginEnding('mia');
       return;
     }
-    if (this.squads < SQUAD_TIMES.length && this.elapsed >= SQUAD_TIMES[this.squads]) {
+    // Other crews keep landing; a loud operator brings them sooner, and toward the noise.
+    const prev = this.squads > 0 ? SQUAD_TIMES[this.squads - 1] : 0;
+    while (this.events.length && this.elapsed >= this.events[0].at) this.runEvent(this.events.shift()!);
+    this.fireFarShots(dt);
+    if (this.squads < SQUAD_TIMES.length && this.elapsed >= landingAt(SQUAD_TIMES[this.squads], prev, this.attention)) {
       this.squads++;
-      if (this.spawnSquad(null)) raid.notice('RADIO: fresh voices on the channel. Another crew just landed.', 'warn');
+      const toward = attentionLevel(this.attention) > 0 ? { x: this.attention.lastX, y: this.attention.lastY } : null;
+      if (this.spawnSquad(null, toward)) {
+        raid.notice(toward ? 'RADIO: fresh voices on the channel. Another crew landed, and they\'re heading where the shooting was.' : 'RADIO: fresh voices on the channel. Another crew just landed.', 'warn');
+      }
     }
   }
 
@@ -759,7 +787,7 @@ export class Game {
    * Bring in a fresh squad in a room well away from the player.
    * @param rush where they head straight for (the alarm), or null to sweep toward the player.
    */
-  private spawnSquad(rush: { x: number; y: number } | null): boolean {
+  private spawnSquad(rush: { x: number; y: number } | null, toward: { x: number; y: number } | null = null): boolean {
     const map = this.map;
     const dest = DESTINATION[useRaid.getState().destination];
     const mix = dest?.enemies ?? { scavenger: 1 };
@@ -779,7 +807,7 @@ export class Game {
     if (!free.length) return false;
     const size = (dest?.danger ?? 1) >= 3 ? 3 : 2;
     const here = map.rooms.find((r) => p.x / 32 >= r.x && p.x / 32 < r.x + r.w && p.y / 32 >= r.y && p.y / 32 < r.y + r.h);
-    const goal = rush ?? (here ? center(here) : { x: p.x, y: p.y });
+    const goal = rush ?? toward ?? (here ? center(here) : { x: p.x, y: p.y });
     for (let i = 0; i < size; i++) {
       const [tx, ty] = free[Math.floor(Math.random() * free.length)];
       const kinds = Object.keys(mix);
@@ -804,6 +832,101 @@ export class Game {
       if (rush) e.alertTo(rush.x + (Math.random() - 0.5) * 60, rush.y + (Math.random() - 0.5) * 60, 0.5 + i * 0.6);
     }
     return true;
+  }
+
+  /** Something happens that the operator didn't cause. */
+  private runEvent(ev: RaidEvent): void {
+    const p = this.player;
+    const far = (x: number, y: number) => Math.hypot(x - p.x, y - p.y) > 32 * 16;
+    switch (ev.kind) {
+      case 'gunfire': {
+        // Somebody else's fight, on another level: one of the facility's hostiles doesn't
+        // make it, and everyone near there goes to look. Nobody tells you; you hear it.
+        const victim = this.enemies.find((e) => e.alive && far(e.x, e.y) && e.view.container.alpha < 0.5);
+        if (!victim) return;
+        const sound = WEAPONS[['akr74', 'ppd41', 'toz12', 'kedr'][Math.floor(Math.random() * 4)]].sound;
+        let t = 0;
+        for (let i = 0; i < 7; i++) {
+          t += 0.12 + Math.random() * 0.5;
+          this.farShots.push({ t, x: victim.x + (Math.random() - 0.5) * 120, y: victim.y + (Math.random() - 0.5) * 120, sound });
+        }
+        this.farShots.push({
+          t: t + 0.2, x: victim.x, y: victim.y, sound: victim.weapon.def.sound,
+          then: () => {
+            if (!victim.alive) return;
+            victim.takeDamage(999, 9, false, 1, 0, 40, victim.x + 60, victim.y);
+            this.addBody(victim);
+            for (const e of this.enemies) if (e !== victim) e.witnessDeath(victim.x, victim.y, victim.x + 60, victim.y);
+          },
+        });
+        this.ctx.emitNoise(victim.x, victim.y, 620, 'enemy');
+        return;
+      }
+      case 'blackout':
+        this.lighting?.outage(22);
+        this.audio.ui('error');
+        raid.notice('SHURA: the reserve just dipped. the whole place is dark. it\'ll come back. probably.', 'radio');
+        return;
+      case 'alarm': {
+        // An alarm trips somewhere deep and stops: everyone near it goes to look.
+        const rooms = this.map.rooms.filter((r) => r.role !== 'vault' && far((r.x + r.w / 2) * 32, (r.y + r.h / 2) * 32));
+        if (!rooms.length) return;
+        const r = rooms[Math.floor(Math.random() * rooms.length)];
+        const x = (r.x + r.w / 2) * 32;
+        const y = (r.y + r.h / 2) * 32;
+        this.audio.sfx('alarm', x, y);
+        this.ctx.emitNoise(x, y, 720, 'enemy');
+        raid.notice('Somewhere deep in the station an alarm starts, and stops.', 'warn');
+        return;
+      }
+      case 'nine':
+        this.audio.nineNow();
+        raid.notice('CHANNEL NINE: static. five tones. static.', 'radio');
+        return;
+    }
+  }
+
+  private fireFarShots(dt: number): void {
+    for (const s of this.farShots) {
+      s.t -= dt;
+      if (s.t > 0) continue;
+      this.audio.gunshot(s.sound, s.x, s.y);
+      s.then?.();
+    }
+    this.farShots = this.farShots.filter((s) => s.t > 0);
+  }
+
+  /** The operator made a loud noise: it's remembered, and now and then someone says so. */
+  private operatorNoise(x: number, y: number, r: number): void {
+    if (this.opts.mode !== 'facility') return;
+    this.attention = noted(this.attention, x, y, r);
+    const level = attentionLevel(this.attention);
+    if (level > this.attentionSaid && !this.ending) {
+      this.attentionSaid = level;
+      this.audio.ui('squelch');
+      raid.notice(level === 1
+        ? 'SHURA: that was loud. anyone on this level heard it. anyone on the channel, too.'
+        : 'SHURA: there\'s chatter on the scav band about you. somebody\'s coming down early. just so you know.', 'radio');
+    }
+  }
+
+  /** The room the operator is standing in (its sign, and how deep it is). */
+  private roomHere(): { name: string | null; zone: DeathFacts['zone'] } {
+    const tx = this.player.x / 32;
+    const ty = this.player.y / 32;
+    const r = this.map.rooms.find((q) => tx >= q.x && tx < q.x + q.w && ty >= q.y && ty < q.y + q.h);
+    if (!r) return { name: 'A CORRIDOR', zone: null };
+    return { name: r.kind ? ROOM_SIGNS[r.kind]?.en ?? r.kind.toUpperCase() : null, zone: r.zone ?? null };
+  }
+
+  /** What the after-action report says about how it ended. */
+  private deathFacts(mia: boolean): DeathFacts {
+    const r = useRaid.getState();
+    const here = this.roomHere();
+    return {
+      by: this.player.lastHitBy, bled: this.player.diedBleeding, mia, room: here.name, zone: here.zone,
+      elapsed: this.elapsed, shots: this.player.shotsFired, carried: haulValue(r.loadout, r.brought),
+    };
   }
 
   private openTerminal(n: number, note?: string): void {
@@ -836,6 +959,7 @@ export class Game {
       })),
       rooms: map.rooms.map((r) => ({ x: r.x, y: r.y, w: r.w, h: r.h, role: r.role, kind: r.kind ?? '' })),
       containers: this.interactions.containerStates(),
+      sites: this.interactions.siteStates(),
       player: { x: this.player.x / 32, y: this.player.y / 32, aim: this.player.aim },
       scanner,
     };
@@ -987,7 +1111,7 @@ export class Game {
     // close range. A pellet only counts as one now and then.
     if (headshot && b.pellet && Math.random() > PELLET_HEADSHOT) headshot = false;
     if (target === this.player) {
-      const blocked = this.player.takeHit(b.damage * this.ai.damage, b.pen, b.dx, b.dy, headshot);
+      const blocked = this.player.takeHit(damageAt(b) * this.ai.damage, b.pen, b.dx, b.dy, headshot, b.source);
       if (blocked) this.effects.wallImpact(x, y, -b.dx, -b.dy);
       else this.effects.bloodHit(x, y, b.dx, b.dy, headshot ? 12 : 6);
       this.audio.sfx('impactFlesh', x, y);
@@ -995,7 +1119,7 @@ export class Game {
       return;
     }
     const enemy = target as Enemy;
-    const r = enemy.takeDamage(b.damage, b.pen, headshot, b.dx, b.dy, b.knockback, this.player.x, this.player.y);
+    const r = enemy.takeDamage(damageAt(b), b.pen, headshot, b.dx, b.dy, b.knockback, this.player.x, this.player.y);
     if (r.blocked) {
       this.effects.wallImpact(x, y, -b.dx, -b.dy);
       this.audio.sfx('armor', x, y);
@@ -1049,7 +1173,7 @@ export class Game {
     const pdmg = fragDamage(this.map, x, y, this.player.x, this.player.y, radius, damage);
     if (pdmg > 0 && this.player.alive) {
       const a = Math.atan2(this.player.y - y, this.player.x - x);
-      this.player.takeHit(pdmg, 3, Math.cos(a), Math.sin(a), false);
+      this.player.takeHit(pdmg, 3, Math.cos(a), Math.sin(a), false, faction === 'player' ? 'your own grenade' : 'a grenade');
       this.overlay.damaged(a + Math.PI);
     }
     for (const e of this.enemies) {

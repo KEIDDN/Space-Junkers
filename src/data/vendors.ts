@@ -73,7 +73,6 @@ export const VENDORS: Record<CrewId, VendorDef> = {
       { item: 'vest_zhuk', trust: 2, limit: 2 },
       { item: 'ammo_545_ap', trust: 3, qty: 30, limit: 4 },
       { item: 'ammo_762_ap', trust: 3, qty: 20, limit: 3 },
-      { item: 'zaslon', trust: 3, limit: 1 },
       { item: 'svk', trust: 4, limit: 1 },
       { item: 'vest_granit', trust: 4, limit: 1 },
     ],

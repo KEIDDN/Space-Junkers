@@ -301,6 +301,9 @@ button { font-family: var(--mono); }
 .loot-icon { width: 48px; display: flex; justify-content: center; }
 .loot-row.lost span { text-decoration: line-through; opacity: 0.6; }
 .results-total { font-size: 16px; }
+.results-meaning { color: #c9b98a; font-style: italic; }
+.results-death { border-left: 2px solid var(--bad, #c65a3a); padding: 2px 0 2px 8px; margin: 4px 0; display: flex; flex-direction: column; gap: 3px; }
+.results-lesson { color: #d8cfb4; font-size: 13px; }
 .results-panel .deploy { align-self: center; }
 
 /* ===========================================================================
@@ -653,6 +656,7 @@ button { font-family: var(--mono); }
 .objective.done { color: var(--ok); }
 .obj-count { font-family: var(--digits); font-size: 16px; line-height: 1; }
 .contract-reward { font-size: 11px; }
+.contract-intel { font-size: 11px; color: #c9b98a; margin: 3px 0 2px; border-left: 2px solid var(--crew, #6a604c); padding-left: 6px; }
 
 .board-panel { width: 720px; max-height: 88vh; display: flex; flex-direction: column; gap: 8px; }
 .board-list { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; max-height: 58vh; padding-right: 4px; }

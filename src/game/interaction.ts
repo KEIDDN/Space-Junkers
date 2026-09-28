@@ -7,9 +7,10 @@ import type { Input } from '../engine/input';
 import { Rng } from '../engine/rng';
 import { CONTAINERS, rollContainer } from '../data/loot';
 import { ITEMS, type ItemCategory } from '../data/items';
-import { loadoutItems, type Grid } from '../core/inventory';
+import { createItem, loadoutItems, type Grid } from '../core/inventory';
+import { siteOf } from '../data/objectives';
 import { EXTRACT_SECONDS, raid, useRaid } from '../state/raidStore';
-import type { DoorDef, ExitDef, TileMap } from './world/tilemap';
+import type { DoorDef, ExitDef, SitePlacement, TileMap } from './world/tilemap';
 
 const REACH = 40; // px from player to lootable
 const CLOSE_DIST = 64; // walking this far from an open container closes it
@@ -51,9 +52,10 @@ export interface InteractionEvents {
   onTerminal?(entry: number, note?: string): void;
 }
 
-/** Something you hold E at that isn't a container: breakers, security doors, terminals. */
+/** Something you hold E at that isn't a container: breakers, security doors, terminals, contract sites. */
 interface Fixture {
-  kind: 'breaker' | 'lock' | 'terminal';
+  kind: 'breaker' | 'lock' | 'terminal' | 'site';
+  site?: SitePlacement;
   x: number;
   y: number;
   exit?: ExitDef;
@@ -138,6 +140,7 @@ export class Interactions {
         kind: 'terminal', x: t.x ?? t.tx * TILE + TILE / 2, y: t.y ?? (t.ty + 1) * TILE + 4, entry: t.entry, note: t.note, done: false,
       });
     }
+    for (const site of map.sites) this.fixtures.push({ kind: 'site', x: site.x, y: site.y, site, done: false });
     this.overlay.addChild(this.zoneMarkings(), this.liftLamps, this.bar);
     this.drawLiftLamps();
   }
@@ -157,6 +160,11 @@ export class Interactions {
     return this.map.containers.map((c, i) => ({
       tx: c.tx, ty: c.ty, searched: this.lootables[i].searched, empty: (grids[`c${i}`]?.items.length ?? 0) === 0,
     }));
+  }
+
+  /** Contract sites, and whether they've been worked (for the tactical map). */
+  siteStates(): { tx: number; ty: number; kind: 'item' | 'task'; done: boolean }[] {
+    return this.fixtures.filter((f) => f.kind === 'site').map((f) => ({ tx: f.site!.tx, ty: f.site!.ty, kind: f.site!.kind, done: f.done }));
   }
 
   /** Has the breaker for this exit been found (it's thrown)? */
@@ -382,7 +390,11 @@ export class Interactions {
     }
     let label: string;
     let time: number;
-    if (f.kind === 'lock') {
+    if (f.kind === 'site') {
+      const def = siteOf(f.site!.kind, f.site!.id)!;
+      label = `{hold:interact} ${def.verb}${def.noise >= 250 ? '. It will be heard' : ''}`;
+      time = def.time;
+    } else if (f.kind === 'lock') {
       const card = this.keycard();
       if (!card) return 'SECURITY DOOR · SEALED. Needs a vault keycard';
       label = `{hold:interact} SWIPE KEYCARD (${card.dur ?? 1} USE${card.dur === 1 ? '' : 'S'} LEFT)`;
@@ -418,6 +430,23 @@ export class Interactions {
       this.ev.onNoise(f.x, f.y, 380);
       this.ev.onLight(f.x, f.y - 10, 90, 0xffe0a0, 0.9);
       raid.notice('Breaker thrown: the maintenance lift has power', 'ok');
+    } else if (f.kind === 'site' && f.site) {
+      const site = f.site;
+      const def = siteOf(site.kind, site.id)!;
+      if (site.kind === 'item') {
+        // Off the wall and into the bag; if there's no room it lands at your feet.
+        const rest = raid.give(createItem(site.id));
+        if (rest) {
+          raid.dropItem(rest);
+          raid.notice('NO ROOM IN YOUR BAG · IT\'S ON THE FLOOR AT YOUR FEET', 'warn', site.id);
+        }
+      } else raid.task(site.id);
+      this.audio.sfx(def.noise >= 250 ? 'breaker' : 'loot', f.x, f.y);
+      haptics.rumble(0.5, 0.35, 300);
+      if (def.noise > 0) this.ev.onNoise(f.x, f.y, def.noise);
+      this.ev.onLight(f.x, f.y - 10, 90, 0xffc070, 0.8);
+      raid.notice(def.done, 'ok', site.kind === 'item' ? site.id : undefined);
+      this.drawLiftLamps();
     } else if (f.kind === 'lock' && f.door) {
       const card = this.keycard();
       if (!card) {
@@ -438,6 +467,16 @@ export class Interactions {
 
   private drawLiftLamps(): void {
     const g = this.liftLamps.clear();
+    // Contract sites wear a stencilled tag with an amber lamp until they're done.
+    for (const f of this.fixtures) {
+      if (f.kind !== 'site' || !f.site) continue;
+      const x = f.site.tx * TILE + TILE / 2;
+      const y = f.site.ty * TILE - 4;
+      g.rect(x - 7, y - 3, 14, 5).fill({ color: 0x14110e });
+      for (let i = 0; i < 3; i++) g.rect(x - 6 + i * 5, y - 2, 3, 3).fill({ color: f.done ? 0x3a3428 : i % 2 ? 0x1a1a1a : 0xe0b030 });
+      g.rect(x + 9, y - 3, 4, 4).fill({ color: 0x14110e });
+      g.rect(x + 10, y - 2, 2, 2).fill({ color: f.done ? 0x7dff9a : 0xffa030 });
+    }
     for (const e of this.map.exits) {
       if (e.kind !== 'lift') continue;
       const on = this.powered.has(e);

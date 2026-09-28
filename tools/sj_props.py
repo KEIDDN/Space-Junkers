@@ -115,6 +115,40 @@ ART: dict[str, list[str]] = {
         "oWWWWo",
         "oooooo",
     ],
+    # A card game nobody finished: two cards face up, the deck squared off beside them.
+    "deco_cards": [
+        "oooooo.ooooo",
+        "oWWWWo.oWWWo",
+        "oWrWWooWWbWo",
+        "oWWWWWoWWWWo",
+        "oWWrWWoWbWWo",
+        "ooooooooooo.",
+    ],
+    # A steel canteen chair on its side: somebody got up in a hurry.
+    "deco_chair_down": [
+        "oooooooooo..",
+        "oMMMMMMMMo..",
+        "oooooooooo..",
+        "..om....om..",
+        "..om....om..",
+        "..oooooooooo",
+        "..oMMMMMMMMo",
+        "..omMmMMmMmo",
+        "..oooooooooo",
+    ],
+    # A suitcase, packed, never picked up.
+    "deco_suitcase": [
+        "....oooo....",
+        "...o....o...",
+        "oooooooooooo",
+        "oTTTTTTTTTTo",
+        "oTtTTTTTTtTo",
+        "oTTTTBBTTTTo",
+        "oTtTTTTTTtTo",
+        "otttttttttto",
+        "oooooooooooo",
+    ],
+
 }
 
 

@@ -14,10 +14,11 @@ export function ContractLog({ compact }: { compact?: boolean }) {
   const quests = useProfile((s) => s.quests);
   const stash = useProfile((s) => s.stash);
   const log = useRaid((s) => s.log);
+  const read = useRaid((s) => s.lore.length);
   const destination = useRaid((s) => s.destination);
   const loadout = useRaid((s) => s.loadout);
   const brought = useRaid((s) => s.brought);
-  const contracts = liveContracts({ ...useProfile.getState(), quests, stash }, log, destination, foundItems(loadout, brought));
+  const contracts = liveContracts({ ...useProfile.getState(), quests, stash }, { ...log, read }, destination, foundItems(loadout, brought));
   return (
     <div className={`job-log ${compact ? 'compact' : ''}`}>
       <div className="job-log-title">JOB SHEET</div>
@@ -45,6 +46,7 @@ export function ContractLog({ compact }: { compact?: boolean }) {
                 </div>
               );
             })}
+            {!compact && !done && c.intel && <div className="contract-intel small">{c.intel}</div>}
             {!compact && <div className="contract-reward dim">REWARD · {rewardText(c.reward)}</div>}
           </div>
         );

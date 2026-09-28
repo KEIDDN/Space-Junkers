@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { audio } from '../engine/audio';
 import { Game } from '../game/Game';
 import { applyRaid } from '../core/quests';
-import { die, extract, foundItems } from '../core/raidResult';
+import { die, extract, foundItems, haulValue } from '../core/raidResult';
 import { getProfile, useProfile } from '../state/profileStore';
 import { raid, useRaid } from '../state/raidStore';
 import { useSettings } from '../state/settingsStore';
@@ -34,6 +34,9 @@ export function settleRaid(status: 'extracted' | 'dead'): void {
     searched: s.log.searched,
     visited: s.log.visited,
     found: extracted ? foundItems(s.loadout, s.brought) : [],
+    tasks: s.log.tasks,
+    read: s.lore.length,
+    haul: extracted ? haulValue(s.loadout, s.brought) : 0,
   });
   // What was read down there stays read, whatever happened after.
   const lore = [...profile.lore, ...s.lore.filter((id) => !profile.lore.includes(id))];

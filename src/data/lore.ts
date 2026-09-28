@@ -158,7 +158,7 @@ const THEMED: Record<string, LoreEntry[]> = {
     },
     {
       id: 'kb_lab12', thread: 'blackout', chapter: 3, title: 'LAB SECTOR 12 · INCIDENT', from: 'DR. A. MIRONOVA',
-      lines: ['The egg samples are warmer than the incubator. The incubator is off.', 'Growth resumed at 03:14 station time, the exact second of the old Blackout timestamp.', 'Every sample. Simultaneously.', 'Requesting transfer. Requesting it loudly.'],
+      lines: ['The egg samples are warmer than the incubator. The incubator is off.', 'Growth resumed at 00:00:00.000. The clocks have read that since the Blackout. For one second this morning, they were right.', 'Every sample. Simultaneously.', 'Requesting transfer. Requesting it loudly.'],
     },
     {
       id: 'kb_review', title: 'SECURITY PERFORMANCE REVIEW', from: 'HR SYSTEM',
@@ -172,7 +172,7 @@ const THEMED: Record<string, LoreEntry[]> = {
   sirin: [
     {
       id: 'sr_watch', thread: 'nine', chapter: 4, title: 'LISTENING WATCH', from: 'OPERATOR ON DUTY',
-      lines: ['Channel nine carrier present. Same as yesterday. Same as every day for eleven years.', 'Today it paused. Like it was waiting for an answer.', 'Nobody answer it.', 'I think somebody answered it.'],
+      lines: ['Channel nine carrier present. Same as yesterday. Same as every day for forty years.', 'Today it paused. Like it was waiting for an answer.', 'Nobody answer it.', 'I think somebody answered it.'],
     },
     {
       id: 'sr_contact', thread: 'fall', chapter: 4, title: 'CONTACT LAB', from: 'PROJECT LEAD (CLEARANCE 5)',
@@ -220,6 +220,22 @@ export const NOTES: Record<string, LoreEntry> = {
     title: 'SCRATCHED INTO A LOCKER', from: 'KNIFE POINT',
     lines: ['Crew of the VESNA. Two in, one out.', 'The pad alarm draws them in.', 'Use the lift if you can find its breaker.'],
     react: { crew: 'smuggler', line: 'The Vesna? I sold them their last map. Two in, one out. That\'s better than most crews manage.' },
+  },
+  cards: {
+    id: 'note_cards', note: true,
+    title: 'ON A CIGARETTE PACKET', from: 'PENCIL, UNDER THE DECK',
+    lines: ['TOLYA OWES ME 40.', 'TOLYA OWES ME 80.', 'TOLYA OWES ME 160.', 'Tolya does not owe me anything any more.'],
+  },
+  repair: {
+    id: 'note_repair', thread: 'running', chapter: 1, note: true,
+    title: 'TAPED TO THE BENCH', from: 'MARKER, ON MASKING TAPE',
+    lines: ['GEARBOX 3 · HALF DONE.', 'Back after the shift change. Nobody touch it, I know where every screw is.', '— Misha'],
+  },
+  evac: {
+    id: 'note_evac', thread: 'fall', chapter: 2, note: true,
+    title: 'EVACUATION ORDER', from: 'PRINTED FORM, FILLED IN BY HAND',
+    lines: ['PROCEED TO THE PAD. TAKE NOTHING.', 'TIME ALLOWED: 6 MIN', 'Someone has crossed out TAKE NOTHING and written: take the children.'],
+    react: { crew: 'medic', line: 'Six minutes. I\'ve read that order before, on another station. It always says six. It\'s never enough, and they always print it anyway.' },
   },
   clock: {
     id: 'note_clock', thread: 'blackout', chapter: 1, note: true,

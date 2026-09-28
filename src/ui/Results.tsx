@@ -11,6 +11,9 @@ import { facilityName } from '../data/themes';
 import { issueReserve } from '../core/reserve';
 import { LORE_BY_ID } from '../data/lore';
 import { AtlasSprite } from './AtlasSprite';
+import { deathCause, deathLesson, haulMeaning } from '../core/debrief';
+import { DESTINATION } from '../data/destinations';
+import { travelCost } from '../core/upgrades';
 import { Key } from './Glyph';
 
 /** Counts a number up over a moment, ticking as it goes: the haul adding itself up. */
@@ -41,7 +44,7 @@ function useCountUp(target: number, delayMs: number, durationMs = 900): number {
  * wonder "did I lose that?") what was kept either way.
  */
 export function Results({ onContinue }: { onContinue: () => void }) {
-  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed, mia, destination, lore } = useRaid();
+  const { status, loadout, brought, kills, seed, startedAt, endedAt, progressed, mia, destination, lore, death } = useRaid();
   const profile = useProfile();
   const extracted = status === 'extracted';
   const secs = Math.max(0, Math.round((endedAt - startedAt) / 1000));
@@ -76,6 +79,12 @@ export function Results({ onContinue }: { onContinue: () => void }) {
           {facilityName(destination, seed)} #{String(seed).padStart(6, '0')} · TIME {time} · HOSTILES NEUTRALISED {kills}
         </div>
         {mia && !extracted && <div className="small bad">Missing in action. Whatever you carried is gone with you.</div>}
+        {!extracted && death && (
+          <div className="results-death">
+            <div className="bad small">{deathCause(death)}</div>
+            <div className="results-lesson">MOLOT: “{deathLesson(death)}”</div>
+          </div>
+        )}
         <div className="results-sub">{extracted ? 'RECOVERED FROM THE FACILITY' : mia ? 'LOST WITH YOU' : 'LEFT ON YOUR BODY'}</div>
         <div className="loot-list">
           {rows.length === 0 && <div className="dim small">{extracted ? 'NOTHING FOUND. AT LEAST YOU\'RE ALIVE.' : 'NOTHING. YOU WENT IN WITH NOTHING.'}</div>}
@@ -88,7 +97,7 @@ export function Results({ onContinue }: { onContinue: () => void }) {
                 {it.qty > 1 && <span className="dim">×{it.qty}</span>}
                 {!extracted && <span className={`loot-tag ${foundSet.has(it.uid) ? 'found' : ''}`}>{foundSet.has(it.uid) ? 'FOUND' : 'YOUR KIT'}</span>}
                 <span className="grow" />
-                <span>{itemValueDeep(it).toLocaleString()} KR</span>
+                <span>{(it.contents ? d.value : itemValueDeep(it)).toLocaleString()} KR</span>
               </div>
             );
           })}
@@ -98,6 +107,10 @@ export function Results({ onContinue }: { onContinue: () => void }) {
             ? <>HAUL: <span className="warn">{total.toLocaleString()} KR</span> <span className="dim small">· carried home to the ship</span></>
             : <>{mia ? 'LOST WITH YOU' : 'LOST WITH YOUR BODY'}: <span className="bad">{total.toLocaleString()} KR</span></>}
         </div>
+        {extracted && <div className="results-meaning small">{haulMeaning(haul, travelCost(profile, DESTINATION.tikhaya.cost))}</div>}
+        {extracted && found.filter((i) => itemDef(i.id).quest).map((i) => (
+          <div key={i.uid} className="ok small">■ {itemDef(i.id).name} is aboard. That's what you went down for.</div>
+        ))}
         {extracted && kitValue > 0 && (
           <div className="small dim">Your own kit came home with you too ({kitValue.toLocaleString()} KR).</div>
         )}
