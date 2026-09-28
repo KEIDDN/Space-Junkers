@@ -375,6 +375,12 @@ button { font-family: var(--mono); }
   position: absolute; bottom: 1px; right: 3px;
   font-size: 10px; color: var(--text); text-shadow: 1px 1px 0 #000;
 }
+.item-badge.item-count { font-size: 11px; }
+.item-badge.item-cond { font-size: 9px; color: #b9b1a0; background: rgba(0, 0, 0, 0.55); padding: 0 2px; }
+.item-condbar { position: absolute; left: 3px; right: 3px; bottom: 2px; height: 2px; background: rgba(0, 0, 0, 0.6); }
+.item-condbar span { display: block; height: 100%; background: #9aa6ad; }
+.item-condbar span.warn { background: var(--warn); }
+.item-condbar span.bad { background: var(--bad); }
 .item-badge.bad { color: var(--bad); }
 .item-badge.warn { color: var(--warn); }
 .item-crew {
@@ -934,3 +940,22 @@ body[data-device="pad"] .btn:hover:not(.pad-focus), body[data-device="pad"] .men
   background: radial-gradient(ellipse 78% 72% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.42) 100%);
 }
 body.filmic .game-canvas { filter: contrast(1.05) saturate(0.9) brightness(1.02) hue-rotate(-4deg); }
+
+/* ---------- Split stack picker ---------- */
+.split-backdrop {
+  position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center;
+  background: rgba(4, 4, 6, 0.55);
+}
+.split-dialog { width: 300px; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; line-height: 1.25; }
+.split-item { display: flex; align-items: center; gap: 10px; }
+.split-row { display: flex; align-items: center; gap: 10px; }
+.split-num {
+  width: 72px; font-family: var(--digits); font-size: 24px; text-align: center;
+  background: #0a0908; color: var(--text); border: 1px solid var(--edge-hi); padding: 0 4px;
+}
+.split-num.bad { border-color: var(--bad); color: var(--bad); }
+.split-num:focus { outline: 1px solid var(--warn); }
+.split-range { width: 100%; accent-color: var(--warn); }
+.split-presets, .split-actions { display: flex; gap: 6px; }
+.split-actions .btn { flex: 1; }
+.tt-qty span:last-child { color: var(--text); }

@@ -23,8 +23,10 @@ export interface InventoryOps {
   activate(uid: string): boolean;
   load(weaponUid: string, ammoUid: string): boolean;
   unload(uid: string): boolean;
-  split(uid: string): boolean;
-  bindQuick(slot: number, itemId: string | null): void;
+  /** Split `qty` units off a stack into a new stack (first free spot). */
+  split(uid: string, qty: number): boolean;
+  /** Bind a carried med or grenade type to a quick-use key; null clears the key. */
+  bindQuick(slot: number, itemId: string | null): boolean;
   /** Raid: let go of an item outside the panes to drop it on the ground. */
   drop?(uid: string): boolean;
   /** Ship: sell an item to the open vendor. */

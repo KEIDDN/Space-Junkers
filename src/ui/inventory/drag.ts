@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { audio } from '../../engine/audio';
 import { itemDef } from '../../data/items';
 import { WEAPONS } from '../../data/weapons';
-import { findInGrid, footprint, slotAccepts, type EquipSlot, type ItemInstance } from '../../core/inventory';
+import { findInGrid, footprint, loadoutCount, quickUsable, slotAccepts, type EquipSlot, type ItemInstance } from '../../core/inventory';
 import { getGrid, loadWeapon, locate, moveItem, type GridKey } from '../../core/transfer';
 import { useDrag, type DragInfo } from './dragStore';
 import { CELL, type DropTarget, type InventoryOps } from './ops';
@@ -75,10 +75,9 @@ export function validDrop(target: DropTarget | null, drag: DragInfo, ops: Invent
       return slotAccepts(target.slot, drag.item) && !!moveItem(ops.ws, drag.uid, { slot: target.slot });
     case 'item':
       return !!loadWeapon(ops.ws, target.uid, drag.uid, () => 'probe');
-    case 'quick': {
-      const k = itemDef(drag.item.id).kind;
-      return k === 'med' || k === 'grenade';
-    }
+    case 'quick':
+      // A key points at a type you carry; it never holds an item of its own.
+      return quickUsable(drag.item.id) && loadoutCount(ops.ws.loadout, drag.item.id) > 0;
     case 'sell':
       return !!ops.sell && (ops.sellPrice?.(drag.item) ?? 0) > 0;
     case 'outside':
@@ -95,8 +94,7 @@ export function commitDrop(target: DropTarget, drag: DragInfo, ops: InventoryOps
     case 'item':
       return ops.load(target.uid, drag.uid);
     case 'quick':
-      ops.bindQuick(target.slot, drag.item.id);
-      return true;
+      return ops.bindQuick(target.slot, drag.item.id);
     case 'sell':
       ops.sell?.(drag.uid);
       return true;

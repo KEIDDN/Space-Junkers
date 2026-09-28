@@ -2,7 +2,7 @@ import { ITEMS, itemDef } from '../data/items';
 import { WEAPONS } from '../data/weapons';
 import {
   EQUIP_SLOTS, QUICK_SLOTS, POCKETS, addToGrid, canPlace, createItem, emptyGrid, emptyLoadout, footprint,
-  slotAccepts, type Grid, type ItemInstance, type Loadout,
+  pruneQuick, slotAccepts, type Grid, type ItemInstance, type Loadout,
 } from './inventory';
 
 /**
@@ -207,7 +207,8 @@ function repairItem(raw: unknown, seen: Set<string>): ItemInstance | null {
       it.dur = Math.max(0, Math.min(def.durability, num(r.dur, def.durability)));
       break;
     case 'med':
-      if (def.pooled) it.dur = Math.max(1, Math.min(def.heal, num(r.dur, def.heal)));
+      // Older saves kept a medkit's remaining health pool in `dur`. A kit is a unit now;
+      // whatever was left of it is one kit, and the pool is dropped (not read as a count).
       break;
     case 'key':
       it.dur = Math.max(1, Math.min(def.uses, Math.floor(num(r.dur, def.uses))));
@@ -283,7 +284,7 @@ export function repair(raw: Profile): { profile: Profile; notes: string[] } {
   lo.pockets = repairGrid(rl.pockets, POCKETS.w, POCKETS.h, seen, true);
   const quick = Array.isArray(rl.quick) ? rl.quick : [];
   lo.quick = Array.from({ length: QUICK_SLOTS }, (_, i) => (typeof quick[i] === 'string' && ITEMS[quick[i] as string] ? quick[i] : null));
-  p.loadout = lo;
+  p.loadout = pruneQuick(lo);
   return { profile: p, notes };
 }
 

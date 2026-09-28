@@ -1,4 +1,4 @@
-import { emptyLoadout, itemValueDeep, loadoutItems, type ItemInstance, type Loadout } from './inventory';
+import { emptyLoadout, itemValueDeep, loadoutItems, pruneQuick, type ItemInstance, type Loadout } from './inventory';
 import type { Profile } from './profile';
 
 /**
@@ -32,7 +32,7 @@ export function extract(p: Profile, loadout: Loadout, brought: readonly string[]
   const haul = haulValue(loadout, brought);
   return {
     ...p,
-    loadout,
+    loadout: pruneQuick(loadout),
     raid: null,
     day: p.day + 1,
     purchases: {},
@@ -48,7 +48,9 @@ export function extract(p: Profile, loadout: Loadout, brought: readonly string[]
 export function die(p: Profile, kills: number): Profile {
   return {
     ...p,
-    loadout: { ...emptyLoadout(), quick: p.loadout.quick },
+    // Everything carried stays on the body, and so do the quick-use keys' items: no key
+    // survives pointing at something that is gone.
+    loadout: emptyLoadout(),
     raid: null,
     day: p.day + 1,
     purchases: {},

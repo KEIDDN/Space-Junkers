@@ -102,7 +102,10 @@ export function SlotView({ slot, w, h }: { slot: EquipSlot; w: number; h: number
   );
 }
 
-/** Quick-use bindings (keys 3-6). */
+/**
+ * Quick-use bindings (keys 3-6). Each shows the type it points at and how many of it you
+ * carry: the count is of the real stacks in pockets and pack, not of anything held here.
+ */
 export function QuickBar({ counts }: { counts: (id: string) => number }) {
   const ops = useOps();
   const quick = ops.ws.loadout.quick;
@@ -120,13 +123,13 @@ export function QuickBar({ counts }: { counts: (id: string) => number }) {
             e.preventDefault();
             ops.bindQuick(i, null);
           }}
-          title={id ? 'Right-click to clear' : 'Drag a medical item or grenade here'}
+          title={id ? `${itemDef(id).name}: uses one from your pockets or pack. Right-click to clear` : 'Drag a carried med or grenade here'}
         >
           <span className="quick-key"><ByDevice kbm={<>{i + 3}</>} pad={<>{QUICK_PAD[i]}</>} /></span>
           {id && (
             <>
               <AtlasSprite name={itemDef(id).icon} fit={{ w: 30, h: 26 }} />
-              <span className={`quick-count ${counts(id) ? '' : 'bad'}`}>{counts(id)}</span>
+              <span className={`quick-count ${counts(id) ? '' : 'bad'}`}>×{counts(id)}</span>
             </>
           )}
         </div>

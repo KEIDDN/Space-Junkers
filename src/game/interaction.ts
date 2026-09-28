@@ -424,7 +424,7 @@ export class Interactions {
         f.done = false;
         return;
       }
-      raid.consume(card.uid, 1);
+      raid.spendUse(card.uid);
       this.audio.sfx('keycard', f.x, f.y);
       const left = (card.dur ?? 1) - 1;
       raid.notice(left > 0 ? `Security door open · keycard ${left} use${left === 1 ? '' : 's'} left` : 'Security door open · the keycard is spent', 'ok');

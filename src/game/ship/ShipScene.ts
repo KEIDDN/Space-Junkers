@@ -285,6 +285,8 @@ export class ShipScene {
     // --- Interaction
     // A panel that just closed swallowed the press that closed it: mashing through a
     // conversation mustn't open whatever the operator is standing next to.
+    const wasBusy = this.wasBusy;
+    this.wasBusy = busy;
     if (busy || ship.jumping) this.sinceBusy = 0;
     else this.sinceBusy += dt;
     const near = busy ? null : this.nearest();
@@ -297,7 +299,9 @@ export class ShipScene {
       if (step && near.kind === STEP_AT[step]) shipUi.open({ kind: 'scene', step });
       else if (near.kind === 'crew') shipUi.open({ kind: 'crew', crew: near.crew! });
       else shipUi.open({ kind: near.kind } as never);
-    } else if (!busy && this.input.pressed('inventory')) {
+    } else if (!busy && !wasBusy && this.input.pressed('inventory')) {
+      // (Not on the frame after a panel closed: the TAB that closed the stash is the same
+      // press, and must not open it again. TAB is a true toggle.)
       audio.ui('open');
       shipUi.open({ kind: 'stash' });
     }
@@ -342,6 +346,7 @@ export class ShipScene {
   };
 
   private sinceBusy = 99;
+  private wasBusy = false;
   private chatterWait = 18 + Math.random() * 12;
   private talk: { ex: Exchange; i: number; t: number } | null = null;
 

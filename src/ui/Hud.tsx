@@ -114,7 +114,7 @@ function QuickHud() {
             <div key={i} className={`hq-slot ${id && n === '0' ? 'empty' : ''}`}>
               <span className="hq-key"><ByDevice kbm={<>{i + 3}</>} pad={<>{QUICK_PAD[i]}</>} /></span>
               {id && <AtlasSprite name={itemDef(id).icon} fit={{ w: 26, h: 22 }} />}
-              {id && <span className="hq-count">{n}</span>}
+              {id && <span className="hq-count">×{n}</span>}
             </div>
           );
         })}

@@ -1,6 +1,6 @@
-import { EQUIP_SLOTS, findSpot, newUid, slotAccepts, sortGrid } from '../core/inventory';
+import { EQUIP_SLOTS, bindQuickSlot, newUid, pruneQuick, slotAccepts, sortGrid } from '../core/inventory';
 import {
-  getGrid, loadWeapon, locate, moveItem, quickMove, splitStack, unloadWeapon,
+  loadWeapon, locate, moveItem, quickMove, splitStackAuto, unloadWeapon,
   type GridKey, type Target, type Workspace,
 } from '../core/transfer';
 import { issueReserve, type Issued } from '../core/reserve';
@@ -18,7 +18,8 @@ function ws(): Workspace {
 
 function commit(next: Workspace | null): boolean {
   if (!next) return false;
-  useProfile.getState().apply({ loadout: next.loadout, stash: next.stash! });
+  // Quick-use keys only point at what the operator carries: stashing the last one clears it.
+  useProfile.getState().apply({ loadout: pruneQuick(next.loadout), stash: next.stash! });
   return true;
 }
 
@@ -63,21 +64,16 @@ export const ship = {
     return commit(unloadWeapon(w, uid, into, newUid));
   },
 
-  split(uid: string): boolean {
-    const w = ws();
-    const loc = locate(w, uid);
-    if (!loc || 'slot' in loc.where || loc.item.qty < 2) return false;
-    const g = getGrid(w, loc.where.grid)!;
-    const half = Math.floor(loc.item.qty / 2);
-    const spot = findSpot(g, { ...loc.item, qty: half });
-    return spot ? commit(splitStack(w, uid, half, { grid: loc.where.grid, x: spot.x, y: spot.y }, newUid())) : false;
+  split(uid: string, qty: number): boolean {
+    return commit(splitStackAuto(ws(), uid, qty, newUid()));
   },
 
-  bindQuick(slot: number, itemId: string | null): void {
+  bindQuick(slot: number, itemId: string | null): boolean {
     const p = useProfile.getState();
-    const quick = p.loadout.quick.map((q) => (q === itemId ? null : q));
-    quick[slot] = itemId;
-    p.apply({ loadout: { ...p.loadout, quick } });
+    const next = bindQuickSlot(p.loadout, slot, itemId);
+    if (next === p.loadout) return false;
+    p.apply({ loadout: next });
+    return true;
   },
 
   sortStash(): boolean {
