@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { DESTINATIONS, DESTINATION } from '../../data/destinations';
+import { CREW } from '../../data/crew';
 import { jumpCost } from '../../core/upgrades';
 import { audio } from '../../engine/audio';
 import { useProfile } from '../../state/profileStore';
@@ -85,6 +86,7 @@ export function NavPanel() {
                 <div className="nav-title">{d.name}</div>
                 <div className="dim small">{d.subtitle}</div>
                 <p className="nav-desc">{d.description}</p>
+                <div className="tt-row nav-why"><span>WHY GO</span><span>{d.why}</span></div>
                 <div className="tt-row"><span>DANGER</span><Danger n={d.danger} /></div>
                 <div className="tt-row"><span>SALVAGE</span><span>{d.loot}</span></div>
                 <div className="tt-row"><span>HOSTILES</span><span>{d.hostiles}</span></div>
@@ -103,6 +105,11 @@ export function NavPanel() {
                   </button>
                 )}
                 {error && <div className="bad small">{error}</div>}
+                <div className="nav-talk small">
+                  {d.talk.map((l, i) => (
+                    <div key={i}><span style={{ color: CREW[l.who].color }}>{CREW[l.who].callsign}</span> {l.text}</div>
+                  ))}
+                </div>
               </>
             ) : (
               <>

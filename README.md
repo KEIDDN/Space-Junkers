@@ -22,6 +22,12 @@ SFX_SRC=/path/to/raw python3 tools/build_sfx.py   # rebuild recorded sounds and 
 
 ## The loop
 
+Space Junkers is about a small crew of salvagers living aboard an old ore tender on the edge of
+a civilisation that stopped without ending. They need fuel, parts, medicine and money every
+week; nobody sells what the ship needs, so somebody goes down and takes it. You are that
+somebody: the newest member, working off the fare. What happened to the Commonwealth is there to
+find, or ignore.
+
 A new operator starts with the premise typed over black and wakes at their bunk on the
 Lastochka: Molot signs their kit over at the locker, Fedya gives the first job over the
 cockpit radio (the coolant pump is dying; service station Zarya-7 on Tikhaya ran the same

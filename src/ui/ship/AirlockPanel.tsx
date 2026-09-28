@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
 import { DESTINATION } from '../../data/destinations';
+import { CREW } from '../../data/crew';
+import { departureLine } from '../../data/chatter';
+import { travelCost } from '../../core/upgrades';
 import { itemDef } from '../../data/items';
 import { EQUIP_SLOTS, loadoutItems, loadoutValue } from '../../core/inventory';
 import { audio } from '../../engine/audio';
@@ -14,6 +17,8 @@ const SLOT_NAME = { primary: 'PRIMARY', secondary: 'HOLSTER', helmet: 'HEAD', ar
 export function AirlockPanel({ onDeploy }: { onDeploy: (destination: string, seed: number) => void }) {
   const course = useProfile((s) => s.course);
   const loadout = useProfile((s) => s.loadout);
+  const credits = useProfile((s) => s.credits);
+  const upgrades = useProfile((s) => s.upgrades);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -76,6 +81,10 @@ export function AirlockPanel({ onDeploy }: { onDeploy: (destination: string, see
         <div className="kit-row"><span>ORBIT WINDOW</span><span>{d.minutes} MIN</span></div>
         {warnings.map((w) => <div key={w} className="bad small">▲ {w}</div>)}
         <p className="dim small">Once the hatch opens, everything you carry is at risk until you extract. Miss the orbit window and you're left behind.</p>
+        {(() => {
+          const l = departureLine({ credits }, course.destination, course.seed, travelCost({ upgrades }, DESTINATION.tikhaya.cost));
+          return <div className="airlock-word small"><span style={{ color: CREW[l.who].color }}>{CREW[l.who].callsign}</span> {l.text}</div>;
+        })()}
         <div className="confirm-row">
           <button className="deploy" data-nav-default onClick={() => { audio.ui('click'); onDeploy(course.destination, course.seed); }}>[ DEPLOY ]</button>
           <button className="btn" onClick={() => { audio.ui('close'); shipUi.close(); }}>NOT YET <Key a="back" /></button>

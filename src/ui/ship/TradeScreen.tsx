@@ -1,9 +1,10 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { DESTINATION } from '../../data/destinations';
 import { CREW, TRUST_LEVELS, type CrewId } from '../../data/crew';
 import { RARITY_COLOR, itemDef } from '../../data/items';
 import { VENDORS } from '../../data/vendors';
 import { buyPrice, crewLevel, marketFor, sellOffer, stockKey } from '../../core/economy';
-import { repairCost } from '../../core/upgrades';
+import { repairCost, travelCost } from '../../core/upgrades';
 import type { ItemInstance } from '../../core/inventory';
 import { audio } from '../../engine/audio';
 import { getProfile, useProfile } from '../../state/profileStore';
@@ -23,6 +24,14 @@ function VendorPanel({ crew }: { crew: CrewId }) {
   const sellTarget = useDrag((s) => s.target?.kind === 'sell');
   const ok = useDrag((s) => s.ok);
   const market = marketFor(profile.day);
+  // The ship's money is fuel: say it in jumps home, and let Fedya notice when a sale buys one.
+  const hop = Math.max(1, travelCost(profile, DESTINATION.tikhaya.cost));
+  const jumps = Math.floor(profile.credits / hop);
+  const lastJumps = useRef(jumps);
+  useEffect(() => {
+    if (crew === 'trader' && jumps > lastJumps.current) setMsg({ text: `${def.callsign}: Good. That buys another jump.`, bad: false });
+    lastJumps.current = jumps;
+  }, [jumps, crew, def.callsign]);
 
   const buy = (i: number) => {
     const r = shipActions.buy(crew, i);
@@ -76,6 +85,7 @@ function VendorPanel({ crew }: { crew: CrewId }) {
       {crew === 'merc' && profile.upgrades.includes('workbench') && (
         <div className="dim small"><ByDevice kbm={<>RIGHT-CLICK</>} pad={<Key a="more" />} /> WORN ARMOR TO REPAIR IT.</div>
       )}
+      <div className="dim small">{profile.credits.toLocaleString()} KR ABOARD · {jumps === 0 ? 'NOT ENOUGH FOR A JUMP HOME' : `ENOUGH FOR ${jumps} JUMP${jumps === 1 ? '' : 'S'} TO TIKHAYA`}</div>
       {msg && <div className={`vendor-msg ${msg.bad ? 'bad' : 'ok'}`}>{msg.text}</div>}
     </section>
   );

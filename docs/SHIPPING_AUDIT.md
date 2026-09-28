@@ -1,6 +1,8 @@
 # Space Junkers: polish passes and shipping audit
 
-The **raid identity pass** (newest, first) made the systems that were already there talk to
+The **narrative coherence and onboarding pass** (newest, first) made the practical world plain
+in the first half hour (who the operator is, the arrangement with Fedya, why the crew raids, why
+it flies further) while leaving the past as evidence. The **raid identity pass** made the systems that were already there talk to
 each other: guns that differ in how far they're heard, hostiles who hear distance and differ in
 temper, a loud shortcut in most facilities, worlds that build and behave differently, events
 that make stories, and a report and a crew that tell them back. The **world, narrative, combat
@@ -12,6 +14,81 @@ hand-animated layered sprites and polished controller UX, the raid HUD, death re
 lighting and set dressing. The **final master pass** added controller support, recorded sound
 and music, new enemy art, room signage and a lighting pass. The **final polish pass** did
 animation, weapon feel, synthesized audio, lighting, transitions and set dressing.
+
+## Narrative coherence and onboarding pass
+
+A content pass, not a system, and no new lore. The lore was already strong; too much of it was
+background a new player had to reconstruct. Rule used throughout (now the lore bible's "north
+star"): the present is said plainly and early, then the fragments raise questions about the past.
+
+### Audit before any change
+
+Kept as it was: the lore bible, the threads and records, the three-step first morning, the pump
+contract, the radio coach (already plain), the moments system, the operator bios, the voices.
+Gaps found:
+
+- The crawl named the Commonwealth without saying what it was, never said Central stopped
+  answering, never mentioned the Belt or that crews *live off* the old sites, and ended on
+  "you are the one who goes down" with no reason.
+- Fedya's arrangement with the operator was only implied ("you still owe me the fare").
+- Nothing said why the crew can't just buy the regulator: the reason for the whole loop.
+- Nothing said why Tikhaya comes first.
+- Nothing in the first morning hinted that something doesn't add up; the first hook was the
+  Zarya-7 log, and only for someone who read it.
+- Destinations were a level select: no reason to go, no crew opinion; locked hints said "earn
+  his trust" without saying how.
+- "The Collapse" (Kombinat's description, a pocket watch): a term the lore never uses.
+- Money never read as fuel outside the report.
+- Reactions to raid moments were apt but said little about who was speaking.
+
+### Onboarding map: what the first half hour says, and where
+
+| When | What the player learns | Where |
+|---|---|---|
+| Opening (8 lines) | The Commonwealth ran the system from Central; 41 years ago the clocks stopped and Central stopped answering; the colonies left for the Belt; what they built is still there, some of it running; the Belt buys anything that works and crews bring it up; the Lastochka is one; you came from the Belt owing the fare; the last operator didn't come back; today the pump is failing and nobody sells the part. | `INTRO` |
+| Walking the ship | Each crew member's first words carry their slice: Fedya (fuel, parts, food, the loan), Molot (who's down there), Doc (medicine; nobody grades bravery), Shura (the stations still run; useful, and a bit weird), Lis (other crews; what sells). Overheard: "why don't we just buy a regulator?" / "From who? With what?" / "That's what the operator is for." | crew `intro`, `CHATTER` |
+| Cockpit radio | The arrangement ("you go, you come back, you get a share, you eat at my table, you work off the fare. It isn't charity. It isn't prison either"); why raid ("nobody makes them any more; if somebody did, we couldn't pay"); why Tikhaya (nearest moon, cheapest fuel, where every crew starts). | `STEP_LINES.job` |
+| Airlock | Fedya: fuel's paid. Shura: Zarya-7 went quiet but its lights are still on, and nobody has paid for power in forty years: *notice things*. The first question, not an answer. | `STEP_LINES.airlock` |
+| Zarya-7 | The station master's log ("never missed a shift"; batteries going missing, "not us, we counted"). | existing `ZARYA_LOG` |
+| Home | Hand-in: "That's the whole life... something breaks, nobody sells it, somebody goes down and takes it." Money reads as jumps home at the trader. The nav console says why each world is worth the fuel. | `fedya_first.done`, trade, nav |
+
+Optional depth for anyone who asks: "What exactly do I owe you?", "Why not just buy what the
+ship needs?", "Why fly further out?" (Fedya); "Who else is down there?" (Molot); "What was the
+Leaving?" (Doc); "Why do sealed doors open?" (Shura: the plain fact, then "why on the minute is
+the part I don't like"); "Who else does what we do?" (Lis, true to her real prices).
+
+### Also changed
+
+| Where | Change |
+|---|---|
+| Nav console | Each world: WHY GO (Tikhaya keeps the ship running; Merzlota pays for going further; Krasnaya is kit good enough to come back; Kombinat the valuable salvage; Sirin "Shura wants to know what is on the other end of channel nine") and a short crew exchange. Locked hints say whose jobs open them. |
+| Airlock | One crew line per raid after the first: money first ("That jump was the last of the fuel money. Come back heavy"), otherwise about the destination. |
+| Trade | Credits read as jumps home; Fedya: "Good. That buys another jump" when a sale does. |
+| Overheard | Also: "that's enough" / "we need the money" / "we need them more"; what a jump cost; other crews; the creditor; landing somewhere for good. |
+| Raid moments | Reactions show the speaker: Molot goes back to Krasnaya and Depot 4, Doc to Kharon, Fedya counts the orbit he's paying for. |
+| Canon | "The Collapse" removed. Lore bible: the north star. |
+
+Deliberately not explained anywhere: why the clocks stopped, what nine is, what Sirin is, why
+the lights stay on, who is right.
+
+### Tested
+
+- 282 unit tests (39 files), type check, production build. `narrative.test.ts` holds the
+  contract: the opening covers the Commonwealth, Central, the Belt, the crews, the operator and
+  the pump, and names nothing of nine, Sirin or the signal; lines stay short; Fedya states the
+  arrangement, the reason and why Tikhaya; Shura's airlock line raises a question; each crew
+  intro carries its slice; every world has a reason and crew talk; one term for the end of the
+  world; the airlock line's money logic.
+- Browser (headless Chromium, dev build): NEW GAME → operator → the final crawl typed out in full and
+  fitting at 1280×720; the nav console with Merzlota's WHY GO and exchange; the airlock line, and Fedya's
+  money line when broke; trade at 480 KR ("1 JUMP"), a sale to 988 KR ("3 JUMPS", Fedya's
+  line). No console errors.
+
+### Not verified
+
+- How the writing reads to someone new: the real test of this pass.
+- The first-morning scenes clicked through line by line in the browser (their text changed;
+  the scene panel that shows them didn't).
 
 ## Raid identity pass
 
