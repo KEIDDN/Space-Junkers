@@ -49,6 +49,10 @@ three different versions depending on the buyer. All of them can be partly right
   hold. When a station's reserve finally fails, its seals fail with it and doors that held for
   forty years open: a fresh "signal". Crews race for those. The Lastochka's nav console lists
   them by signal number; that is why every raid is somewhere new.
+- **Why some doors are jammed.** Crews weld shutters behind them to keep the next crew off
+  their backs, or to keep something in. Forcing one is quick and very loud.
+- **Why a seal can fail while you're inside.** Reserve cells die when they die. Shura keeps a
+  log of when; she has noticed they fail on the minute, never between. Nobody explains that.
 - **Why it's dangerous.** Squatters (scavengers) live in the plants and treat them as home.
   Raider crews got there first. On Krasnaya the garrison's children still hold the depots under
   orders nobody countermanded. On Kombinat, corporate security guards property they don't

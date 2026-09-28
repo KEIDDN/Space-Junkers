@@ -37,13 +37,18 @@ scavengers give them a chance to learn.
 4. **Raid.** Facilities are procedural, themed by planet, and dark. Listen before you look:
    guards mutter into radios and say it out loud when they think they heard something.
    Search containers and bodies, read terminals and the notes people left, open the vault if
-   you brought a keycard.
+   you brought a keycard. Every gun has a loudness as well as a damage: a pistol is heard next
+   door, a shotgun by most of the level. Hostiles who hear you close by come at a run; far off
+   they only know "somewhere that way", and whether they come depends on who they are. Most
+   facilities have a jammed shutter somewhere: the short way deep, if you're willing to be
+   heard forcing it.
 5. **Extract** on the shuttle pad (12 s, and the alarm brings company) or on the maintenance lift
    (quiet and quick, once you've thrown its breaker somewhere else). The Lastochka can only hold
    orbit so long: miss the window and you're M.I.A.
 6. **Return.** Extract and everything you carry comes home, and the report says what it's worth
-   in fuel. Die and it stays on your body; the report says who, where, and the one thing to do
-   differently.
+   in fuel, and in a few lines how it went (the shutter you forced, the seal that failed, the
+   crew that walked in behind you, the ninety seconds left on the window). Die and it stays on
+   your body; the report says who, where, and the one thing to do differently.
    The crew notice how it went (and what you read down there). Sell, hand in contracts,
    upgrade, go again. Everything you've read is kept in the service record's RECOVERED
    RECORDS, sorted by the threads that run through every world.
@@ -103,13 +108,18 @@ grade), and with a controller connected, aim speed, aim assist and vibration.
 
 ## World
 
-| Destination | Theme | Hostiles |
-|---|---|---|
-| Tikhaya | Industrial moon: tractor plants, ore mills | Scavengers |
-| Merzlota | Frozen mining world | Scavengers, raider crews |
-| Krasnaya Pustosh | Red desert garrison depots | Garrison soldiers |
-| Kombinat Orbital | Corporate research station | Corporate security |
-| Sirin | Source of the signal | Unknown |
+| Destination | Theme | Hostiles | Plays like |
+|---|---|---|---|
+| Tikhaya | Industrial moon: tractor plants, ore mills | Scavengers | The baseline. Other people's fights, squatters coming and going. |
+| Merzlota | Frozen mining world | Scavengers, raider crews | Cramped, dark rooms; fights at arm's length; the power keeps failing. |
+| Krasnaya Pustosh | Red desert garrison depots | Garrison soldiers | Big halls, long sightlines, rooms held by guards who won't be drawn out; patrols. |
+| Kombinat Orbital | Corporate research station | Corporate security | Lit and watched; restricted rooms held; live alarms; seals that fail. |
+| Sirin | Source of the signal | Unknown | Dark, and it talks. |
+
+Hostiles differ in temper, not just kit: scavengers freeze at distant shots, give up quickly
+and scatter when one of them drops; raiders go toward the noise, search wide and push when you
+break contact; the garrison checks a noise in pairs, one covering from halfway; corporate
+security sweeps the rooms around it.
 
 Crew: **Fedya** (trader, captain), **Molot** (mercenary, armour repair), **Doc** (medic),
 **Shura** (hacker, keycards), **Lis** (smuggler). Trust grows with trade and contracts and
@@ -122,8 +132,11 @@ records read, or a particular man dealt with. Each says plainly where to look.
 
 Facilities have a grammar: an entry zone, working rooms, a restricted ring (clearance plates,
 fewer lights, better finds, worse company) and deep rooms. Noise has a memory: loud raids bring
-the next crew down sooner, toward where the shooting was. Now and then something happens that
-you didn't cause.
+the next crew down sooner, toward where the shooting was (pistol shots don't count; they stay
+local). Now and then something happens that you didn't cause: somebody else's firefight, the
+reserve dipping, an alarm, channel nine, a crew walking back through rooms you'd cleared, or a
+vault seal whose reserve cell finally dies, opening it with everyone nearby listening. Each
+world has its own mix. The crew hear about the best of it when you're back.
 
 ## Layout
 
