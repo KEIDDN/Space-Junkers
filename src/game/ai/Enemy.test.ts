@@ -28,7 +28,9 @@ vi.mock('../../engine/assets', () => ({ anim: () => [], hasAnim: () => false, te
 import { DEFAULT_AI, ENEMIES, FIRST_RAID_AI } from '../../data/enemies';
 import type { GameContext } from '../context';
 import { mapFromAscii } from '../world/tilemap';
-import { Enemy, type Target } from './Enemy';
+import { Enemy, searchPlan, type Target } from './Enemy';
+
+const TILE_PX = 32;
 
 const MAP = mapFromAscii([
   '##############################',
@@ -238,3 +240,173 @@ describe('stations and posts', () => {
   });
 });
 
+
+describe('hearing: where it came from, and who goes to look', () => {
+  const nobody = { x: 0, y: 0, alive: false, conspicuity: 0 };
+  // A long open hall: 46 tiles.
+  const HALL = mapFromAscii([
+    '################################################',
+    '#..............................................#',
+    '#..............................................#',
+    '#..............................................#',
+    '################################################',
+  ]);
+  const hall = () => ctx({ map: HALL });
+
+  it('a loud noise close by brings them at a run; the same noise further off, carefully', () => {
+    const near = new Enemy(hall(), ENEMIES.raider, tile(2), tile(2));
+    near.hear(tile(7), tile(2), 560);
+    expect(near.state).toBe('alert');
+    const mid = new Enemy(hall(), ENEMIES.raider, tile(2), tile(2));
+    mid.hear(tile(14), tile(2), 560);
+    expect(mid.state).toBe('investigate');
+  });
+
+  it('far off, scavengers mostly stop and listen; raiders mostly go and look', () => {
+    const goes = (kind: 'scavenger' | 'raider') => {
+      let n = 0;
+      for (let k = 0; k < 200; k++) {
+        const e = new Enemy(hall(), ENEMIES[kind], tile(2), tile(2));
+        // ~0.8 of how far a rifle shot reaches them.
+        e.hear(tile(2) + 560 * ENEMIES[kind].hearing * 0.8, tile(2), 560);
+        if (e.state === 'investigate' || e.state === 'alert') n++;
+      }
+      return n / 200;
+    };
+    expect(goes('scavenger')).toBeLessThan(0.55);
+    expect(goes('raider')).toBeGreaterThan(0.85);
+  });
+
+  it('one who stops to listen turns toward it and stays put', () => {
+    const e = new Enemy(hall(), { ...ENEMIES.scavenger, temper: { ...ENEMIES.scavenger.temper, curiosity: 0 } }, tile(2), tile(2));
+    e.hear(tile(2) + 560 * 0.8, tile(2), 560);
+    run(e, nobody, 1.5);
+    expect(e.state).toBe('idle');
+    expect(Math.hypot(e.x - tile(2), e.y - tile(2))).toBeLessThan(4);
+    const f = (e as unknown as { facing: number }).facing;
+    expect(Math.abs(Math.atan2(Math.sin(f), Math.cos(f)))).toBeLessThan(0.3);
+  });
+
+  it('the further off, the worse the guess', () => {
+    const spread = (dx: number) => {
+      let sum = 0;
+      for (let k = 0; k < 200; k++) {
+        const e = new Enemy(hall(), ENEMIES.raider, tile(2), tile(2));
+        const x = tile(2) + dx;
+        e.hear(x, tile(2), 900);
+        sum += Math.abs((e as unknown as { lastKnownX: number }).lastKnownX - x);
+      }
+      return sum / 200;
+    };
+    expect(spread(TILE_PX * 30)).toBeGreaterThan(spread(TILE_PX * 5) * 3);
+  });
+
+  it('the garrison covers: when one goes to check, the next stops halfway and watches', () => {
+    const c = hall();
+    const a = new Enemy(c, ENEMIES.soldier, tile(2), tile(1));
+    const b = new Enemy(c, ENEMIES.soldier, tile(2), tile(3));
+    a.allies = b.allies = [a, b];
+    // Twelve tiles off: close enough that both come (neither just listens).
+    a.hear(tile(14), tile(2), 560);
+    b.hear(tile(14), tile(2), 560);
+    // How close each ever got to where the noise was.
+    let ca = Infinity;
+    let cb = Infinity;
+    for (let i = 0; i < 60 * 8.5; i++) {
+      a.update(1 / 60, nobody, [a, b]);
+      b.update(1 / 60, nobody, [a, b]);
+      ca = Math.min(ca, Math.abs(a.x - tile(14)));
+      cb = Math.min(cb, Math.abs(b.x - tile(14)));
+    }
+    const [went, held] = [ca, cb].sort((p, q) => p - q);
+    // One went all the way; the other stopped about halfway and is watching.
+    expect(went).toBeLessThan(TILE_PX * 3);
+    expect(held).toBeGreaterThan(TILE_PX * 4);
+    expect(held).toBeLessThan(TILE_PX * 9);
+  });
+
+  it('raiders don\'t: both go', () => {
+    const c = hall();
+    const a = new Enemy(c, ENEMIES.raider, tile(2), tile(1));
+    const b = new Enemy(c, ENEMIES.raider, tile(2), tile(3));
+    a.allies = b.allies = [a, b];
+    a.hear(tile(14), tile(2), 560);
+    b.hear(tile(14), tile(2), 560);
+    // How close each got (they search wide once there, so not where they end up).
+    let ca = Infinity;
+    let cb = Infinity;
+    for (let i = 0; i < 60 * 8.5; i++) {
+      a.update(1 / 60, nobody, [a, b]);
+      b.update(1 / 60, nobody, [a, b]);
+      ca = Math.min(ca, Math.abs(a.x - tile(14)));
+      cb = Math.min(cb, Math.abs(b.x - tile(14)));
+    }
+    expect(ca).toBeLessThan(TILE_PX * 3.5);
+    expect(cb).toBeLessThan(TILE_PX * 3.5);
+  });
+
+  it('scavengers give up sooner than raiders', () => {
+    const searchTime = (kind: 'scavenger' | 'raider') => {
+      const e = new Enemy(hall(), ENEMIES[kind], tile(2), tile(2));
+      e.hear(tile(8), tile(2), 300);
+      let t = 0;
+      while (t < 60 && !(t > 1 && (e.state === 'idle' || e.state === 'patrol'))) {
+        e.update(1 / 60, nobody, [e]);
+        t += 1 / 60;
+      }
+      return t;
+    };
+    let scav = 0;
+    let raider = 0;
+    for (let k = 0; k < 8; k++) {
+      scav += searchTime('scavenger');
+      raider += searchTime('raider');
+    }
+    expect(scav).toBeLessThan(raider);
+  });
+
+  it('scavengers scatter when a friend drops; soldiers mostly don\'t', () => {
+    const scatter = (kind: 'scavenger' | 'soldier') => {
+      let n = 0;
+      for (let k = 0; k < 200; k++) {
+        // The default map has a pillar at column 13 to duck behind.
+        const e = new Enemy(ctx(), ENEMIES[kind], tile(9), tile(5));
+        e.witnessDeath(tile(10), tile(5), tile(20), tile(5));
+        if (e.state === 'retreat') n++;
+      }
+      return n / 200;
+    };
+    expect(scatter('scavenger')).toBeGreaterThan(0.2);
+    expect(scatter('soldier')).toBeLessThan(0.12);
+  });
+});
+
+describe('searching like a person', () => {
+  it('checks the room the noise came from, then the rooms next to it', () => {
+    const map = mapFromAscii([
+      '##########################',
+      '#.......#.......#........#',
+      '#.......#.......#........#',
+      '#...........................',
+      '#.......#.......#........#',
+      '##########################',
+    ]);
+    map.rooms.push(
+      { x: 1, y: 1, w: 7, h: 4, role: 'standard', depth: 1 },
+      { x: 9, y: 1, w: 7, h: 4, role: 'standard', depth: 2 },
+      { x: 17, y: 1, w: 8, h: 4, role: 'standard', depth: 3 },
+    );
+    for (let k = 0; k < 20; k++) {
+      const pts = searchPlan(map, tile(12), tile(2), 8);
+      expect(pts.length).toBeGreaterThanOrEqual(3);
+      // First the room it came from...
+      expect(pts[0].x / TILE_PX).toBeGreaterThanOrEqual(9);
+      expect(pts[0].x / TILE_PX).toBeLessThan(16);
+      // ...then its neighbours on both sides.
+      const later = pts.slice(1).map((p) => p.x / TILE_PX);
+      expect(later.some((x) => x < 8)).toBe(true);
+      expect(later.some((x) => x >= 17)).toBe(true);
+      for (const p of pts) expect(map.isSolidAt(p.x, p.y)).toBe(false);
+    }
+  });
+});

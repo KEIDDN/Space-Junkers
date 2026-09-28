@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { CATEGORY_NAME, ITEMS, RARITY_COLOR, itemDef } from '../../data/items';
-import { CALIBER_NAME, WEAPONS } from '../../data/weapons';
+import { CALIBER_NAME, WEAPONS, loudness } from '../../data/weapons';
 import { QUICK_SLOTS, itemValueDeep, itemWeight, loadoutCount, loadoutItems, quickUsable, type ItemInstance } from '../../core/inventory';
 import { locate, parseSplitQty, splitRange, splitStackAuto } from '../../core/transfer';
 import { audio } from '../../engine/audio';
@@ -32,12 +32,13 @@ function statLines(item: ItemInstance): [string, string][] {
     case 'weapon': {
       const w = WEAPONS[d.weapon];
       const lines: [string, string][] = [
+        ['USE', w.role],
         ['CALIBER', CALIBER_NAME[w.caliber]],
         ['DAMAGE', w.pellets > 1 ? `${w.damage} × ${w.pellets}` : String(w.damage)],
         ['RATE', `${Math.round(w.fireRate * 60)} RPM ${w.automatic ? 'AUTO' : w.cycled ? 'MANUAL' : 'SEMI'}`],
         ['MAGAZINE', `${w.magSize}${w.reloadPerRound ? ' (single rounds)' : ''}`],
         ['ACCURACY', w.spread <= 0.3 ? 'EXCELLENT' : w.spread <= 1.2 ? 'GOOD' : w.spread <= 3 ? 'FAIR' : 'POOR'],
-        ['NOISE', w.noiseRadius >= 650 ? 'DEAFENING' : w.noiseRadius >= 520 ? 'LOUD' : 'MODERATE'],
+        ['NOISE', loudness(w.noiseRadius)],
       ];
       if (item.loaded) lines.push(['LOADED', `${item.loaded} × ${ITEMS[item.ammoType!]?.short ?? '?'}`]);
       if (w.jamChance) lines.push(['CONDITION', 'WORN, MAY JAM']);

@@ -1,3 +1,5 @@
+import { CARRIES } from '../data/weapons';
+
 /**
  * Shooting solves the problem in front of you and makes the next one. Every loud thing the
  * operator does (a shot, a grenade, a breaker, a relay) adds to how much of the facility and
@@ -7,8 +9,11 @@
  * Pure: the game adds noise and asks when the next landing is.
  */
 
-/** Only sounds that carry this far (px) count: footsteps and rummaging are local business. */
-export const LOUD = 350;
+/**
+ * Only sounds that carry this far (px) count: footsteps, rummaging and pistol shots are
+ * local business. A pistol is a conversation; a shotgun is an announcement.
+ */
+export const LOUD = CARRIES;
 /** Most a landing can be brought forward, as a fraction of the gap before it. */
 const MAX_PULL = 0.5;
 /** Seconds brought forward per point of attention. */
